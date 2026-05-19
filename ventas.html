@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUTOCOR | Ventas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<style>
+  :root{
+    --brand:#E53F2E;
+    --brand-dark:#c0341f;
+    --dark:#17181b;
+    --dark2:#1f2125;
+    --navy:#17181b;
+    --ink:#111827;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --bg:#f0f2f5;
+    --soft-red:#fee2e2;
+    --soft-green:#dcfce7;
+    --soft-yellow:#fef9c3;
+    --soft-orange:#ffedd5;
+    --soft-blue:#dbeafe;
+    --white:#fff;
+  }
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;padding:0;
+    background:var(--bg);
+    font-family:Arial,Helvetica,sans-serif;
+    color:var(--ink);
+  }
+
+  /* ── TOPBAR ── */
+  .topbar{
+    background:var(--dark);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 24px;height:56px;
+    position:sticky;top:0;z-index:100;
+    box-shadow:0 2px 8px rgba(0,0,0,.22);
+  }
+  .topbar-left{display:flex;align-items:center;gap:14px;}
+  .topbar-logo{height:32px;display:none;object-fit:contain;filter:brightness(0) invert(1);}
+  .topbar-module{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;
+    color:#fff;letter-spacing:.6px;text-transform:uppercase;
+    padding-left:14px;border-left:2px solid var(--brand);
+  }
+  .topbar-right{display:flex;align-items:center;gap:8px;}
+  .topbar-meta{font-size:11px;color:rgba(255,255,255,.55);line-height:1.4;}
+
+  /* ── TOOLBAR ── */
+  .toolbar-wrap{
+    background:var(--dark2);
+    border-bottom:1px solid rgba(255,255,255,.07);
+    padding:8px 24px;
+    display:flex;flex-wrap:wrap;gap:7px;align-items:center;
+    position:sticky;top:56px;z-index:99;
+  }
+  .toolbar-wrap button{
+    padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;
+    cursor:pointer;transition:background .15s,transform .1s;
+    border:1px solid rgba(255,255,255,.12);color:#fff;
+  }
+  .toolbar-wrap button:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--brand);border-color:var(--brand-dark) !important;box-shadow:0 3px 10px rgba(229,63,46,.35);}
+  .btn-primary:hover{background:var(--brand-dark) !important;}
+  .btn-secondary{background:rgba(255,255,255,.08);}
+  .btn-secondary:hover{background:rgba(255,255,255,.16) !important;}
+  .btn-tercero{background:#1d4ed8 !important;border-color:#1e40af !important;box-shadow:0 3px 10px rgba(29,78,216,.35);}
+  .btn-tercero:hover{background:#1e40af !important;}
+  .btn-outline{background:transparent !important;color:rgba(255,255,255,.7) !important;border:1px solid rgba(255,255,255,.22) !important;}
+  .btn-outline:hover{background:rgba(255,255,255,.08) !important;color:#fff !important;}
+  .btn-danger{background:#b91c1c !important;border-color:#991b1b !important;}
+  .btn-danger:hover{background:#991b1b !important;}
+  .hidden-input{display:none}
+
+  /* ── STATUS BAR ── */
+  .status-bar{
+    margin:16px 24px 0;
+    padding:9px 16px;
+    border-radius:10px;
+    background:#fff;
+    border-left:4px solid var(--brand);
+    font-size:12px;font-weight:700;color:var(--ink);
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    display:inline-block;
+  }
+  .status-bar.error{border-left-color:#b91c1c;color:#b91c1c;background:#fff1f1;}
+  .status-bar.ok{border-left-color:#16a34a;color:#15803d;}
+
+  /* ── Cabecera del cuadro capturado ── */
+  .pag-doc-header td{
+    background:var(--dark);padding:9px 12px;vertical-align:middle;
+  }
+  .ventas-logo-img{
+    height:38px;display:none;object-fit:contain;
+    filter:brightness(0) invert(1);vertical-align:middle;
+  }
+  .pag-title-cell{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:12px;
+    color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.5px;
+    text-align:center;padding-right:4px;
+  }
+  .pag-doc-inforow td{
+    padding:6px 12px;font-size:11px;background:#f8fafc;
+  }
+  .pag-doc-inforow .label{
+    font-weight:700;color:#374151;background:#f1f5f9;font-size:11px;width:17%;
+  }
+  .pag-doc-inforow .info-val{
+    font-weight:700;color:#111827;font-size:11px;
+  }
+
+  /* ── BODY ── */
+  .page-body{padding:16px 24px 32px;}
+
+  /* ── SHEET ── */
+  .sheet{
+    background:var(--white);
+    border-radius:16px;
+    border:1px solid #d1d5db;
+    box-shadow:0 4px 20px rgba(15,23,42,.07);
+    overflow:hidden;
+  }
+
+  table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px;}
+  th,td{
+    border:1px solid #d1d5db;
+    padding:6px 8px;
+    min-height:32px;
+    vertical-align:middle;
+    line-height:1.3;
+  }
+  input[type="text"],input[type="password"],select{
+    width:100%;border:none;outline:none;background:transparent;
+    font:inherit;padding:2px 0;color:inherit;
+    text-transform:uppercase;line-height:1.3;min-height:18px;display:block;
+  }
+  input::placeholder{color:#aaa}
+
+  .top-dark{
+    background:var(--dark);color:#fff;font-weight:700;
+    text-align:center;text-transform:uppercase;letter-spacing:.4px;
+    font-family:'Poppins',sans-serif;font-size:12px;
+  }
+  .top-dark input{color:#fff;font-family:'Poppins',sans-serif;font-weight:700;text-align:center;}
+  .top-risk{
+    background:#1f2125;color:#fff;font-weight:700;
+    text-align:center;text-transform:uppercase;
+    border-top:2px solid var(--brand);font-size:11px;
+  }
+  .top-risk input{color:#fff;text-align:center;}
+  .label{background:#f8fafc;font-weight:700;color:#374151;}
+  .value{background:#fff;}
+  .section{
+    background:#374151;color:#fff;
+    text-align:center;font-weight:700;text-transform:uppercase;
+    font-family:'Poppins',sans-serif;font-size:11px;letter-spacing:.4px;
+    transition:background .25s, color .25s;
+  }
+  .section.section-verde{background:#dcfce7!important;color:#166534!important;}
+  .section.section-amarillo{background:#fef9c3!important;color:#854d0e!important;}
+  .section.section-rojo{background:var(--brand)!important;color:#fff!important;}
+  .section-tercero{
+    background:#1d4ed8;color:#fff;
+    text-align:center;font-weight:700;text-transform:uppercase;
+    font-family:'Poppins',sans-serif;font-size:11px;letter-spacing:.4px;
+  }
+  .subhead{
+    background:#f1f5f9;font-weight:700;text-align:center;
+    color:#374151;font-size:10px;text-transform:uppercase;letter-spacing:.3px;
+  }
+  .legal-row td{background:#fafafa;}
+  .dictamen-label{
+    background:#f1f5f9;font-weight:700;
+    text-align:center;text-transform:uppercase;color:#374151;font-size:11px;
+  }
+  .dictamen-value{
+    background:#fff;font-weight:800;text-align:center;font-size:12px;
+  }
+  .center{text-align:center}
+
+  /* Estados de filas */
+  .estado-correcto td{background:var(--soft-green) !important;}
+  .estado-incorrecto td{background:var(--soft-red) !important;color:#9b0000;}
+  .estado-sininfo td{background:var(--soft-yellow) !important;}
+  .estado-pendiente td{background:var(--soft-orange) !important;}
+  .estado-fideval td{background:var(--soft-blue) !important;}
+  .estado-noaplica td{background:#f3f4f6 !important;color:#6b7280;}
+
+  .tick{font-weight:700;font-size:13px;display:inline-block;}
+  .tick.ok{color:#16a34a;}
+  .tick.warn{color:#d97706;}
+  .tick.bad{color:#b91c1c;}
+  .tick.fideval{color:#2563eb;}
+
+  /* ── TERCERO TOOLBAR ── */
+  .tercero-toolbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 16px;background:#f1f5f9;
+    border-bottom:1px solid var(--line);
+  }
+  .tercero-num-label{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:12px;
+    color:#1d4ed8;text-transform:uppercase;letter-spacing:.4px;
+  }
+
+  /* ── PRINTS ── */
+  .support-wrap{
+    margin-top:16px;
+    background:#fff;
+    border-radius:16px;
+    border:1px solid #d1d5db;
+    box-shadow:0 4px 20px rgba(15,23,42,.07);
+    overflow:hidden;
+  }
+  .support-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    background:#f8fafc;
+  }
+  .support-title{
+    font-family:'Poppins',sans-serif;
+    font-size:13px;font-weight:700;color:var(--dark);
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  .support-help{color:var(--muted);font-size:12px;margin-top:2px;}
+  .support-body{padding:16px 18px;}
+  .support-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:14px;
+  }
+  .support-card{
+    border:1px solid #e2e8f0;border-radius:12px;
+    background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.05);
+    overflow:hidden;transition:box-shadow .2s;
+  }
+  .support-card:hover{box-shadow:0 6px 18px rgba(15,23,42,.1);}
+  .support-card .thumb-wrap{
+    background:#f1f5f9;aspect-ratio:4/3;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .support-card img{width:100%;height:100%;object-fit:contain;display:block;background:#fff;}
+  .support-card .meta{padding:10px 12px 12px;}
+  .support-card .meta input,
+  .support-card .meta textarea{
+    width:100%;border:1px solid #e2e8f0;border-radius:8px;
+    padding:7px 8px;margin-bottom:8px;background:#fff;font:inherit;
+  }
+  .support-card .meta input{font-weight:700;text-transform:uppercase;}
+  .support-card .meta textarea{min-height:56px;resize:vertical;text-transform:none;}
+  .support-card .row-actions{display:flex;gap:6px;}
+  .support-card .row-actions button{
+    flex:1;padding:6px 8px;font-size:11px;border-radius:8px;
+    border:1px solid #e2e8f0;background:#f8fafc;color:var(--ink);
+    font-weight:700;cursor:pointer;transition:background .15s;
+  }
+  .support-card .row-actions .del-btn{background:#fee2e2;border-color:#fecaca;color:#b91c1c;}
+  .empty-support{
+    border:1px dashed #cbd5e1;border-radius:12px;
+    padding:24px;color:var(--muted);font-size:13px;
+    text-align:center;
+  }
+
+  /* ── FOOTER ── */
+  .page-footer{
+    padding:14px 24px;font-size:11px;color:var(--muted);
+    text-align:center;
+  }
+
+  /* ── MODAL ── */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);
+    display:none;align-items:center;justify-content:center;
+    padding:18px;z-index:9999;
+  }
+  .modal{
+    width:min(520px,100%);background:#fff;
+    border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.25);overflow:hidden;
+  }
+  .modal-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    background:#f8fafc;
+  }
+  .modal-header h3{margin:0;font-size:14px;font-weight:700;}
+  .modal-body{padding:14px 16px;}
+  .modal-close{
+    background:var(--dark);color:#fff;border:none;
+    padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;
+  }
+  .field{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:8px;margin-top:10px;}
+  .field label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;}
+  .field input{
+    border:1px solid #d1d5db;padding:9px 10px;border-radius:9px;
+    font-size:13px;width:100%;text-transform:uppercase;background:#fff;
+  }
+  #passwordLogin{text-transform:none;}
+  .notice{font-size:12px;color:var(--muted);margin-top:8px;}
+
+  /* ── Modal preview prints ── */
+  .modal-wide{width:min(820px,100%) !important;}
+  .preview-img-wrap{
+    background:#f1f5f9;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;max-height:65vh;
+  }
+  .preview-img-wrap img{
+    max-width:100%;max-height:65vh;object-fit:contain;display:block;
+  }
+  .preview-meta{
+    margin-top:12px;padding:10px 12px;
+    background:#f8fafc;border-radius:8px;border:1px solid var(--line);
+  }
+  .preview-meta-title{
+    font-weight:700;font-size:13px;color:var(--ink);
+    text-transform:uppercase;margin-bottom:4px;
+  }
+  .preview-meta-obs{
+    font-size:12px;color:var(--muted);line-height:1.5;
+  }
+
+  /* ── Captura ── */
+  #captureArea{overflow:hidden;}
+  .capture-clone{
+    position:fixed;left:-99999px;top:0;
+    width:1280px;background:#fff;z-index:-1;
+  }
+  .capture-clone input,
+  .capture-clone select{-webkit-appearance:none;appearance:none;background:transparent !important;}
+  .capture-value{
+    display:block;width:100%;min-height:18px;line-height:1.3;
+    padding:2px 0;color:inherit;text-transform:uppercase;
+    white-space:pre-wrap;word-break:break-word;
+  }
+
+  /* ── Print ── */
+  @media print{
+    html{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+    .topbar,.toolbar-wrap,.support-wrap,.page-footer{display:none !important;}
+    .page-body{padding:0;}
+    .sheet{box-shadow:none;border:none;border-radius:0;}
+  }
+
+  @media(max-width:760px){
+    .topbar,.toolbar-wrap{padding:0 12px;}
+    .page-body{padding:12px;}
+    .support-grid{grid-template-columns:1fr;}
+  }
+
+  /* COLORES MANUALES */
+  #dictamenVal.dict-verde{background:#dcfce7!important;color:#166534!important;}
+  #dictamenVal.dict-verde input{color:#166534!important;font-weight:800!important;}
+  #dictamenVal.dict-amarillo{background:#fef9c3!important;color:#854d0e!important;}
+  #dictamenVal.dict-amarillo input{color:#854d0e!important;font-weight:800!important;}
+  #dictamenVal.dict-rojo{background:#fee2e2!important;color:#991b1b!important;}
+  #dictamenVal.dict-rojo input{color:#991b1b!important;font-weight:800!important;}
+  #dictamenVal .cbtn.on{border-color:#374151;}
+  #riskVal.row-verde{background:transparent!important;color:#166534!important;font-weight:800!important;}
+  #riskVal.row-verde input{color:#166534!important;font-weight:800!important;}
+  #riskVal.row-amarillo{background:transparent!important;color:#ca8a04!important;font-weight:800!important;}
+  #riskVal.row-amarillo input{color:#ca8a04!important;font-weight:800!important;}
+  #riskVal.row-rojo{background:transparent!important;color:#991b1b!important;font-weight:800!important;}
+  #riskVal.row-rojo input{color:#991b1b!important;font-weight:800!important;}
+  .row-verde{background:#166534!important;color:#fff!important;}
+  .row-verde input{color:#fff!important;}
+  .row-amarillo{background:#ca8a04!important;color:#fff!important;}
+  .row-amarillo input{color:#fff!important;}
+  .row-rojo{background:#991b1b!important;color:#fff!important;}
+  .row-rojo input{color:#fff!important;}
+  .cbtn{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;display:inline-block;margin-left:4px;vertical-align:middle;transition:border-color .15s,transform .15s;}
+  .cbtn:hover,.cbtn.on{border-color:#fff;transform:scale(1.3);}
+  @media print{.cbtn{display:none!important;}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <img id="topbarLogoVentas" class="topbar-logo ventas-logo-img" src="" alt="AUTOCOR">
+    <div class="topbar-module">Ventas</div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-meta" id="topbarMeta">LISTO</div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar-wrap">
+  <button type="button" class="btn-primary" onclick="guardarYExportarTodo()">💾 Guardar + Exportar</button>
+  <button type="button" class="btn-secondary" onclick="buscarPorPlacaPrompt()">🔍 Buscar Placa</button>
+  <button type="button" class="btn-secondary" onclick="agregarFilaDocumento()">+ Documento</button>
+  <button type="button" class="btn-secondary" onclick="deshacerUltimaFila('tbodyDocs', docsVentasBase.length)">↩ Deshacer doc.</button>
+  <button type="button" class="btn-tercero" onclick="agregarTercero()">👤 Pago con Terceras Personas</button>
+  <button type="button" class="btn-secondary" onclick="document.getElementById('printInput').click()">🖼 Agregar prints</button>
+  <button type="button" class="btn-danger" onclick="eliminarTodosLosPrints()">✕ Eliminar prints</button>
+  <button type="button" class="btn-outline" onclick="restablecerBase()">↺ Restablecer</button>
+  <button type="button" class="btn-outline" id="btnIniciarSesion" onclick="abrirModal('modalUsuario')">Iniciar sesión</button>
+  <button type="button" class="btn-outline" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;">Cerrar sesión</button>
+  <input id="printInput" class="hidden-input" type="file" accept="image/*" multiple>
+</div>
+
+<div class="page-body">
+
+  <!-- Status -->
+  <div id="statusBar" class="status-bar">LISTO PARA TRABAJAR</div>
+
+  <!-- Tabla principal -->
+  <div class="sheet" style="margin-top:14px;">
+    <div id="captureArea">
+      <table>
+        <colgroup>
+          <col style="width:34%">
+          <col style="width:12%">
+          <col style="width:8%">
+          <col style="width:46%">
+        </colgroup>
+
+        <!-- Cabecera: logo + módulo -->
+        <tr class="pag-doc-header">
+          <td style="width:34%;"><img id="ventasLogoImg" class="ventas-logo-img" alt="AUTOCOR"></td>
+          <td colspan="3" class="pag-title-cell">Ventas · Control de Documentación</td>
+        </tr>
+        <!-- Info: realizado por + editado por -->
+        <tr class="pag-doc-inforow">
+          <td class="label">Realizado por:</td>
+          <td class="value info-val"><span id="realizadoPorDisplay">—</span></td>
+          <td class="label">Editado por:</td>
+          <td class="value info-val"><span id="responsablesDisplay">—</span></td>
+        </tr>
+
+        <tr><th colspan="4" class="top-dark"><input id="depTitle" class="center" type="text" autocomplete="off" value="DEPARTAMENTO DE VENTAS - AUTOCOR"></th></tr>
+
+        <tr>
+          <td class="dictamen-label">DICTAMEN LEGAL FINAL:</td>
+          <td colspan="3" class="dictamen-value" id="dictamenVal">
+            <input id="dictamenValue" class="center" type="text" autocomplete="off" value="REVISIÓN MANUAL">
+            <span style="display:inline-flex;align-items:center;margin-left:8px;">
+              <span class="cbtn on" style="background:#e5e7eb;" onclick="setColor3('')"></span>
+              <span class="cbtn" style="background:#86efac;" onclick="setColor3('dict-verde')"></span>
+              <span class="cbtn" style="background:#fde68a;" onclick="setColor3('dict-amarillo')"></span>
+              <span class="cbtn" style="background:#fca5a5;" onclick="setColor3('dict-rojo')"></span>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="dictamen-label">CLASIFICACIÓN DE RIESGO:</td>
+          <td colspan="3" class="dictamen-value" id="riskVal">
+            <input id="riskTitle" class="center" type="text" autocomplete="off" value="BAJO - SIN NOVEDADES">
+            <span style="display:inline-flex;align-items:center;margin-left:8px;">
+              <span class="cbtn on" style="background:#374151;" onclick="setColor2('')"></span>
+              <span class="cbtn" style="background:#16a34a;" onclick="setColor2('row-verde')"></span>
+              <span class="cbtn" style="background:#ca8a04;" onclick="setColor2('row-amarillo')"></span>
+              <span class="cbtn" style="background:#dc2626;" onclick="setColor2('row-rojo')"></span>
+            </span>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="label">Placa Vehículo</td>
+          <td colspan="3" class="value"><input id="placaValue" type="text" autocomplete="off" value=""></td>
+        </tr>
+        <tr>
+          <td class="label">Responsable</td>
+          <td colspan="3" class="value"><input id="responsableValue" type="text" autocomplete="off" value=""></td>
+        </tr>
+        <tr>
+          <td class="label">Cliente</td>
+          <td colspan="3" class="value"><input id="clienteValue" type="text" autocomplete="off" value=""></td>
+        </tr>
+
+        <tr><th colspan="4" class="section" id="docVentasHeader">DOCUMENTACIÓN DE VENTAS</th></tr>
+        <tr>
+          <th class="subhead">DOCUMENTO</th>
+          <th class="subhead">ESTADO</th>
+          <th class="subhead">VALIDADO</th>
+          <th class="subhead">OBSERVACIÓN</th>
+        </tr>
+        <tbody id="tbodyDocs"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Contenedor de terceras personas -->
+  <div id="tercerosContainer"></div>
+
+  <!-- Prints -->
+  <div class="support-wrap">
+    <div class="support-head">
+      <div>
+        <div class="support-title">Respaldo de consultas / prints</div>
+        <div class="support-help">Los prints no se guardan en línea — solo se exportan al ZIP.</div>
+      </div>
+    </div>
+    <div class="support-body">
+      <div id="supportGrid" class="support-grid"></div>
+    </div>
+  </div>
+
+  <div class="page-footer">AUTOCOR · Ventas &nbsp;·&nbsp; Ctrl+V para pegar capturas de pantalla &nbsp;·&nbsp; <span style="opacity:.6;">v4.8</span></div>
+
+</div>
+
+<!-- Modal vista previa de print -->
+<div class="modal-backdrop" id="modalPrintPreview">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="previewPrintModalTitle">VISTA PREVIA</h3>
+      <button type="button" class="modal-close" onclick="cerrarModal('modalPrintPreview')">Cerrar</button>
+    </div>
+    <div class="modal-body">
+      <div class="preview-img-wrap">
+        <img id="previewPrintImg" src="" alt="Vista previa del print">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal login -->
+<div class="modal-backdrop" id="modalUsuario">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Iniciar sesión</h3>
+      <button type="button" class="modal-close" onclick="cerrarModal('modalUsuario')">Cerrar</button>
+    </div>
+    <div class="modal-body">
+      <div class="notice">Ingresa tu usuario y clave para guardar y buscar cuadros de ventas.</div>
+      <div class="field">
+        <label>Usuario</label>
+        <div><input id="usuarioLogin" placeholder="Ej: YROMERO" autocomplete="off"></div>
+      </div>
+      <div class="field">
+        <label>Clave</label>
+        <div style="position:relative;display:flex;align-items:center;">
+          <input id="passwordLogin" type="password" placeholder="Tu contraseña" autocomplete="new-password" style="padding-right:38px;width:100%;">
+          <button type="button" onclick="togglePass('passwordLogin',this)" style="position:absolute;right:6px;background:none;border:none;padding:4px;color:#6b7280;font-size:16px;cursor:pointer;">👁</button>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" onclick="confirmarUsuario()" style="background:var(--brand);color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;">Ingresar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec";
+const STATUS_OPTIONS = ['', 'CORRECTO', 'INCORRECTO', 'SIN INFO', 'PENDIENTE', 'FIDEVAL', 'NO APLICA'];
+
+// ── Documentos base del cuadro principal de ventas ──────────────
+const docsVentasBase = [
+  ['CONOZCA SU CLIENTE', '', ''],
+  ['COMPROBANTES DE PAGO', '', ''],
+  ['CÉDULA DEL TITULAR', '', ''],
+  ['PAPELETA DE VOTACIÓN DEL TITULAR', '', ''],
+  ['PLANILLA DE SERVICIOS BÁSICOS', '', ''],
+  ['RECIBO DE VENTA', '', ''],
+  ['ACUERDO DE CONFORMIDAD', '', ''],
+  ['SANEAMIENTO SALIDA AMT', '', ''],
+  ['CAPTURA DE SOLICITUD DE CONTRATOS', '', ''],
+  ['COMPROBANTE DE PAGO DE CONTRATOS', '', ''],
+  ['RECIBO DE RESERVA', '', ''],
+  ['LINKS VALIDACIÓN UAFE/JUDICIAL (TITULAR)', '', '']
+];
+
+// ── Documentos base de cada cuadro de tercera persona ───────────
+const terceroDocsBase = [
+  ['CONOZCA SU CLIENTE (APARTADO 6 DEL PRINCIPAL)', '', ''],
+  ['RESPALDOS DE LICITUD', '', ''],
+  ['CARTA DE AUTORIZACIÓN', '', ''],
+  ['CÉDULA', '', ''],
+  ['LINKS VALIDACIÓN UAFE/JUDICIAL (TERCERO)', '', '']
+];
+
+// Auto-observaciones: DOCUMENTO → obs automática cuando estado es CORRECTO
+const AUTO_OBS = {
+  'RECIBO DE VENTA':        'FIRMA TITULAR',
+  'ACUERDO DE CONFORMIDAD': 'FIRMA TITULAR',
+  'SANEAMIENTO SALIDA AMT': 'VALORES PENDIENTES'
+};
+
+// ── Estado de la aplicación ─────────────────────────────────────
+let supportPrints = [];
+let terceros = [];          // [{id: timestamp}]
+let ventasCreador = '';
+let ventasHistorial = [];
+let ventasIsExisting = false;
+let authState = null;
+try{ authState = JSON.parse(sessionStorage.getItem("autocor_auth") || "null"); }catch(e){ authState = null; }
+let currentUser = authState?.user || "";
+let authToken  = authState?.token || "";
+
+// ── Helpers de usuario (igual que pagos) ────────────────────────
+function normalizeUserTag(u){ return String(u || '').trim().toUpperCase(); }
+
+function uniqueUserList(list){
+  const out = []; const seen = new Set();
+  (Array.isArray(list) ? list : []).forEach(u => {
+    const x = normalizeUserTag(u);
+    if(x && !seen.has(x)){ seen.add(x); out.push(x); }
+  });
+  return out;
+}
+
+// ── Logo (para topbar + cuadros) ────────────────────────────────
+function cargarLogo(){
+  const data = localStorage.getItem('autocor_logo');
+  const src = data || 'assets/logo.png';
+  document.querySelectorAll('.ventas-logo-img').forEach(img => {
+    img.src = src;
+    img.style.display = 'block';
+  });
+}
+
+// ── Historial ───────────────────────────────────────────────────
+function getPreviewHistorialVentas(){
+  return ventasIsExisting
+    ? uniqueUserList([...(ventasHistorial || []), currentUser])
+    : uniqueUserList([currentUser]);
+}
+
+function buildEditadoPorLabel(){
+  const hist = getPreviewHistorialVentas();
+  return hist.length ? hist.join(' / ') : '—';
+}
+
+function actualizarInfoHeader(){
+  const rdp = document.getElementById('realizadoPorDisplay');
+  if(rdp) rdp.textContent = ventasCreador || normalizeUserTag(currentUser) || '—';
+  const rsp = document.getElementById('responsablesDisplay');
+  if(rsp) rsp.textContent = buildEditadoPorLabel();
+}
+
+// ── Auth ────────────────────────────────────────────────────────
+function renderAuthUI(){
+  document.getElementById('btnIniciarSesion').style.display = currentUser ? 'none' : 'inline-block';
+  document.getElementById('btnCerrarSesion').style.display  = currentUser ? 'inline-block' : 'none';
+  actualizarInfoHeader();
+}
+
+function saveAuthState(obj){
+  authState = obj || null;
+  currentUser = authState?.user || "";
+  authToken   = authState?.token || "";
+  if(authState) sessionStorage.setItem("autocor_auth", JSON.stringify(authState));
+  else sessionStorage.removeItem("autocor_auth");
+  renderAuthUI();
+}
+
+function requireUser(){
+  if(!currentUser || !authToken){
+    abrirModal('modalUsuario');
+    throw new Error('Debes iniciar sesión.');
+  }
+}
+
+async function confirmarUsuario(){
+  const u = (document.getElementById('usuarioLogin').value || '').trim().toUpperCase();
+  const p = (document.getElementById('passwordLogin').value || '').trim();
+  if(!u || !p){ alert('Ingresa usuario y clave.'); return; }
+  try{
+    const resp = await apiCall('login', { username:u, password:p }, { auth:false });
+    saveAuthState({
+      user: resp.user?.username || u,
+      displayName: resp.user?.displayName || u,
+      isAdmin: !!resp.user?.isAdmin,
+      token: resp.sessionToken || ''
+    });
+    cerrarModal('modalUsuario');
+    document.getElementById('usuarioLogin').value = '';
+    document.getElementById('passwordLogin').value = '';
+    setStatus('SESIÓN INICIADA');
+  }catch(err){
+    console.error(err);
+    alert(err.message || 'No se pudo iniciar sesión.');
+  }
+}
+
+function cerrarSesion(){
+  saveAuthState(null);
+  setStatus('SESIÓN CERRADA');
+}
+
+function setStatus(msg, isError=false, isOk=false){
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = 'status-bar' + (isError ? ' error' : isOk ? ' ok' : '');
+  const meta = document.getElementById('topbarMeta');
+  if(meta) meta.textContent = msg;
+}
+
+// ── API ─────────────────────────────────────────────────────────
+async function apiCall(action, payload={}, opts={}){
+  const body = { action, ...payload };
+  if(opts.auth !== false && authToken) body.sessionToken = authToken;
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(body)
+  });
+  const json = JSON.parse(await res.text());
+  if(!json.ok) throw new Error(json.message || 'Error en API');
+  return json;
+}
+
+// ── Modal helpers ────────────────────────────────────────────────
+function abrirModal(id){ document.getElementById(id).style.display='flex'; }
+function cerrarModal(id){ document.getElementById(id).style.display='none'; }
+function togglePass(inputId, btn){
+  const el = document.getElementById(inputId);
+  if(!el) return;
+  if(el.type==='password'){ el.type='text'; btn.textContent='🙈'; }
+  else{ el.type='password'; btn.textContent='👁'; }
+}
+
+// ── Utilidades ───────────────────────────────────────────────────
+function toUpperInPlace(el){ el.value = String(el.value || '').toUpperCase(); }
+function bindUppercaseInputs(scope=document){
+  scope.querySelectorAll('input[type="text"]').forEach(inp => {
+    inp.addEventListener('input', () => toUpperInPlace(inp));
+    toUpperInPlace(inp);
+  });
+}
+function statusOptions(selected){
+  return STATUS_OPTIONS.map(o => `<option value="${o}" ${o===selected?'selected':''}>${o || ' '}</option>`).join('');
+}
+function tickMarkup(value){
+  const n = String(value||'').trim().toUpperCase().replace(/\s+/g,' ');
+  if(n==='CORRECTO') return `<span class="tick ok">✔</span>`;
+  if(n==='FIDEVAL')  return `<span class="tick fideval">✔</span>`;
+  if(n==='INCORRECTO') return `<span class="tick warn">⚠</span>`;
+  if(n==='SIN INFO'||n==='PENDIENTE') return `<span class="tick warn">▲</span>`;
+  if(n==='NO APLICA') return `<span class="tick bad">•</span>`;
+  return '';
+}
+function escapeHtml(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function normalizeValue(v){ return String(v||'').trim().toUpperCase().replace(/\s+/g,' '); }
+
+// ── Filas de documentos ─────────────────────────────────────────
+// tbodyId permite reutilizar para cuadros de terceros
+function addDocRow(data=['','',''], tbodyId='tbodyDocs'){
+  const tr = document.createElement('tr');
+  tr.className = 'legal-row';
+  tr.innerHTML = `
+    <td><input type="text" autocomplete="off" value="${escapeHtml(data[0])}"></td>
+    <td class="center status-cell"><select class="center">${statusOptions(data[1]||'')}</select></td>
+    <td class="center"><span class="tick-wrap">${tickMarkup(data[1]||'')}</span></td>
+    <td><input type="text" autocomplete="off" value="${escapeHtml(data[2]||'')}"></td>`;
+  document.getElementById(tbodyId).appendChild(tr);
+  bindUppercaseInputs(tr);
+  bindDocRow(tr);
+  updateDocRowStyle(tr, true);
+}
+
+function bindDocRow(tr){
+  const select = tr.querySelector('select');
+  const inputs = tr.querySelectorAll('input[type="text"]');
+  select.addEventListener('change', ()=>updateDocRowStyle(tr, false));
+  inputs.forEach(inp => inp.addEventListener('input', ()=>updateDocRowStyle(tr, true)));
+}
+
+function maybeAutofillObservation(tr, preserveExisting){
+  const docName = normalizeValue(tr.cells[0].querySelector('input').value);
+  const status  = normalizeValue(tr.cells[1].querySelector('select').value);
+  const obsInput = tr.cells[3].querySelector('input');
+  const currentObs = normalizeValue(obsInput.value);
+
+  if(status==='FIDEVAL'){
+    if(!preserveExisting || currentObs==='' || currentObs==='REGULARIZA FIDEVAL ()'){
+      obsInput.value = 'REGULARIZA FIDEVAL ()';
+    }
+    return;
+  }
+  if(status==='CORRECTO' && AUTO_OBS[docName]){
+    if(!preserveExisting || currentObs==='' || currentObs==='REGULARIZA FIDEVAL ()'){
+      obsInput.value = AUTO_OBS[docName];
+    }
+  }
+  if(status!=='CORRECTO' && status!=='FIDEVAL' && !preserveExisting){
+    if(currentObs==='REGULARIZA FIDEVAL ()' || Object.values(AUTO_OBS).includes(currentObs)){
+      obsInput.value = '';
+    }
+  }
+  toUpperInPlace(obsInput);
+}
+
+function updateDocRowStyle(tr, preserveExistingObs){
+  tr.classList.remove('estado-correcto','estado-incorrecto','estado-sininfo','estado-pendiente','estado-fideval','estado-noaplica');
+  const status = normalizeValue(tr.querySelector('select').value);
+  const tickWrap = tr.querySelector('.tick-wrap');
+  maybeAutofillObservation(tr, preserveExistingObs);
+  tickWrap.innerHTML = tickMarkup(status);
+  let cls = {
+    'CORRECTO':'estado-correcto','INCORRECTO':'estado-incorrecto',
+    'SIN INFO':'estado-sininfo','PENDIENTE':'estado-pendiente',
+    'FIDEVAL':'estado-fideval','NO APLICA':'estado-noaplica'
+  }[status];
+  // Regla especial ventas: PENDIENTE + obs contiene "AUTORIZADO" → amarillo
+  if(status === 'PENDIENTE'){
+    const obsVal = (tr.cells[3]?.querySelector('input')?.value || '').toLowerCase();
+    if(obsVal.includes('autorizado')) cls = 'estado-sininfo';
+  }
+  if(cls) tr.classList.add(cls);
+}
+
+function tableRowsToDataDocs(tbodyId='tbodyDocs'){
+  return Array.from(document.querySelectorAll(`#${tbodyId} tr`)).map(tr=>({
+    a: tr.cells[0]?.querySelector('input')?.value || '',
+    b: tr.cells[1]?.querySelector('select')?.value || '',
+    c: tr.cells[3]?.querySelector('input')?.value || ''
+  }));
+}
+
+function agregarFilaDocumento(){
+  addDocRow(['','',''], 'tbodyDocs');
+}
+
+// Agrega fila extra en un cuadro de tercero
+function agregarFilaTercero(tbodyId){
+  addDocRow(['','',''], tbodyId);
+}
+
+// Elimina la última fila solo si supera el número de filas base
+function deshacerUltimaFila(tbodyId, baseCount){
+  const tbody = document.getElementById(tbodyId);
+  if(!tbody || tbody.rows.length <= baseCount) return;
+  tbody.deleteRow(tbody.rows.length - 1);
+}
+
+// ── Terceras personas ────────────────────────────────────────────
+function agregarTercero(){
+  const t = { id: Date.now() };
+  terceros.push(t);
+  renderUnTercero(t, terceros.length);
+  sincronizarPlacaTerceros();
+  cargarLogo(); // activa logos en el nuevo cuadro
+}
+
+function eliminarTercero(id){
+  if(!confirm('¿Eliminar este cuadro de tercera persona?')) return;
+  const idx = terceros.findIndex(t => t.id === id);
+  if(idx !== -1) terceros.splice(idx, 1);
+  const el = document.getElementById(`sheetT_${id}`);
+  if(el) el.remove();
+  reNumerarTerceros();
+}
+
+function reNumerarTerceros(){
+  const sheets = document.querySelectorAll('#tercerosContainer .tercero-sheet');
+  sheets.forEach((sh, i) => {
+    const label = sh.querySelector('.tercero-num-label');
+    if(label) label.textContent = `TERCERA PERSONA #${i + 1}`;
+    const titleCell = sh.querySelector('.pag-title-cell');
+    if(titleCell) titleCell.textContent = `Ventas · Tercera Persona N° ${i + 1}`;
+  });
+}
+
+function renderUnTercero(t, num){
+  const container = document.getElementById('tercerosContainer');
+  const div = document.createElement('div');
+  div.className = 'sheet tercero-sheet';
+  div.id = `sheetT_${t.id}`;
+  div.style.marginTop = '16px';
+  div.style.overflow = 'hidden';
+
+  div.innerHTML = `
+    <div class="tercero-toolbar">
+      <span class="tercero-num-label">TERCERA PERSONA #${num}</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button type="button" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;"
+          onclick="agregarFilaTercero('tbodyT_${t.id}')">+ Doc.</button>
+        <button type="button" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;"
+          onclick="deshacerUltimaFila('tbodyT_${t.id}', terceroDocsBase.length)">↩ Deshacer</button>
+        <button type="button" class="btn-danger"
+          style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:none;color:#fff;"
+          onclick="eliminarTercero(${t.id})">✕ Eliminar</button>
+      </div>
+    </div>
+    <div id="captureT_${t.id}">
+      <table>
+        <colgroup>
+          <col style="width:34%">
+          <col style="width:12%">
+          <col style="width:8%">
+          <col style="width:46%">
+        </colgroup>
+        <tr class="pag-doc-header">
+          <td style="width:34%;"><img class="ventas-logo-img" alt="AUTOCOR"></td>
+          <td colspan="3" class="pag-title-cell">Ventas · Tercera Persona N° ${num}</td>
+        </tr>
+        <tr class="pag-doc-inforow">
+          <td class="label">Placa Vehículo:</td>
+          <td colspan="3" class="value info-val">
+            <span class="tercero-placa-display">—</span>
+          </td>
+        </tr>
+        <tr class="pag-doc-inforow">
+          <td class="label">Nombre Tercero:</td>
+          <td colspan="3" class="value">
+            <input type="text" class="tercero-nombre" placeholder="NOMBRE DEL TERCERO" autocomplete="off">
+          </td>
+        </tr>
+        <tr><th colspan="4" class="section-tercero">DOCUMENTOS TERCERA PERSONA</th></tr>
+        <tr>
+          <th class="subhead">DOCUMENTO</th>
+          <th class="subhead">ESTADO</th>
+          <th class="subhead">VALIDADO</th>
+          <th class="subhead">OBSERVACIÓN</th>
+        </tr>
+        <tbody id="tbodyT_${t.id}"></tbody>
+      </table>
+    </div>`;
+
+  container.appendChild(div);
+  terceroDocsBase.forEach(d => addDocRow(d, `tbodyT_${t.id}`));
+  bindUppercaseInputs(div);
+}
+
+function sincronizarPlacaTerceros(){
+  const placa = normalizeValue(document.getElementById('placaValue')?.value || '') || '—';
+  document.querySelectorAll('.tercero-placa-display').forEach(el => {
+    el.textContent = placa;
+  });
+}
+
+// ── Prints ───────────────────────────────────────────────────────
+function renderSupportPrints(){
+  const grid = document.getElementById('supportGrid');
+  grid.innerHTML = '';
+  if(!supportPrints.length){
+    grid.innerHTML = `<div class="empty-support">No hay prints cargados. Usa <b>Agregar prints</b> o pega con <b>Ctrl + V</b>.</div>`;
+    return;
+  }
+  supportPrints.forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'support-card';
+    card.innerHTML = `
+      <div class="thumb-wrap"><img src="${item.src}" alt="Print ${index+1}"></div>
+      <div class="meta">
+        <div class="row-actions">
+          <button type="button" class="btn-secondary" onclick="previsualizarPrint(${index})">👁 Ver</button>
+          <button type="button" class="btn-secondary" onclick="moverPrint(${index},-1)">↑</button>
+          <button type="button" class="btn-secondary" onclick="moverPrint(${index},1)">↓</button>
+          <button type="button" class="del-btn" onclick="eliminarPrint(${index})">✕ Eliminar</button>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function updateSupportField(index, field, value){
+  if(supportPrints[index]) supportPrints[index][field] = value;
+}
+function eliminarPrint(index){
+  supportPrints.splice(index, 1);
+  renderSupportPrints();
+}
+function eliminarTodosLosPrints(){
+  if(!supportPrints.length) return;
+  if(!confirm('¿Eliminar todos los prints?')) return;
+  supportPrints = [];
+  renderSupportPrints();
+}
+function moverPrint(index, direction){
+  const newIndex = index + direction;
+  if(newIndex < 0 || newIndex >= supportPrints.length) return;
+  const tmp = supportPrints[index];
+  supportPrints[index] = supportPrints[newIndex];
+  supportPrints[newIndex] = tmp;
+  renderSupportPrints();
+}
+
+function previsualizarPrint(index){
+  const item = supportPrints[index];
+  if(!item) return;
+  const label = `PRINT ${index + 1}`;
+  document.getElementById('previewPrintImg').src                 = item.src;
+  document.getElementById('previewPrintModalTitle').textContent  = label;
+  abrirModal('modalPrintPreview');
+}
+function handlePrintFiles(files){
+  const list = Array.from(files||[]).filter(f => f.type.startsWith('image/'));
+  if(!list.length) return;
+  let pending = list.length;
+  list.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      supportPrints.push({ title:`PRINT ${supportPrints.length+1}`, note:'', src:e.target.result, mime:file.type||'image/png' });
+      if(--pending === 0) renderSupportPrints();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Captura de elementos ─────────────────────────────────────────
+function dataURLtoBlob(dataurl){
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], {type:mime});
+}
+
+async function captureElementToBlob(element){
+  // Leer valores antes de clonar
+  const selectVals = [], inputVals = [];
+  element.querySelectorAll('select').forEach(s => selectVals.push(s.value));
+  element.querySelectorAll('input').forEach(i => inputVals.push(i.value));
+
+  const clone = element.cloneNode(true);
+  clone.className = (clone.className || '') + ' capture-clone';
+  clone.style.cssText = 'position:fixed;left:-99999px;top:0;width:1280px;background:#fff;z-index:-1;';
+
+  // Copiar clases de estado de filas
+  element.querySelectorAll('tbody tr').forEach((tr, i) => {
+    const cloneTr = clone.querySelectorAll('tbody tr')[i];
+    if(cloneTr) cloneTr.className = tr.className;
+  });
+
+  // Reemplazar inputs con spans
+  clone.querySelectorAll('input').forEach((input, i) => {
+    const span = document.createElement('span');
+    span.className = 'capture-value';
+    span.style.cssText = 'display:block;width:100%;min-height:18px;line-height:1.3;padding:2px 0;text-transform:uppercase;';
+    span.textContent = inputVals[i] || '';
+    input.replaceWith(span);
+  });
+
+  // Reemplazar selects con spans
+  clone.querySelectorAll('select').forEach((select, i) => {
+    const span = document.createElement('span');
+    span.className = 'capture-value center';
+    span.style.cssText = 'font-weight:700;display:block;width:100%;';
+    span.textContent = selectVals[i] || '';
+    select.replaceWith(span);
+  });
+
+  // Eliminar botones de color
+  clone.querySelectorAll('.cbtn').forEach(el => el.remove());
+
+  document.body.appendChild(clone);
+  const canvas = await html2canvas(clone, { backgroundColor:'#ffffff', scale:2.5, useCORS:true });
+  clone.remove();
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 300);
+}
+
+// ── Exportar imágenes ────────────────────────────────────────────
+async function exportarImagenes(placa){
+  const folderName = placa;
+
+  // 1. Capturar cuadro principal
+  setStatus('CAPTURANDO CUADRO PRINCIPAL...');
+  const mainBlob = await captureElementToBlob(document.getElementById('captureArea'));
+
+  // 2. Capturar cada cuadro de tercero (en orden)
+  const terceroBlobs = [];
+  for(let i = 0; i < terceros.length; i++){
+    setStatus(`CAPTURANDO TERCERO ${i+1} DE ${terceros.length}...`);
+    const el = document.getElementById(`captureT_${terceros[i].id}`);
+    if(el){
+      const blob = await captureElementToBlob(el);
+      terceroBlobs.push({ blob, label:`TERCERO_${i+1}` });
+    }
+  }
+
+  const hasPrints = supportPrints.length > 0;
+  const hasExtras = terceroBlobs.length > 0 || hasPrints;
+
+  // Sin extras → descarga directa del PNG principal
+  if(!hasExtras){
+    downloadBlob(mainBlob, `VENTAS (${placa}).png`);
+    return;
+  }
+
+  // Con extras → ZIP con prefijos numéricos para garantizar el orden:
+  // 01 VENTAS (PLACA).png
+  // 02 TERCERO_1 (PLACA).png  ...
+  // NN PRINT_1.png  ...
+  setStatus('GENERANDO ZIP...');
+  const zip    = new JSZip();
+  const folder = zip.folder(folderName);
+
+  // Calcular cuántos dígitos necesitamos para el padding
+  const total  = 1 + terceroBlobs.length + supportPrints.length;
+  const pad    = n => String(n).padStart(String(total).length, '0');
+
+  let counter = 1;
+
+  // Cuadro principal → primer lugar
+  folder.file(`${pad(counter++)} VENTAS (${placa}).png`, mainBlob);
+
+  // Terceros → segundo lugar, en orden de adición
+  terceroBlobs.forEach(t => {
+    folder.file(`${pad(counter++)} ${t.label} (${placa}).png`, t.blob);
+  });
+
+  // Prints → al final, en orden
+  if(hasPrints){
+    supportPrints.forEach((item, idx) => {
+      const blob = dataURLtoBlob(item.src);
+      const ext  = (blob.type||'image/png').includes('jpeg') ? 'jpg' : 'png';
+      const base = `${pad(counter++)} PRINT_${idx+1}`;
+      folder.file(`${base}.${ext}`, blob);
+    });
+  }
+
+  const zipBlob = await zip.generateAsync({ type:'blob' });
+  downloadBlob(zipBlob, `${folderName}.zip`);
+}
+
+// ── Obtener datos del formulario ─────────────────────────────────
+function obtenerDatosVenta(){
+  const historial = ventasIsExisting
+    ? uniqueUserList([...(ventasHistorial||[]), currentUser])
+    : uniqueUserList([currentUser]);
+  const creador = historial[0] || normalizeUserTag(currentUser);
+  const editor  = historial.length > 1 ? historial[historial.length-1] : '';
+
+  const tercerosData = terceros.map((t, idx) => {
+    const sheetEl = document.getElementById(`sheetT_${t.id}`);
+    return {
+      idx: idx + 1,
+      nombre: sheetEl?.querySelector('.tercero-nombre')?.value || '',
+      docs: tableRowsToDataDocs(`tbodyT_${t.id}`)
+    };
+  });
+
+  return {
+    depTitle: document.getElementById('depTitle').value,
+    riskTitle: document.getElementById('riskTitle').value,
+    dictColor: (['dict-verde','dict-amarillo','dict-rojo'].find(c =>
+      document.getElementById('dictamenVal').classList.contains(c)) || ''),
+    riskColor: (['row-verde','row-amarillo','row-rojo'].find(c =>
+      document.getElementById('riskVal').classList.contains(c)) || ''),
+    placaValue: document.getElementById('placaValue').value,
+    responsableValue: document.getElementById('responsableValue').value,
+    clienteValue: document.getElementById('clienteValue').value,
+    dictamenValue: document.getElementById('dictamenValue').value,
+    asesorCreador: creador,
+    asesorEditor: editor,
+    historialUsuarios: historial,
+    docs: tableRowsToDataDocs('tbodyDocs'),
+    terceros: tercerosData
+  };
+}
+
+// ── Guardar en línea ─────────────────────────────────────────────
+async function guardarCuadroEnLinea(){
+  requireUser();
+  const placa = normalizeValue(document.getElementById('placaValue').value);
+  if(!placa) throw new Error('Debes ingresar la placa antes de guardar.');
+  document.getElementById('placaValue').value = placa;
+  const data = obtenerDatosVenta();
+  const resp = await apiCall('saveVenta', { data });
+  if(resp && resp.data){
+    ventasHistorial  = uniqueUserList(resp.data.historialUsuarios || [resp.data.asesorCreador, resp.data.asesorEditor]);
+    ventasCreador    = ventasHistorial[0] || resp.data.asesorCreador || normalizeUserTag(currentUser);
+    ventasIsExisting = true;
+    actualizarInfoHeader();
+  }
+  return placa;
+}
+
+// ── Cargar formulario desde datos ────────────────────────────────
+function cargarFormularioVenta(data){
+  document.getElementById('depTitle').value     = data.depTitle || document.getElementById('depTitle').value;
+  document.getElementById('riskTitle').value    = data.riskTitle || document.getElementById('riskTitle').value;
+  if(data.dictColor !== undefined) setColor3(data.dictColor);
+  if(data.riskColor !== undefined) setColor2(data.riskColor);
+  document.getElementById('placaValue').value      = data.placaValue || '';
+  document.getElementById('responsableValue').value = data.responsableValue || '';
+  document.getElementById('clienteValue').value    = data.clienteValue || '';
+  document.getElementById('dictamenValue').value   = data.dictamenValue || document.getElementById('dictamenValue').value;
+
+  // Historial
+  ventasHistorial  = uniqueUserList(data.historialUsuarios || [data.asesorCreador, data.asesorEditor]);
+  ventasCreador    = ventasHistorial[0] || normalizeUserTag(data.asesorCreador || '');
+  ventasIsExisting = ventasHistorial.length > 0;
+  actualizarInfoHeader();
+
+  // Documentos principales
+  document.getElementById('tbodyDocs').innerHTML = '';
+  (data.docs || []).forEach(x => addDocRow([x.a, x.b, x.c], 'tbodyDocs'));
+
+  // Terceros: limpiar y re-renderizar
+  document.getElementById('tercerosContainer').innerHTML = '';
+  terceros = [];
+  (data.terceros || []).forEach((td, idx) => {
+    const t = { id: Date.now() + idx + 1 };
+    terceros.push(t);
+    renderUnTercero(t, idx + 1);
+    document.getElementById(`tbodyT_${t.id}`).innerHTML = '';
+    (td.docs || []).forEach(x => addDocRow([x.a, x.b, x.c], `tbodyT_${t.id}`));
+    const nombreEl = document.getElementById(`sheetT_${t.id}`)?.querySelector('.tercero-nombre');
+    if(nombreEl){ nombreEl.value = td.nombre || ''; toUpperInPlace(nombreEl); }
+  });
+
+  sincronizarPlacaTerceros();
+  cargarLogo();
+}
+
+// ── Buscar por placa ─────────────────────────────────────────────
+async function buscarPorPlaca(placa){
+  requireUser();
+  const placaNorm = normalizeValue(placa);
+  if(!placaNorm) return;
+  setStatus('BUSCANDO CUADRO POR PLACA...');
+  const resp = await apiCall('getVentaByPlaca', { placa: placaNorm });
+  cargarFormularioVenta(resp.data || {});
+  setStatus('CUADRO CARGADO DESDE LÍNEA', false, true);
+}
+
+function buscarPorPlacaPrompt(){
+  const placa = prompt('Ingresa la placa a buscar:', '');
+  if(!placa) return;
+  buscarPorPlaca(placa).catch(err => {
+    console.error(err);
+    setStatus(err.message || 'NO SE PUDO BUSCAR LA PLACA', true);
+    alert(err.message || 'No se pudo buscar la placa.');
+  });
+}
+
+// ── Guardar + exportar ───────────────────────────────────────────
+async function guardarYExportarTodo(){
+  try{
+    setStatus('GUARDANDO CUADRO EN LÍNEA...');
+    const placa = await guardarCuadroEnLinea();
+    const conPrints   = supportPrints.length > 0;
+    const conTerceros = terceros.length > 0;
+    setStatus('CUADRO GUARDADO. PREPARANDO IMÁGENES...');
+    await exportarImagenes(placa);
+    setStatus(
+      (conPrints || conTerceros)
+        ? 'PROCESO COMPLETO: CUADRO GUARDADO Y ZIP DESCARGADO'
+        : 'PROCESO COMPLETO: CUADRO GUARDADO E IMAGEN DESCARGADA',
+      false, true
+    );
+  }catch(err){
+    console.error(err);
+    setStatus(err.message || 'NO SE PUDO COMPLETAR EL PROCESO', true);
+    alert(err.message || 'No se pudo completar el proceso.');
+  }
+}
+
+// ── Restablecer ──────────────────────────────────────────────────
+function fillBase(){
+  document.getElementById('tbodyDocs').innerHTML = '';
+  docsVentasBase.forEach(d => addDocRow(d, 'tbodyDocs'));
+}
+
+function restablecerBase(){
+  if(!confirm('¿Restablecer el cuadro base?')) return;
+  document.getElementById('depTitle').value       = 'DEPARTAMENTO DE VENTAS - AUTOCOR';
+  document.getElementById('riskTitle').value      = 'BAJO - SIN NOVEDADES';
+  setColor2(''); setColor3('');
+  document.getElementById('placaValue').value     = '';
+  document.getElementById('responsableValue').value = '';
+  document.getElementById('clienteValue').value   = '';
+  document.getElementById('dictamenValue').value  = 'REVISIÓN MANUAL';
+  supportPrints = [];
+  terceros = [];
+  document.getElementById('tercerosContainer').innerHTML = '';
+  ventasCreador = '';
+  ventasHistorial = [];
+  ventasIsExisting = false;
+  fillBase();
+  renderSupportPrints();
+  actualizarInfoHeader();
+  sincronizarPlacaTerceros();
+  setStatus('FORMATO RESTABLECIDO');
+}
+
+// ── Colores semáforo ─────────────────────────────────────────────
+function setColor3(colorClass){
+  const el = document.getElementById('dictamenVal');
+  if(!el) return;
+  el.classList.remove('dict-verde','dict-amarillo','dict-rojo');
+  if(colorClass) el.classList.add(colorClass);
+  const input = document.getElementById('dictamenValue');
+  if(input){
+    if(colorClass==='dict-verde')    input.value = 'VENTA APROBADA';
+    else if(colorClass==='dict-amarillo') input.value = 'RIESGO MEDIO';
+    else if(colorClass==='dict-rojo')    input.value = 'VENTA NO APROBADA';
+    else input.value = 'REVISIÓN MANUAL';
+  }
+  el.querySelectorAll('.cbtn').forEach(btn => {
+    const oc = btn.getAttribute('onclick') || '';
+    const active = colorClass ? oc.includes("'"+colorClass+"'") : oc.includes("''");
+    btn.classList.toggle('on', active);
+  });
+  // Reflejar en encabezado de documentación
+  const hdr = document.getElementById('docVentasHeader');
+  if(hdr){
+    hdr.classList.remove('section-verde','section-amarillo','section-rojo');
+    if(colorClass==='dict-verde')    hdr.classList.add('section-verde');
+    else if(colorClass==='dict-amarillo') hdr.classList.add('section-amarillo');
+    else if(colorClass==='dict-rojo')    hdr.classList.add('section-rojo');
+  }
+}
+
+function setColor2(colorClass){
+  const el = document.getElementById('riskVal');
+  if(!el) return;
+  el.classList.remove('row-verde','row-amarillo','row-rojo');
+  if(colorClass) el.classList.add(colorClass);
+  const input = document.getElementById('riskTitle');
+  if(input){
+    if(colorClass==='row-verde')    input.value = 'BAJO - SIN NOVEDADES';
+    else if(colorClass==='row-amarillo') input.value = 'MEDIA - SIN NOVEDADES';
+    else if(colorClass==='row-rojo')    input.value = 'ALTA - SIN NOVEDADES';
+    else input.value = 'BAJO - SIN NOVEDADES';
+  }
+  el.querySelectorAll('.cbtn').forEach(btn => {
+    const oc = btn.getAttribute('onclick') || '';
+    const active = colorClass ? oc.includes("'"+colorClass+"'") : oc.includes("''");
+    btn.classList.toggle('on', active);
+  });
+}
+
+// ── Inicialización ───────────────────────────────────────────────
+document.getElementById('printInput').addEventListener('change', function(){
+  handlePrintFiles(this.files);
+  this.value = '';
+});
+
+document.getElementById('placaValue').addEventListener('input', sincronizarPlacaTerceros);
+
+document.addEventListener('paste', function(e){
+  const files = Array.from((e.clipboardData||{}).items||[])
+    .filter(item => item.type && item.type.startsWith('image/'))
+    .map(item => item.getAsFile())
+    .filter(Boolean);
+  if(files.length) handlePrintFiles(files);
+});
+
+bindUppercaseInputs(document);
+cargarLogo();
+fillBase();
+renderSupportPrints();
+renderAuthUI();
+if(!currentUser) setStatus('DEBES INICIAR SESIÓN PARA GUARDAR Y BUSCAR');
+else setStatus('SESIÓN RECUPERADA');
+</script>
+</body>
+</html>

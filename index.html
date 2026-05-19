@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUTOCOR | Inicio</title>
+<style>
+  :root{
+    --black:#000000;
+    --gray-1:#727274;
+    --gray-2:#949195;
+    --red-1:#E53F2E;
+    --red-2:#E83D2E;
+    --white:#ffffff;
+    --shadow:0 24px 70px rgba(0,0,0,.18);
+    --radius-xl:34px;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--black);
+    background:
+      radial-gradient(circle at top left, rgba(232,61,46,.10), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(114,114,116,.12), transparent 26%),
+      linear-gradient(135deg, #f4f4f4 0%, #ffffff 50%, #f1f1f1 100%);
+  }
+
+  .page{
+    width:min(1380px, calc(100% - 32px));
+    margin:16px auto;
+    background:var(--white);
+    border-radius:var(--radius-xl);
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(148,145,149,.25);
+  }
+
+  .hero{
+    position:relative;
+    min-height:760px;
+    display:grid;
+    grid-template-columns:1.02fr .98fr;
+    background:linear-gradient(110deg, #f7f7f7 0%, #ffffff 36%, #f6f6f6 55%, #efefef 100%);
+    isolation:isolate;
+  }
+
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:-8% auto -12% 42%;
+    width:36%;
+    background:linear-gradient(180deg, rgba(229,63,46,.96), rgba(232,61,46,.96));
+    border-radius:48% 52% 50% 50% / 10% 12% 88% 90%;
+    transform:rotate(12deg);
+    z-index:0;
+    opacity:.98;
+  }
+
+  .hero::after{
+    content:"";
+    position:absolute;
+    inset:auto -8% -24% 47%;
+    width:58%;
+    height:60%;
+    background:linear-gradient(180deg, rgba(0,0,0,.84), rgba(114,114,116,.92));
+    border-radius:50%;
+    z-index:0;
+  }
+
+  .left{
+    position:relative;
+    z-index:2;
+    padding:42px 46px 24px 60px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  .intro{
+    margin-top:6px;
+    max-width:620px;
+  }
+
+  .eyebrow{
+    font-size:17px;
+    letter-spacing:9px;
+    color:var(--gray-1);
+    margin:8px 0 18px;
+    text-transform:uppercase;
+  }
+
+  .headline-logo{
+    width:min(430px, 92%);
+    height:auto;
+    display:block;
+    margin:0 0 22px 0;
+  }
+
+  .intro p{
+    margin:0;
+    font-size:clamp(19px, 2vw, 24px);
+    line-height:1.36;
+    color:#4f5054;
+    max-width:520px;
+  }
+
+  .cards{
+    margin-top:26px;
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 260px));
+    gap:24px;
+  }
+
+  .card{
+    position:relative;
+    border-radius:20px;
+    padding:22px 20px 20px;
+    min-height:310px;
+    box-shadow:0 14px 26px rgba(0,0,0,.14);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.06), transparent 42%);
+    pointer-events:none;
+  }
+
+  .card.dark{
+    background:linear-gradient(180deg, #17181b 0%, #060606 100%);
+    color:#fff;
+  }
+
+  .card.gray{
+    background:linear-gradient(180deg, #6b6b6f 0%, #57575b 100%);
+    color:#fff;
+  }
+
+  .card.red{
+    background:linear-gradient(180deg, var(--red-1) 0%, #b82d1e 100%);
+    color:#fff;
+  }
+
+  /* Tercer card: centrado y mismo tamaño que los demás */
+  .card-centered{
+    grid-column:1 / -1;
+    justify-self:center;
+    width:260px;
+  }
+
+  .btn.dark{
+    background:linear-gradient(135deg, #17181b, #060606);
+    color:#fff;
+    box-shadow:0 10px 24px rgba(0,0,0,.36);
+  }
+
+  .card.navy{
+    background:linear-gradient(180deg, #1e3a5f 0%, #0f2440 100%);
+    color:#fff;
+  }
+
+  .btn.navy{
+    background:linear-gradient(135deg, #1e3a5f, #0f2440);
+    color:#fff;
+    box-shadow:0 10px 24px rgba(15,36,64,.42);
+  }
+
+  .icon-contratos .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .icon-contratos .accent{fill:rgba(255,255,255,.22)}
+
+  .icon-ventas .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .icon-ventas .accent{fill:rgba(255,255,255,.25)}
+  .icon-ventas .accent-dark{fill:rgba(0,0,0,.35)}
+
+  /* ── Modal Ventas ─────────────────────────────────────────── */
+  .mv-overlay{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,.58);z-index:9999;
+    align-items:center;justify-content:center;
+  }
+  .mv-overlay.open{display:flex}
+  .mv-box{
+    background:#fff;border-radius:22px;
+    padding:32px 28px 26px;
+    max-width:360px;width:calc(100% - 32px);
+    box-shadow:0 28px 64px rgba(0,0,0,.24);
+    display:flex;flex-direction:column;gap:14px;
+    position:relative;
+  }
+  .mv-icon-head{
+    width:64px;height:64px;border-radius:50%;
+    background:linear-gradient(135deg,var(--red-1),#b82d1e);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 4px;
+    box-shadow:0 8px 22px rgba(229,63,46,.30);
+  }
+  .mv-icon-head svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .mv-box h3{
+    margin:0;font-size:20px;text-align:center;
+    font-weight:800;color:#111;letter-spacing:.2px;
+  }
+  .mv-box .mv-sub{
+    margin:0;font-size:14px;color:#6b7280;
+    text-align:center;line-height:1.45;
+  }
+  .mv-divider{border:none;border-top:1px solid #f0f0f0;margin:2px 0}
+  .mv-label{
+    font-size:12px;font-weight:700;color:#374151;
+    letter-spacing:.4px;text-transform:uppercase;
+    margin-bottom:4px;
+  }
+  .mv-input{
+    width:100%;height:44px;
+    border:1.5px solid #d1d5db;border-radius:10px;
+    padding:0 14px;font-size:15px;font-family:inherit;
+    outline:none;box-sizing:border-box;
+    transition:border-color .15s;
+  }
+  .mv-input:focus{border-color:var(--red-1)}
+  .mv-btn{
+    height:46px;width:100%;border:none;border-radius:999px;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2));
+    color:#fff;font-weight:800;font-size:17px;
+    cursor:pointer;font-family:inherit;
+    box-shadow:0 10px 24px rgba(232,61,46,.28);
+    transition:transform .15s ease;
+  }
+  .mv-btn:hover{transform:translateY(-1px)}
+  .mv-close{
+    position:absolute;top:14px;right:16px;
+    background:none;border:none;cursor:pointer;
+    font-size:22px;color:#9ca3af;line-height:1;
+    padding:2px 6px;border-radius:6px;
+    transition:color .12s;
+  }
+  .mv-close:hover{color:#374151}
+  .mv-error{
+    color:#b91c1c;font-size:13px;
+    text-align:center;min-height:16px;
+    font-weight:600;
+  }
+  /* Notificación "en desarrollo" */
+  .mv-dev-badge{
+    background:linear-gradient(135deg,#f59e0b,#d97706);
+    color:#fff;border-radius:999px;
+    padding:8px 18px;font-size:13px;font-weight:800;
+    text-align:center;letter-spacing:.5px;
+    text-transform:uppercase;
+  }
+  .mv-dev-body{
+    font-size:14px;color:#4b5563;
+    text-align:center;line-height:1.5;
+    margin:0;
+  }
+
+  .icon-ring{
+    width:108px;
+    height:108px;
+    border-radius:50%;
+    margin:0 auto 20px;
+    border:1.5px solid rgba(255,255,255,.16);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at center, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+
+  .icon-svg{
+    width:54px;
+    height:54px;
+    display:block;
+  }
+
+  .icon-liquidaciones .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .icon-liquidaciones .accent{fill:var(--red-1)}
+
+  .icon-pagos .shield{fill:#000}
+  .icon-pagos .check{stroke:var(--red-1);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  .card h2{
+    margin:0 0 10px;
+    text-align:center;
+    font-size:25px;
+    line-height:1.02;
+    text-transform:uppercase;
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+
+  .card p{
+    margin:0 0 18px;
+    text-align:center;
+    font-size:16px;
+    line-height:1.36;
+    color:rgba(255,255,255,.94);
+  }
+
+  .card .actions{
+    margin-top:auto;
+    display:flex;
+    justify-content:center;
+  }
+
+  .btn{
+    min-width:220px;
+    height:46px;
+    padding:0 16px;
+    border:none;
+    border-radius:999px;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    font-weight:800;
+    font-size:18px;
+    transition:transform .18s ease;
+    cursor:pointer;
+  }
+
+  .btn:hover{transform:translateY(-2px)}
+  .btn.red{
+    background:linear-gradient(135deg, var(--red-1), var(--red-2));
+    color:#fff;
+    box-shadow:0 10px 24px rgba(232,61,46,.32);
+  }
+  .btn.silver{
+    background:linear-gradient(135deg, #b7b7b8, #a1a1a3);
+    color:#fff;
+    box-shadow:0 10px 24px rgba(148,145,149,.22);
+  }
+  .btn .arrow{
+    font-size:28px;
+    line-height:1;
+    transform:translateY(-1px);
+  }
+
+  .features{
+    margin-top:26px;
+    width:calc(100% + 270px);
+    margin-right:-270px;
+    background:linear-gradient(90deg, #151516 0%, #1a1a1d 45%, #111111 100%);
+    color:#fff;
+    border-radius:30px;
+    padding:18px 14px;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0,1fr));
+    gap:0;
+    box-shadow:0 16px 34px rgba(0,0,0,.18);
+  }
+
+  .feature{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    min-height:64px;
+    padding:0 16px;
+  }
+
+  .feature + .feature{
+    border-left:1px solid rgba(255,255,255,.16);
+  }
+
+  .mini{
+    width:58px;
+    height:58px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(255,255,255,.08);
+    background:radial-gradient(circle at center, rgba(255,255,255,.02), rgba(255,255,255,.01));
+    flex:0 0 auto;
+  }
+
+  .mini svg{
+    width:28px;
+    height:28px;
+    stroke:var(--red-1);
+    fill:none;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  .feature span{
+    font-size:16px;
+    line-height:1.22;
+    color:#fff;
+    max-width:165px;
+  }
+
+  .right{
+    position:relative;
+    z-index:1;
+    min-height:760px;
+    overflow:hidden;
+  }
+
+  .photo-shell{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    padding:0 0 0 20px;
+  }
+
+  .photo-mask{
+    width:100%;
+    height:100%;
+    position:relative;
+    overflow:hidden;
+    clip-path:ellipse(82% 82% at 86% 48%);
+  }
+
+  .photo-mask img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center center;
+    display:block;
+    filter:saturate(1.03) contrast(1.02);
+  }
+
+  .photo-overlay{
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.03) 0%, transparent 18%),
+      linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.08));
+  }
+
+  .footer-note{
+    padding:14px 28px 18px;
+    font-size:12px;
+    color:#7a7a7d;
+    text-align:right;
+    background:#fff;
+  }
+
+  @media (max-width: 1180px){
+    .hero{grid-template-columns:1fr}
+    .hero::before{
+      inset:42% -8% auto auto;
+      width:44%;
+      height:38%;
+    }
+    .hero::after{
+      inset:auto -8% -18% auto;
+      width:60%;
+      height:34%;
+    }
+    .left{padding:34px 24px 20px}
+    .right{min-height:430px}
+    .features{
+      width:100%;
+      margin-right:0;
+    }
+  }
+
+  @media (max-width: 760px){
+    body{background:#fff}
+    .page{
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      border:none;
+    }
+    .left{padding:24px 16px 16px}
+    .eyebrow{font-size:14px;letter-spacing:6px}
+    .cards{grid-template-columns:1fr;gap:18px}
+    .card{min-height:290px}
+    .card-centered{width:100%;justify-self:stretch}
+    .btn{width:100%;min-width:unset}
+    .features{
+      grid-template-columns:1fr;
+      border-radius:22px;
+      padding:10px 6px;
+    }
+    .feature{
+      justify-content:flex-start;
+      padding:12px 10px;
+    }
+    .feature + .feature{
+      border-left:none;
+      border-top:1px solid rgba(255,255,255,.14);
+    }
+    .right{min-height:300px}
+    .photo-mask{clip-path:ellipse(92% 78% at 50% 50%)}
+    .footer-note{text-align:center;padding:14px 16px 20px}
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="left">
+        <div>
+          <div class="intro">
+            <div class="eyebrow">Bienvenido a</div>
+            <img class="headline-logo" src="assets/logo.png" alt="AUTOCOR">
+            <p>Selecciona una opción para continuar con el proceso que necesites.</p>
+          </div>
+
+          <div class="cards">
+            <section class="card dark">
+              <div class="icon-ring">
+                <svg class="icon-svg icon-liquidaciones" viewBox="0 0 64 64" aria-hidden="true">
+                  <rect x="15" y="10" width="28" height="36" rx="5" class="stroke-main"></rect>
+                  <line x1="21" y1="21" x2="37" y2="21" class="stroke-main"></line>
+                  <line x1="21" y1="28" x2="37" y2="28" class="stroke-main"></line>
+                  <line x1="21" y1="35" x2="31" y2="35" class="stroke-main"></line>
+                  <path d="M43 19l7 0 0 9" class="stroke-main"></path>
+                  <path d="M42 28l8-9" class="stroke-main"></path>
+                  <circle cx="42" cy="42" r="12" class="accent"></circle>
+                  <text x="42" y="46" text-anchor="middle" font-size="16" font-weight="800" fill="#fff">$</text>
+                </svg>
+              </div>
+              <h2>Liquidaciones</h2>
+              <p>Gestiona y revisa las liquidaciones de vehículos de forma rápida y segura.</p>
+              <div class="actions">
+                <button type="button" class="btn red" onclick="abrirLogin('liquidacion')">
+                  <span>INGRESAR</span>
+                  <span class="arrow">›</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="card gray">
+              <div class="icon-ring">
+                <svg class="icon-svg icon-pagos" viewBox="0 0 64 64" aria-hidden="true">
+                  <path class="shield" d="M32 10l14 6v10c0 11-6.5 18.5-14 22-7.5-3.5-14-11-14-22V16l14-6z"></path>
+                  <path class="check" d="M24 31l6 6 10-12"></path>
+                </svg>
+              </div>
+              <h2>Pagos</h2>
+              <p>Valida y controla los pagos y documentos legales de cada vehículo.</p>
+              <div class="actions">
+                <button type="button" class="btn silver" onclick="abrirLogin('pagos')">
+                  <span>INGRESAR</span>
+                  <span class="arrow">›</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="card red">
+              <div class="icon-ring">
+                <svg class="icon-svg icon-ventas" viewBox="0 0 64 64" aria-hidden="true">
+                  <!-- Cuerpo del vehículo -->
+                  <rect x="7" y="34" width="42" height="13" rx="4" class="stroke-main"></rect>
+                  <path d="M13 34l7-13h18l7 13" class="stroke-main"></path>
+                  <!-- Ruedas -->
+                  <circle cx="18" cy="47" r="6" class="stroke-main"></circle>
+                  <circle cx="42" cy="47" r="6" class="stroke-main"></circle>
+                  <circle cx="18" cy="47" r="2" class="accent-dark"></circle>
+                  <circle cx="42" cy="47" r="2" class="accent-dark"></circle>
+                  <!-- Badge de precio -->
+                  <circle cx="46" cy="18" r="11" class="accent"></circle>
+                  <text x="46" y="23" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">$</text>
+                </svg>
+              </div>
+              <h2>Ventas</h2>
+              <p>Registro y seguimiento del proceso de venta de vehículos.</p>
+              <div class="actions">
+                <button type="button" class="btn dark" onclick="abrirLogin('ventas')">
+                  <span>INGRESAR</span>
+                  <span class="arrow">›</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="card navy">
+              <div class="icon-ring">
+                <svg class="icon-svg icon-contratos" viewBox="0 0 64 64" aria-hidden="true">
+                  <!-- Carpeta base -->
+                  <path d="M10 22h44v28a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V22z" class="stroke-main"></path>
+                  <path d="M10 22v-4a4 4 0 0 1 4-4h10l4 6h22a4 4 0 0 1 4 4" class="stroke-main"></path>
+                  <!-- Líneas documento -->
+                  <line x1="22" y1="34" x2="42" y2="34" class="stroke-main"></line>
+                  <line x1="22" y1="41" x2="42" y2="41" class="stroke-main"></line>
+                  <line x1="22" y1="48" x2="34" y2="48" class="stroke-main"></line>
+                  <!-- Badge check -->
+                  <circle cx="46" cy="46" r="9" class="accent"></circle>
+                  <path d="M42 46l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </div>
+              <h2>Contratos</h2>
+              <p>Gestión y verificación de documentos para contratos de vehículos.</p>
+              <div class="actions">
+                <button type="button" class="btn navy" onclick="abrirLogin('contratos')">
+                  <span>INGRESAR</span>
+                  <span class="arrow">›</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="features" aria-label="Características principales">
+          <div class="feature">
+            <div class="mini">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3l7 3v5c0 5.2-3 8.6-7 10-4-1.4-7-4.8-7-10V6l7-3z"></path>
+                <path d="M9 12.5l2 2 4-4"></path>
+              </svg>
+            </div>
+            <span>Procesos seguros y confiables</span>
+          </div>
+
+          <div class="feature">
+            <div class="mini">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 6v6l4 2"></path>
+                <circle cx="12" cy="12" r="8"></circle>
+              </svg>
+            </div>
+            <span>Información en tiempo real</span>
+          </div>
+
+          <div class="feature">
+            <div class="mini">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 6h10"></path>
+                <path d="M8 12h10"></path>
+                <path d="M8 18h10"></path>
+                <path d="M4 6h.01"></path>
+                <path d="M4 12h.01"></path>
+                <path d="M4 18h.01"></path>
+              </svg>
+            </div>
+            <span>Control y validación precisa</span>
+          </div>
+
+          <div class="feature">
+            <div class="mini">
+              <svg viewBox="0 0 24 24">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9.5" cy="7" r="3"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 4.13a3 3 0 0 1 0 5.74"></path>
+              </svg>
+            </div>
+            <span>Equipo comprometido contigo</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="right">
+        <div class="photo-shell">
+          <div class="photo-mask">
+            <img src="assets/fondo.png" alt="Showroom AUTOCOR">
+            <div class="photo-overlay"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">AUTOCOR · Inicio de módulos &nbsp;·&nbsp; <span style="opacity:.6;">v4.8</span></div>
+  </main>
+
+  <!-- ── Modal login compartido ───────────────────────────────── -->
+  <div id="modalLogin" class="mv-overlay" role="dialog" aria-modal="true" aria-labelledby="mlTitle">
+    <div class="mv-box">
+      <button type="button" class="mv-close" onclick="cerrarLogin()" aria-label="Cerrar">×</button>
+      <div class="mv-icon-head">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+      </div>
+      <h3 id="mlTitle">Iniciar sesión</h3>
+      <p id="mlSub" class="mv-sub"></p>
+      <hr class="mv-divider">
+      <div>
+        <div class="mv-label">Usuario</div>
+        <input id="mlUsuario" class="mv-input" type="text"
+               placeholder="Ej: YROMERO" autocomplete="off"
+               onkeydown="if(event.key==='Enter') document.getElementById('mlPassword').focus()">
+      </div>
+      <div>
+        <div class="mv-label">Clave</div>
+        <div style="position:relative;display:flex;align-items:center;">
+          <input id="mlPassword" class="mv-input" type="password"
+                 placeholder="Tu contraseña" autocomplete="new-password"
+                 style="padding-right:42px;"
+                 onkeydown="if(event.key==='Enter') confirmarLogin()">
+          <button type="button" onclick="mlTogglePass()" aria-label="Mostrar/ocultar clave"
+                  style="position:absolute;right:10px;background:none;border:none;cursor:pointer;
+                         color:#9ca3af;font-size:17px;padding:0;line-height:1;">👁</button>
+        </div>
+      </div>
+      <div id="mlError" class="mv-error"></div>
+      <button type="button" id="mlBtnIngresar" class="mv-btn" onclick="confirmarLogin()">INGRESAR</button>
+    </div>
+  </div>
+
+  <!-- ── Modal módulo en desarrollo (Ventas) ──────────────────── -->
+  <div id="modalVentasDev" class="mv-overlay" role="dialog" aria-modal="true">
+    <div class="mv-box">
+      <button type="button" class="mv-close" onclick="cerrarModalDev()" aria-label="Cerrar">×</button>
+      <div class="mv-icon-head" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+        </svg>
+      </div>
+      <h3>Módulo en desarrollo</h3>
+      <div class="mv-dev-badge">🚧 Próximamente disponible</div>
+      <p class="mv-dev-body">
+        El módulo de <strong>Ventas</strong> está siendo desarrollado.<br>
+        Pronto estará disponible con todas sus funciones.
+      </p>
+      <hr class="mv-divider">
+      <p class="mv-dev-body" style="font-size:13px;color:#9ca3af">
+        Si necesitas acceso anticipado, contacta al administrador del sistema.
+      </p>
+      <button type="button" class="mv-btn" onclick="cerrarModalDev()"
+              style="background:linear-gradient(135deg,#374151,#111827);box-shadow:0 10px 24px rgba(0,0,0,.24)">
+        CERRAR
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec";
+
+    // Módulos registrados: url=null significa "en desarrollo"
+    const MODULOS = {
+      liquidacion: { nombre: 'Liquidaciones', url: 'liquidacion.html' },
+      pagos:       { nombre: 'Pagos',         url: 'pagos.html'       },
+      ventas:      { nombre: 'Ventas',         url: 'ventas.html'      },
+      contratos:   { nombre: 'Contratos',      url: 'contratos.html'   }
+    };
+
+    let moduloActivo = null; // clave del módulo que inició el login
+
+    async function apiCall(action, payload){
+      const body = Object.assign({ action: action }, payload);
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+      const json = JSON.parse(await res.text());
+      if(!json.ok) throw new Error(json.message || 'Error en API');
+      return json;
+    }
+
+    function mlTogglePass(){
+      const el = document.getElementById('mlPassword');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function abrirLogin(modulo){
+      moduloActivo = modulo;
+      const cfg = MODULOS[modulo];
+
+      // Si ya hay sesión activa, acceder directo
+      try{
+        const auth = JSON.parse(sessionStorage.getItem('autocor_auth') || 'null');
+        if(auth && auth.token){
+          accederModulo(cfg);
+          return;
+        }
+      }catch(e){}
+
+      // Sin sesión: mostrar modal de login
+      document.getElementById('mlSub').textContent =
+        'Ingresa tu usuario y clave para acceder a ' + cfg.nombre + '.';
+      document.getElementById('mlUsuario').value = '';
+      document.getElementById('mlPassword').value = '';
+      document.getElementById('mlError').textContent = '';
+      document.getElementById('mlBtnIngresar').disabled = false;
+      document.getElementById('mlBtnIngresar').textContent = 'INGRESAR';
+      document.getElementById('modalLogin').classList.add('open');
+      setTimeout(function(){ document.getElementById('mlUsuario').focus(); }, 80);
+    }
+
+    function cerrarLogin(){
+      document.getElementById('modalLogin').classList.remove('open');
+      document.getElementById('mlError').textContent = '';
+      moduloActivo = null;
+    }
+
+    function cerrarModalDev(){
+      document.getElementById('modalVentasDev').classList.remove('open');
+    }
+
+    function accederModulo(cfg){
+      cerrarLogin();
+      if(cfg.url){
+        window.location.href = cfg.url;
+      } else {
+        // Módulo en desarrollo
+        document.getElementById('modalVentasDev').classList.add('open');
+      }
+    }
+
+    async function confirmarLogin(){
+      const u = (document.getElementById('mlUsuario').value || '').trim().toUpperCase();
+      const p = (document.getElementById('mlPassword').value || '').trim();
+      if(!u || !p){
+        document.getElementById('mlError').textContent = 'Ingresa tu usuario y clave.';
+        return;
+      }
+      const btn = document.getElementById('mlBtnIngresar');
+      btn.disabled = true;
+      btn.textContent = 'VERIFICANDO...';
+      document.getElementById('mlError').textContent = '';
+      try{
+        const resp = await apiCall('login', { username: u, password: p });
+        // Guardar sesión en sessionStorage — los módulos la leen al cargar
+        sessionStorage.setItem('autocor_auth', JSON.stringify({
+          user:        (resp.user && resp.user.username)    || u,
+          displayName: (resp.user && resp.user.displayName) || u,
+          isAdmin:     !!(resp.user && resp.user.isAdmin),
+          token:       resp.sessionToken || ''
+        }));
+        accederModulo(MODULOS[moduloActivo]);
+      }catch(err){
+        document.getElementById('mlError').textContent = err.message || 'Usuario o clave incorrectos.';
+        document.getElementById('mlPassword').value = '';
+        document.getElementById('mlPassword').focus();
+        btn.disabled = false;
+        btn.textContent = 'INGRESAR';
+      }
+    }
+
+    // Cerrar al clic fuera del cuadro
+    document.getElementById('modalLogin').addEventListener('click', function(e){
+      if(e.target === this) cerrarLogin();
+    });
+    document.getElementById('modalVentasDev').addEventListener('click', function(e){
+      if(e.target === this) cerrarModalDev();
+    });
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){
+        cerrarLogin();
+        cerrarModalDev();
+      }
+    });
+  </script>
+</body>
+</html>
