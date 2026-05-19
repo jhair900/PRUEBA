@@ -1048,26 +1048,8 @@
       </button>
     </div>
 
-    <!-- ── Barra: Guardar Proceso ──────────────────────────────── -->
-    <div class="guardar-proceso-bar" id="guardarProcesoBar" style="display:none">
-      <div class="guardar-proceso-info">
-        <div class="guardar-proceso-title">
-          Guardar Proceso
-          <span id="guardarBadgeOk" class="guardar-badge-ok" style="display:none;margin-left:8px">✓ Guardado</span>
-        </div>
-        <div class="guardar-proceso-sub" id="guardarProcesoSub">
-          Solo guardar (sin generar contratos). Útil para registrar el proceso de validación de forma independiente.
-        </div>
-      </div>
-      <button type="button" class="btn-guardar-proceso" id="btnGuardarProceso" onclick="abrirModalGuardarProceso()">
-        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        Guardar en Hoja
-      </button>
-    </div>
+    <!-- Barra "Guardar Proceso" eliminada: el guardado ahora ocurre
+         automáticamente al generar los contratos. -->
   </section>
 
 </main>
@@ -5649,8 +5631,8 @@ function _refreshValidateAllBar(){
   var sub = document.getElementById('validateAllSub');
   if(!btn || !sub) return;
 
-  // Documentos obligatorios para habilitar el botón (cónyuge es opcional)
-  var OBLIGATORIOS = ['cedula-prop', 'matricula', 'cuv', 'notaria'];
+  // Documentos obligatorios para habilitar el botón (cónyuge y CUV son opcionales)
+  var OBLIGATORIOS = ['cedula-prop', 'matricula', 'notaria'];
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
@@ -5665,7 +5647,7 @@ function _refreshValidateAllBar(){
     btn.disabled = true;
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
-      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula Propietario, Matrícula, CUV y Print Notaría.';
+      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula Propietario, Matrícula y Print Notaría.';
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
     }
