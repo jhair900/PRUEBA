@@ -1901,6 +1901,12 @@ function geminiUrl(model){
    Esta función adapta la respuesta para que el código que usa
    resp.ok / resp.status / resp.json() / resp.text() siga funcionando. */
 async function geminiFetch(url, init){
+  /* Forzamos text/plain para evitar el preflight CORS (OPTIONS) que
+     Apps Script no responde. El body sigue siendo JSON y GAS lo lee
+     desde e.postData.contents sin importar el Content-Type. */
+  if(init && (init.method||'GET').toUpperCase() !== 'GET'){
+    init = Object.assign({}, init, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+  }
   const resp = await fetch(url, init);
   let env = null;
   try { env = await resp.json(); } catch(_){ env = null; }
