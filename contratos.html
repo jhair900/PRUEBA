@@ -5837,9 +5837,10 @@ async function validarTodoEnConjunto(){
   function _refreshGenerarContratosBar(){
     var bar = document.getElementById('generarContratosBar');
     if(!bar) return;
-    // Mostrar solo si hay al menos cuv + (matricula o cedula-prop) procesados
+    // Mostrar cuando haya al menos cédula propietario o matrícula procesados
+    // (CUV es opcional por ahora)
     var d = datos;
-    var tieneMinimo = !!(d['cuv'] && (d['cedula-prop'] || d['matricula']));
+    var tieneMinimo = !!(d['cedula-prop'] || d['matricula']);
     bar.style.display = tieneMinimo ? 'block' : 'none';
 
     var sub = document.getElementById('generarContratosSub');
