@@ -1845,9 +1845,10 @@ async function ocrFileSimpleLegacy(file, tipo){
    GOOGLE GEMINI VISION — extracción mediante IA
    ══════════════════════════════════════════════════════════════ */
 
-/* ⚠️ La API key está embebida en cliente: cualquier visitante puede
-   inspeccionarla. Rotar / mover a backend antes de producción.       */
-const GEMINI_API_KEY = 'AIzaSyCLMzTaUZdlQf8rySQgZa0_lekL1ytTZ7s';
+/* La API key vive en Script Properties del Apps Script (clave
+   GEMINI_API_KEY). El cliente NO la conoce: todas las llamadas a
+   Gemini se enrutan por el proxy gas/script.gs (action=geminiProxy).
+   No volver a poner la key en este archivo. */
 /* Modelos priorizados para la ruta gratuita con texto+imagen.
  * Fuente verificada: Google AI for Developers (pricing/rate limits),
  * consultado el 2026-05-08. Se separa:
@@ -1889,18 +1890,37 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
+const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
 function geminiModelsUrl(){
-  return 'https://generativelanguage.googleapis.com/v1beta/models?key='+GEMINI_API_KEY;
+  return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
 }
 function geminiUrl(model){
-  return 'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+GEMINI_API_KEY;
+  return GEMINI_PROXY_URL+'?action=geminiProxy&op=generate&model='+encodeURIComponent(model);
+}
+/* Wrapper: el proxy GAS devuelve {_proxy:{ok,status}, data:<google body>}.
+   Esta función adapta la respuesta para que el código que usa
+   resp.ok / resp.status / resp.json() / resp.text() siga funcionando. */
+async function geminiFetch(url, init){
+  const resp = await fetch(url, init);
+  let env = null;
+  try { env = await resp.json(); } catch(_){ env = null; }
+  const hasProxy = env && env._proxy && typeof env._proxy === 'object';
+  const ok = hasProxy ? !!env._proxy.ok : resp.ok;
+  const status = hasProxy ? (env._proxy.status|0) : resp.status;
+  const data = (env && Object.prototype.hasOwnProperty.call(env,'data')) ? env.data : env;
+  return {
+    ok: ok,
+    status: status,
+    json: async function(){ return data; },
+    text: async function(){ return typeof data === 'string' ? data : JSON.stringify(data); }
+  };
 }
 function renderAIBannerModel(model){
   return String(model||'').trim() || 'IA';
 }
 async function refreshGeminiModelAvailability(){
   try{
-    const resp = await fetch(geminiModelsUrl());
+    const resp = await geminiFetch(geminiModelsUrl());
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const json = await resp.json();
     const list = Array.isArray(json && json.models) ? json.models : [];
@@ -2005,7 +2025,7 @@ window.testAIConnection = async function(){
 
   for(const model of GEMINI_MODELS_FALLBACK){
     try{
-      const resp = await fetch(geminiUrl(model), {
+      const resp = await geminiFetch(geminiUrl(model), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
@@ -2078,7 +2098,7 @@ async function analizarConGemini(tipo, dataUrl){
     }
   };
 
-  const resp = await fetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
+  const resp = await geminiFetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(body)
@@ -2287,7 +2307,7 @@ async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
     }
   };
 
-  const resp = await fetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
+  const resp = await geminiFetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(body)
@@ -5255,7 +5275,7 @@ async function geminiGenerateWithFallback(body, opts){
   for(var i=0; i<models.length; i++){
     var model = models[i];
     try{
-      var resp = await fetch(geminiUrl(model), {
+      var resp = await geminiFetch(geminiUrl(model), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(body)

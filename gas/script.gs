@@ -8,21 +8,89 @@ const CONTRATOS_SHEET = 'Contratos';
 const SESSION_TTL_MINUTES = 60 * 12; // 12 horas
 
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'ping';
-  return outputJson(handleAction_(action, e && e.parameter ? e.parameter : {}));
+  const params = (e && e.parameter) ? e.parameter : {};
+  if (params.action === 'geminiProxy') {
+    return geminiProxy_(params, '');
+  }
+  const action = params.action || 'ping';
+  return outputJson(handleAction_(action, params));
 }
 
 function doPost(e) {
   try {
-    const body = e && e.postData && e.postData.contents
-      ? JSON.parse(e.postData.contents)
-      : {};
+    const params = (e && e.parameter) ? e.parameter : {};
+    const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+    if (params.action === 'geminiProxy') {
+      return geminiProxy_(params, raw);
+    }
+    const body = raw ? JSON.parse(raw) : {};
     const action = body.action || 'ping';
     return outputJson(handleAction_(action, body));
   } catch (err) {
     return outputJson({
       ok: false,
       message: 'Error en doPost: ' + err.message
+    });
+  }
+}
+
+/* ── Proxy seguro a Gemini ─────────────────────────────────────
+   La API key se guarda en Script Properties (clave: GEMINI_API_KEY)
+   y nunca viaja al cliente. Operaciones:
+     ?action=geminiProxy&op=models                → lista de modelos
+     ?action=geminiProxy&op=generate&model=NAME   → generateContent
+   Devuelve { _proxy:{ok,status}, data:<respuesta Google> }
+   ────────────────────────────────────────────────────────────── */
+function geminiProxy_(params, rawBody) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) {
+    return outputJson({
+      _proxy: { ok: false, status: 500 },
+      data: { error: { code: 500, status: 'CONFIG_ERROR',
+        message: 'GEMINI_API_KEY no configurada en Script Properties' } }
+    });
+  }
+  const op = String(params.op || 'models');
+  let url, options;
+  if (op === 'models') {
+    url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(apiKey);
+    options = { method: 'get', muteHttpExceptions: true };
+  } else if (op === 'generate') {
+    const model = String(params.model || '').replace(/[^A-Za-z0-9._\-]/g, '');
+    if (!model) {
+      return outputJson({
+        _proxy: { ok: false, status: 400 },
+        data: { error: { code: 400, status: 'BAD_REQUEST', message: 'Falta parámetro model' } }
+      });
+    }
+    url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model
+        + ':generateContent?key=' + encodeURIComponent(apiKey);
+    options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: rawBody || '{}',
+      muteHttpExceptions: true
+    };
+  } else {
+    return outputJson({
+      _proxy: { ok: false, status: 400 },
+      data: { error: { code: 400, status: 'BAD_REQUEST', message: 'op inválida: ' + op } }
+    });
+  }
+  try {
+    const resp = UrlFetchApp.fetch(url, options);
+    const status = resp.getResponseCode();
+    let parsed;
+    try { parsed = JSON.parse(resp.getContentText()); }
+    catch (e) { parsed = { raw: resp.getContentText() }; }
+    return outputJson({
+      _proxy: { ok: status >= 200 && status < 300, status: status },
+      data: parsed
+    });
+  } catch (err) {
+    return outputJson({
+      _proxy: { ok: false, status: 0 },
+      data: { error: { code: 0, status: 'FETCH_ERROR', message: String(err && err.message || err) } }
     });
   }
 }
