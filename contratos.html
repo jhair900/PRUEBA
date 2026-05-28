@@ -5927,7 +5927,9 @@ async function validarTodoEnConjunto(){
     var nombreCony = _leerNombreCony();
     var ciCony     = ((datos['cedula-cony']||{}).numeroCedula) || '';
 
-    var esCasado = estadoCivil === 'CASADO' || estadoCivil === 'CASADA';
+    var esCasado = estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
+                || estadoCivil === 'UNION LIBRE' || estadoCivil === 'UNIÓN LIBRE'
+                || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO';
 
     var roHtml = [
       { label:'Propietario', val: nombreProp },
@@ -6259,7 +6261,9 @@ async function validarTodoEnConjunto(){
     var chasis = _pick('chasis') || _pick('serialChasis') || _pick('vin');
     var motor  = _pick('motor')  || _pick('numeroMotor');
     var vc     = _getValidacionResumen();
-    var esCasado = estadoCivil==='CASADO'||estadoCivil==='CASADA';
+    var esCasado = estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
+                || estadoCivil === 'UNION LIBRE' || estadoCivil === 'UNIÓN LIBRE'
+                || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO';
 
     // Campos readonly
     var roItems = [
