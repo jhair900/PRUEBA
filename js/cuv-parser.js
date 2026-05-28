@@ -155,23 +155,58 @@
 
     /* MOTOR */
     {
-      const mEt = bloqueVehiculo.match(/N[úu]mero\s+de\s+[Mm]otor\s*:\s*([A-Z0-9]{6,20})\b/i);
+      const mEt = bloqueVehiculo.match(/N[úu]mero\s+de\s+[Mm]otor\s*:\s*([A-Z0-9]{6,25})\b/i);
       const cEt = mEt ? mEt[1].toUpperCase() : null;
       const EXCLUIR = new Set([...ETIQUETAS_CONOCIDAS,
         'RANV','TONELAJE','REGISTRADO','SERVICIO','CLASE',
-        'PARTICULAR','GASOLINA','DIESEL','HIBRIDO','ELECTRICO']);
-      const candidatos = []; const re = /\b([A-Z]{1,6}\d{3,15}[A-Z0-9]{0,6}|[A-Z0-9]{2,6}\d{4,12}[A-Z0-9]{0,5})\b/g; let m;
+        'PARTICULAR','GASOLINA','DIESEL','HIBRIDO','ELECTRICO',
+        'PLACAS','METALICA','OPERADORA','CARROCERIA']);
+
+      /* ── Detectar el valor de RANV / CPN para excluirlo del motor ──
+         En CUV desordenados, RANV/CPN suele ser un código corto
+         tipo "T02946567" (T + dígitos) o solo dígitos. Apunta a la
+         etiqueta y mira hacia adelante hasta 8 líneas. */
+      let valorRanv = null;
+      for(let i=0; i<lines.length && !valorRanv; i++){
+        const mismaLinea = lines[i].match(/RANV\s*\/?\s*CPN\s*[:]?\s*([A-Z]?\d{6,12})\b/i);
+        if(mismaLinea){ valorRanv = mismaLinea[1].toUpperCase(); break; }
+      }
+      if(!valorRanv){
+        const idxRanv = lines.findIndex(l => /RANV/i.test(l));
+        if(idxRanv >= 0){
+          for(let j=idxRanv+1; j<Math.min(lines.length, idxRanv+8); j++){
+            const m = lines[j].trim().match(/^(T?\d{6,12})$/i);
+            if(m){ valorRanv = m[1].toUpperCase(); break; }
+          }
+        }
+      }
+      if(!valorRanv){
+        for(const l of lines){
+          const m = l.trim().match(/^T\d{6,10}$/i);
+          if(m){ valorRanv = m[0].toUpperCase(); break; }
+        }
+      }
+
+      const candidatos = [];
+      const re = /\b([A-Z0-9]{8,25})\b/g;
+      let m;
       while((m = re.exec(bloqueVehiculo)) !== null){
         const c = m[1].toUpperCase();
-        if(!/[A-Z]/.test(c)||!/[0-9]/.test(c)) continue;
-        if(c===d.chasis||c===d.placa) continue;
+        if(!/[A-Z]/.test(c) || !/[0-9]/.test(c)) continue;     // requiere mezcla letra+dígito
+        if(c === d.chasis || c === d.placa) continue;
         if(EXCLUIR.has(c)) continue;
-        if(c.length<6||c.length>20) continue;
+        if(c.length < 8 || c.length > 25) continue;            // motor real: 8-25 chars
+        if(valorRanv && c === valorRanv) continue;             // excluir RANV detectado
+        if(/^T\d+$/i.test(c)) continue;                        // patrón típico RANV/CPN
+        if(/^\d+$/.test(c)) continue;                          // numérico puro
+        if(c.length === 17) continue;                          // longitud VIN, ya cubierto por chasis
         candidatos.push(c);
       }
-      const unicos = [...new Set(candidatos)];
-      console.log('[CUV] Motor candidatos:', unicos);
-      d.motor = primerCandidato([cEt, ...unicos], 'motor') || '';
+      const candidatosMotor = [...new Set(candidatos)];
+      console.log('[CUV] RANV/CPN detectado:', valorRanv || '(no encontrado)');
+      console.log('[CUV] Motor candidatos filtrados:', candidatosMotor);
+      d.motor = primerCandidato([cEt, ...candidatosMotor], 'motor') || '';
+      console.log('[CUV] Motor seleccionado:', d.motor);
     }
 
     /* MARCA */
@@ -186,34 +221,79 @@
 
     /* MODELO */
     {
-      const RE_SEÑAL = /\b(?:AC|[45]P|4X[24]|TM|TA|AT|MT|HYBRID|HEV|TSS|AWD|FWD|4WD|\d+\.\d)\b/i;
-      // Patrón de parada: cualquiera de los nombres de campo que siguen al modelo en el CUV
-      const RE_STOP_MODELO = /(?=\s+(?:Marca|Color|Clase|Tipo|Serv(?:icio)?|A[ñn]o|VIN|N[úu]mero|Chasis|Motor|Placa|Pa[íi]s|Combustible|Cilindraje|Propietario|Datos|Matr[íi]cula)\b)/i;
+      const RE_SEÑAL = /\b(?:AC|[45]P|4X[24]|TM|TA|AT|MT|CVT|HYBRID|HEV|TSS|AWD|FWD|4WD|\d+\.\d)\b/i;
+
+      /* Términos que NUNCA son modelo (tipo, clase, combustible, país,
+         color, marca, etiquetas genéricas) */
+      const DESCARTE_MODELO = new Set([
+        'JEEP','SUV','SEDAN','HATCHBACK','CAMIONETA','VEHICULO UTILITARIO',
+        'AUTOMOVIL','AUTOMÓVIL','PICKUP','MINIVAN','COUPE','COUPÉ',
+        'FURGON','FURGÓN','BUS','CAMION','CAMIÓN','MOTOCICLETA',
+        'FURGONETA','MINIBUS','VOLQUETA','TRAILER',
+        'GASOLINA','DIESEL','HIBRIDO','HÍBRIDO','ELECTRICO','ELÉCTRICO',
+        'GLP','GNV','GAS',
+        'USO PARTICULAR','PARTICULAR','PUBLICO','PÚBLICO','COMERCIAL',
+        'ESTATAL','MUNICIPAL',
+        'NO REGISTRADO','METALICA','METÁLICA','REGISTRADO',
+        'ECUADOR','COLOMBIA','BRASIL','CHINA','JAPON','JAPÓN','MEXICO','MÉXICO',
+        'COREA','ALEMANIA','USA','INDIA','TAILANDIA','INDONESIA','FRANCIA',
+        ...MARCAS_CONOCIDAS,
+        ...COLORES_VALIDOS,
+        ...ETIQUETAS_CONOCIDAS
+      ]);
+
+      function esModeloValido(texto){
+        const t = String(texto||'').trim().toUpperCase().replace(/\s+/g,' ');
+        if(!t || t.length < 3 || t.length > 60) return false;
+        if(t.includes(':')) return false;
+        if(/^\d+$/.test(t)) return false;
+        if(/^[\d\s\.\-\/]+$/.test(t)) return false;
+        if(DESCARTE_MODELO.has(t)) return false;
+        if(/^(NO\s+REGISTR|N[úu]mero|VIN|CHASIS|PLACA|MOTOR|MODELO|MARCA|TIPO|CLASE|COLOR|PA[ÍI]S|COMBUSTIBLE|CILINDRAJE|SERVICIO)/i.test(t)) return false;
+        return true;
+      }
+
+      /* 1) Intento por etiqueta "Modelo:" con parada antes de siguiente
+            campo del CUV. Si captura algo, lo validamos contra el
+            conjunto de descarte (evita "JEEP", "GASOLINA", etc.). */
       const mEt =
-        // 1) Con parada ante 2+ espacios o ante la siguiente etiqueta de campo
         bloqueVehiculo.match(/Modelo\s*:\s*([A-Z0-9][A-Z0-9\s\-\.\/]{2,59}?)(?:\s{2,}|(?=\s+(?:Marca|Color|Clase|A[ñn]o|VIN|N[úu]m)))/i) ||
-        // 2) Fallback con parada explícita ante cualquier etiqueta CUV conocida
         bloqueVehiculo.match(/Modelo\s*:\s*([A-Z0-9][A-Z0-9\s\-\.\/]{2,59}?)(?=\s+(?:Marca|Color|Clase|Tipo|Serv(?:icio)?|A[ñn]o|VIN|N[úu]mero|Chasis|Motor|Placa|Pa[íi]s|Combustible|Cilindraje|Propietario|Datos|Matr[íi]cula)\b|$)/i);
       let cEt = mEt ? mEt[1].trim() : null;
-      if(cEt && (ETIQUETAS_CONOCIDAS.includes(cEt.toUpperCase()) ||
-                 /^(N[úu]mero|VIN|Chasis|NO\s+REGISTR)/i.test(cEt))) cEt = null;
-      let modeloLibre = '';
-      // Fallback por señal de formato solo si la extracción etiquetada falló
-      if(!cEt){
-        const lineasVeh = idxPropBlock > 0 ? lines.slice(0, idxPropBlock) : lines;
-        for(const linea of lineasVeh){
-          const l = linea.trim().toUpperCase();
-          if(!RE_SEÑAL.test(l)||l.length<6||l.length>65) continue;
-          if(d.chasis&&l.includes(d.chasis)) continue;
-          if(d.motor&&l.includes(d.motor))   continue;
-          if(/^[\d\s\.\-\/]+$/.test(l)) continue;
-          // Descartar líneas que contengan palabras de etiqueta CUV (evita capturar texto de otro campo)
-          if(ETIQUETAS_CONOCIDAS.some(e => new RegExp('\\b'+e+'\\b').test(l))) continue;
-          modeloLibre = linea.trim().toUpperCase();
-          break;
+      /* Recortar palabras de cola que sean tipos/marcas/colores/combustibles
+         (típico cuando el PDF está desordenado y "Modelo:" arrastra texto
+         que en realidad pertenece a otros campos). */
+      if(cEt){
+        const tokens = cEt.toUpperCase().split(/\s+/);
+        while(tokens.length > 1 && DESCARTE_MODELO.has(tokens[tokens.length-1])){
+          tokens.pop();
         }
+        cEt = tokens.join(' ');
       }
-      d.modelo = primerCandidato([cEt, modeloLibre], 'modelo');
+      if(cEt && !esModeloValido(cEt)) cEt = null;
+
+      /* 2) Fallback por señal de formato: buscar línea con AC / 1.5 /
+            5P / 4X2 / TM / TA / CVT, etc. dentro del bloque vehículo,
+            descartando etiquetas, marcas, colores y tipos genéricos. */
+      const lineasVeh = idxPropBlock > 0 ? lines.slice(0, idxPropBlock) : lines;
+      const candidatosModelo = [];
+      for(const linea of lineasVeh){
+        const l = linea.trim().toUpperCase();
+        if(!l || l.length < 6 || l.length > 65) continue;
+        if(d.chasis && l.includes(d.chasis)) continue;
+        if(d.motor && l.includes(d.motor))   continue;
+        if(d.placa && l.includes(d.placa))   continue;
+        if(d.marca && l === d.marca)         continue;
+        if(/^[\d\s\.\-\/]+$/.test(l)) continue;
+        if(!RE_SEÑAL.test(l)) continue;
+        if(!esModeloValido(l)) continue;
+        if(ETIQUETAS_CONOCIDAS.some(e => new RegExp('\\b'+e+'\\b').test(l))) continue;
+        candidatosModelo.push(l);
+      }
+
+      console.log('[CUV] Modelo candidatos filtrados:', candidatosModelo);
+      d.modelo = primerCandidato([cEt, ...candidatosModelo], 'modelo');
+      console.log('[CUV] Modelo seleccionado:', d.modelo);
     }
 
     /* AÑO ─ versión robusta para evitar falso positivo del año actual
