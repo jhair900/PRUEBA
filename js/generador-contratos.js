@@ -173,7 +173,9 @@
 
   function esPlantillaCasados(estadoCivil){
     var ec = String(estadoCivil||'').toUpperCase().trim();
-    return ec === 'CASADO' || ec === 'CASADA';
+    return ec === 'CASADO' || ec === 'CASADA'
+        || ec === 'UNION LIBRE' || ec === 'UNIÓN LIBRE'
+        || ec === 'UNION DE HECHO' || ec === 'UNIÓN DE HECHO';
   }
 
   /* ── Generar docx con docxtemplater ─────────────────────────── */
