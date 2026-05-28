@@ -156,7 +156,7 @@
     /* MOTOR */
     {
       const mEt = bloqueVehiculo.match(/N[úu]mero\s+de\s+[Mm]otor\s*:\s*([A-Z0-9]{6,25})\b/i);
-      const cEt = mEt ? mEt[1].toUpperCase() : null;
+      let cEt = mEt ? mEt[1].toUpperCase() : null;
       const EXCLUIR = new Set([...ETIQUETAS_CONOCIDAS,
         'RANV','TONELAJE','REGISTRADO','SERVICIO','CLASE',
         'PARTICULAR','GASOLINA','DIESEL','HIBRIDO','ELECTRICO',
@@ -187,20 +187,33 @@
         }
       }
 
+      /* Validador único aplicado tanto a la etiqueta como a los
+         candidatos libres: garantiza que ningún path se cuele un
+         valor de RANV/CPN, numérico puro o longitud VIN. */
+      function esMotorValido(c){
+        if(!c) return false;
+        c = String(c).toUpperCase();
+        if(!/[A-Z]/.test(c) || !/[0-9]/.test(c)) return false;
+        if(c === d.chasis || c === d.placa) return false;
+        if(EXCLUIR.has(c)) return false;
+        if(c.length < 8 || c.length > 25) return false;
+        if(valorRanv && c === valorRanv) return false;
+        if(/^T\d+$/i.test(c)) return false;       // patrón típico RANV/CPN (T + dígitos)
+        if(/^\d+$/.test(c)) return false;         // numérico puro
+        if(c.length === 17) return false;         // longitud VIN, ya cubierto por chasis
+        return true;
+      }
+
+      if(cEt && !esMotorValido(cEt)){
+        console.log('[CUV] Motor por etiqueta descartado (parece RANV/CPN u otro):', cEt);
+        cEt = null;
+      }
+
       const candidatos = [];
       const re = /\b([A-Z0-9]{8,25})\b/g;
       let m;
       while((m = re.exec(bloqueVehiculo)) !== null){
-        const c = m[1].toUpperCase();
-        if(!/[A-Z]/.test(c) || !/[0-9]/.test(c)) continue;     // requiere mezcla letra+dígito
-        if(c === d.chasis || c === d.placa) continue;
-        if(EXCLUIR.has(c)) continue;
-        if(c.length < 8 || c.length > 25) continue;            // motor real: 8-25 chars
-        if(valorRanv && c === valorRanv) continue;             // excluir RANV detectado
-        if(/^T\d+$/i.test(c)) continue;                        // patrón típico RANV/CPN
-        if(/^\d+$/.test(c)) continue;                          // numérico puro
-        if(c.length === 17) continue;                          // longitud VIN, ya cubierto por chasis
-        candidatos.push(c);
+        if(esMotorValido(m[1])) candidatos.push(m[1].toUpperCase());
       }
       const candidatosMotor = [...new Set(candidatos)];
       console.log('[CUV] RANV/CPN detectado:', valorRanv || '(no encontrado)');
