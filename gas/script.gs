@@ -5,6 +5,7 @@ const GLOSSARY_SHEET = 'Glosario';
 const PAYMENTS_SHEET = 'Pagos';
 const VENTAS_SHEET = 'Ventas';
 const CONTRATOS_SHEET = 'Contratos';
+const FIRMAS_SP_SHEET = 'FirmasSP';   // Datos sincronizados desde Office Script
 const SESSION_TTL_MINUTES = 60 * 12; // 12 horas
 
 function doGet(e) {
@@ -102,6 +103,7 @@ function handleAction_(action, payload) {
   ensurePaymentsSheet_();
   ensureVentasSheet_();
   ensureContratosSheet_();
+  ensureFirmasSPSheet_();
 
   if (action === 'ping') return { ok: true, message: 'API funcionando' };
   if (action === 'setupUsers') return setupInitialUsers_();
@@ -216,6 +218,20 @@ function handleAction_(action, payload) {
     const session = validateSession_(payload.sessionToken);
     if (!session.ok) return session;
     return setEstadoProceso_(payload.placa, payload.estado, payload.observacion, session);
+  }
+
+  // ── Firmas SP (sincronización desde Excel via Office Script) ────
+  // recibirFirmasSP no requiere sesión: se autentica con un secreto
+  // compartido (Script Property FIRMAS_SP_SECRET) porque el Office
+  // Script no maneja login de usuario.
+  if (action === 'recibirFirmasSP') {
+    return recibirFirmasSP_(payload.secret, payload.filas);
+  }
+
+  if (action === 'getFirmaSPByPlaca') {
+    const session = validateSession_(payload.sessionToken);
+    if (!session.ok) return session;
+    return getFirmaSPByPlaca_(payload.placa);
   }
 
   if (action === 'listContratos') {
@@ -1135,7 +1151,7 @@ function getContratosSheet_() {
    Pipeline: NUEVO → VALIDADO → LIQUIDADO → CONTRATADO → FIRMADO → APROBADO
    Los módulos pueden saltar estados pero el dashboard usa este
    orden para mostrar el progreso.                                  */
-const ESTADOS_PROCESO = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','FIRMADO','APROBADO','RECHAZADO'];
+const ESTADOS_PROCESO = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','PENDIENTE_FIRMA','FIRMADO','APROBADO','RECHAZADO'];
 
 function ensureContratosSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1242,6 +1258,107 @@ function saveContrato_(data, session) {
     }
   } catch (err) {
     return { ok: false, message: 'Error al guardar contrato: ' + err.message };
+  }
+}
+
+/* ── FirmasSP: hoja sincronizada desde el Excel de SharePoint ───
+   Office Script empuja filas {placa, correoTitular, correoCony};
+   esta función las hace upsert por placa.                          */
+function ensureFirmasSPSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(FIRMAS_SP_SHEET);
+  if (!sh) sh = ss.insertSheet(FIRMAS_SP_SHEET);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, 5).setValues([[
+      'PLACA','CORREO_TITULAR','CORREO_CONYUGE','MES_HOJA','UPDATED_AT'
+    ]]);
+    const hdr = sh.getRange(1, 1, 1, 5);
+    hdr.setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 100);
+    sh.setColumnWidth(2, 240);
+    sh.setColumnWidth(3, 240);
+    sh.setColumnWidth(4, 100);
+    sh.setColumnWidth(5, 160);
+  }
+  return sh;
+}
+
+/* Recibe filas desde Office Script y hace upsert por placa.
+   Requiere el secreto compartido en Script Properties:
+     clave: FIRMAS_SP_SECRET   valor: <una cadena larga aleatoria> */
+function recibirFirmasSP_(secret, filas) {
+  try {
+    const expected = PropertiesService.getScriptProperties().getProperty('FIRMAS_SP_SECRET');
+    if (!expected) {
+      return { ok: false, message: 'FIRMAS_SP_SECRET no configurado en Script Properties.' };
+    }
+    if (String(secret||'') !== expected) {
+      return { ok: false, message: 'Secreto inválido.' };
+    }
+    if (!Array.isArray(filas)) {
+      return { ok: false, message: 'filas debe ser un arreglo.' };
+    }
+    const sheet = ensureFirmasSPSheet_();
+    const lastRow = sheet.getLastRow();
+    let placasExistentes = {};
+    if (lastRow > 1) {
+      const rng = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < rng.length; i++) {
+        const p = String(rng[i][0]||'').toUpperCase().replace(/\s/g,'');
+        if (p) placasExistentes[p] = i + 2;  // número de fila
+      }
+    }
+
+    let creados = 0, actualizados = 0, saltados = 0;
+    const ahora = new Date();
+    filas.forEach(function(f) {
+      const placa = String((f && f.placa) || '').toUpperCase().replace(/\s/g,'');
+      if (!placa) { saltados++; return; }
+      const correoTit = String((f && f.correoTitular) || '').trim();
+      const correoCon = String((f && f.correoCony)    || '').trim();
+      const mes       = String((f && f.mesHoja)       || '').trim();
+      const rowData = [placa, correoTit, correoCon, mes, ahora];
+      if (placasExistentes[placa]) {
+        sheet.getRange(placasExistentes[placa], 1, 1, 5).setValues([rowData]);
+        actualizados++;
+      } else {
+        sheet.appendRow(rowData);
+        creados++;
+      }
+    });
+    return { ok: true, creados: creados, actualizados: actualizados, saltados: saltados,
+             total: filas.length, message: 'Sincronización OK.' };
+  } catch (err) {
+    return { ok: false, message: 'Error en recibirFirmasSP: ' + err.message };
+  }
+}
+
+function getFirmaSPByPlaca_(placa) {
+  try {
+    const p = String(placa||'').toUpperCase().replace(/\s/g,'');
+    if (!p) return { ok: false, message: 'Placa requerida.' };
+    const sheet = ensureFirmasSPSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { ok: false, message: 'Sin sincronización aún. Pulsa el botón en el Excel.' };
+    const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]||'').toUpperCase() === p) {
+        return {
+          ok: true,
+          data: {
+            placa:          data[i][0],
+            correoTitular:  data[i][1],
+            correoCony:     data[i][2],
+            mesHoja:        data[i][3],
+            actualizado:    data[i][4]
+          }
+        };
+      }
+    }
+    return { ok: false, message: 'Placa '+p+' no encontrada en la hoja sincronizada.' };
+  } catch (err) {
+    return { ok: false, message: 'Error en getFirmaSPByPlaca: ' + err.message };
   }
 }
 

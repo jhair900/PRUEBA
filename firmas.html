@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUTOCOR | Firmas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="js/expediente.js"></script>
+<style>
+  :root{
+    --brand:#E53F2E;
+    --brand-dark:#c0341f;
+    --navy:#0f172a;
+    --gray-1:#475569;
+    --gray-2:#64748b;
+    --bg:#f8fafc;
+    --card:#ffffff;
+    --line:#e2e8f0;
+    --ok:#16a34a;
+    --ok-bg:#dcfce7;
+    --warn:#f59e0b;
+    --warn-bg:#fef3c7;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:Poppins,Arial,sans-serif;color:var(--navy);
+    background:
+      radial-gradient(circle at top left, rgba(229,63,46,.08), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(15,23,42,.05), transparent 30%),
+      var(--bg);
+    min-height:100vh;padding:20px 16px;
+  }
+  .wrap{max-width:1100px;margin:0 auto}
+  header{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    margin-bottom:22px;flex-wrap:wrap;
+  }
+  .title-block h1{
+    margin:0;font-size:24px;font-weight:800;letter-spacing:.3px;
+  }
+  .title-block .sub{
+    font-size:13px;color:var(--gray-2);margin-top:2px;
+  }
+  .back-link{
+    text-decoration:none;color:var(--gray-1);font-size:13px;font-weight:700;
+    display:inline-flex;align-items:center;gap:6px;
+    padding:8px 14px;border-radius:10px;background:#fff;border:1.5px solid var(--line);
+    transition:all .12s;
+  }
+  .back-link:hover{border-color:var(--gray-1);color:var(--navy)}
+
+  /* ── Buscador ──────────────────────────────── */
+  .search-card{
+    background:var(--card);padding:20px 22px;border-radius:18px;
+    border:1.5px solid var(--line);box-shadow:0 6px 18px rgba(0,0,0,.04);
+    margin-bottom:20px;
+  }
+  .search-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #placa{
+    flex:1;min-width:240px;
+    padding:14px 18px;border:2px solid var(--line);border-radius:12px;
+    font-size:20px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+    transition:border-color .14s, box-shadow .14s;
+  }
+  #placa:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px rgba(229,63,46,.12)}
+  .btn-search{
+    padding:14px 24px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;
+    font-weight:800;font-size:14px;letter-spacing:.5px;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 8px 20px rgba(229,63,46,.22);transition:transform .12s;
+  }
+  .btn-search:hover{transform:translateY(-1px)}
+  .err{
+    margin-top:12px;padding:10px 14px;border-radius:10px;
+    background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:13px;
+    display:none;
+  }
+
+  /* ── Tarjeta de datos ───────────────────────── */
+  .card{
+    background:var(--card);border-radius:18px;border:1.5px solid var(--line);
+    box-shadow:0 8px 24px rgba(0,0,0,.05);
+    overflow:hidden;display:none;
+  }
+  .card-header{
+    padding:18px 22px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#f8fafc,#f1f5f9);
+  }
+  .card-title{font-size:13px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--gray-1)}
+  .placa-hero{
+    display:inline-flex;align-items:center;gap:8px;
+    background:linear-gradient(135deg,var(--navy),#1e293b);color:#fff;
+    padding:6px 18px;border-radius:10px;
+    font-size:18px;font-weight:900;letter-spacing:3px;
+  }
+  .state-badge{
+    padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;
+    letter-spacing:.5px;text-transform:uppercase;
+    background:#f3f4f6;color:#6b7280;border:1.5px solid #d1d5db;
+  }
+
+  .card-body{padding:22px 24px}
+  .group{margin-bottom:22px}
+  .group-title{
+    font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+    color:var(--gray-2);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--line);
+  }
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 18px}
+  .field{display:flex;flex-direction:column;gap:3px;padding:10px 12px;background:#f8fafc;border:1px solid var(--line);border-radius:10px}
+  .field-label{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gray-2)}
+  .field-value{font-size:14px;font-weight:700;color:var(--navy);min-height:18px;word-break:break-word}
+  .field-source{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-top:2px}
+  .source-sistema{color:#16a34a}
+  .source-form{color:#0891b2}
+  .source-missing{color:#dc2626}
+  .field-value.empty{color:#94a3b8;font-style:italic;font-weight:500}
+
+  .card-footer{
+    padding:16px 24px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    background:#f8fafc;flex-wrap:wrap;
+  }
+  .footer-info{font-size:11px;color:var(--gray-2)}
+  .btn-enviar{
+    padding:12px 22px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+    font-weight:800;font-size:13px;letter-spacing:.4px;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 8px 20px rgba(124,58,237,.28);transition:transform .12s;
+  }
+  .btn-enviar:hover{transform:translateY(-1px)}
+  .btn-enviar:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.4)}
+
+  .loading{display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:var(--brand);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Toast ─────────────────────────────────── */
+  .toast{
+    position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);
+    background:#0f172a;color:#fff;padding:14px 22px;border-radius:14px;
+    font-size:14px;font-weight:700;letter-spacing:.2px;
+    box-shadow:0 20px 40px rgba(0,0,0,.3);
+    opacity:0;pointer-events:none;transition:all .25s;z-index:1000;
+  }
+  .toast.visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .toast.ok{background:linear-gradient(135deg,#16a34a,#15803d)}
+  .toast.err{background:linear-gradient(135deg,#dc2626,#991b1b)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <h1>Módulo de Firmas</h1>
+      <div class="sub">Consolidación de datos para enviar a firma digital · Security Data</div>
+    </div>
+    <a class="back-link" href="index.html">← Volver al inicio</a>
+  </header>
+
+  <!-- ── Buscador ──────────────────────────────── -->
+  <div class="search-card">
+    <div class="search-row">
+      <input id="placa" type="text" placeholder="PLACA (ej. PDY6688)"
+             autocomplete="off" maxlength="10"
+             oninput="this.value=this.value.toUpperCase()"
+             onkeydown="if(event.key==='Enter') buscar()">
+      <button type="button" class="btn-search" onclick="buscar()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Buscar
+      </button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <!-- ── Tarjeta de datos consolidados ─────────── -->
+  <div class="card" id="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Datos para envío a firma</div>
+        <div class="placa-hero" id="placaHero">—</div>
+      </div>
+      <div class="state-badge" id="stateBadge">—</div>
+    </div>
+
+    <div class="card-body">
+      <div class="group">
+        <div class="group-title">Titular</div>
+        <div class="fields">
+          <div class="field">
+            <div class="field-label">Propietario</div>
+            <div class="field-value" id="fPropietario">—</div>
+            <div class="field-source source-sistema" id="sPropietario">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Código dactilar titular</div>
+            <div class="field-value" id="fCodDactTit">—</div>
+            <div class="field-source source-sistema" id="sCodDactTit">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Teléfono titular</div>
+            <div class="field-value" id="fTelTit">—</div>
+            <div class="field-source source-sistema" id="sTelTit">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Dirección titular</div>
+            <div class="field-value" id="fDirTit">—</div>
+            <div class="field-source source-sistema" id="sDirTit">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Correo titular</div>
+            <div class="field-value" id="fCorreoTit">—</div>
+            <div class="field-source source-form" id="sCorreoTit">📨 form SharePoint</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group" id="grpCony">
+        <div class="group-title">Cónyuge</div>
+        <div class="fields">
+          <div class="field">
+            <div class="field-label">Cónyuge</div>
+            <div class="field-value" id="fConyuge">—</div>
+            <div class="field-source source-sistema" id="sConyuge">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Código dactilar cónyuge</div>
+            <div class="field-value" id="fCodDactCony">—</div>
+            <div class="field-source source-sistema" id="sCodDactCony">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Teléfono cónyuge</div>
+            <div class="field-value" id="fTelCony">—</div>
+            <div class="field-source source-sistema" id="sTelCony">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Dirección cónyuge</div>
+            <div class="field-value" id="fDirCony">—</div>
+            <div class="field-source source-sistema" id="sDirCony">📋 misma del titular</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Correo cónyuge</div>
+            <div class="field-value" id="fCorreoCony">—</div>
+            <div class="field-source source-form" id="sCorreoCony">📨 form SharePoint</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-info" id="footerInfo">—</div>
+      <button type="button" class="btn-enviar" id="btnEnviar" onclick="enviarAFirmar()">
+        ✓ Enviado a firmar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let __expediente = null;
+let __firmaSP    = null;
+
+function _txt(id, val, opts){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const v = (val === null || val === undefined || String(val).trim() === '') ? '' : String(val).trim();
+  if(v){
+    el.textContent = v;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = (opts && opts.placeholder) || '—';
+    el.classList.add('empty');
+  }
+}
+
+function _source(id, label, cls){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.className = 'field-source ' + cls;
+  el.textContent = label;
+}
+
+function _toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (kind||'') + ' visible';
+  setTimeout(function(){ t.classList.remove('visible'); }, 3200);
+}
+
+function _pintarEstadoBadge(estado){
+  const b = document.getElementById('stateBadge');
+  const col = (Expediente.ESTADO_COLOR||{})[estado] || { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' };
+  const lab = (Expediente.ESTADO_LABEL||{})[estado] || estado || '—';
+  b.textContent = lab;
+  b.style.background = col.bg;
+  b.style.color = col.fg;
+  b.style.borderColor = col.bd;
+}
+
+async function buscar(){
+  const placa = (document.getElementById('placa').value||'').replace(/\s/g,'').toUpperCase();
+  const errEl = document.getElementById('err');
+  errEl.style.display = 'none';
+  if(!placa){
+    errEl.textContent = 'Ingresa una placa.';
+    errEl.style.display = 'block';
+    return;
+  }
+  // Requiere sesión
+  let auth = {};
+  try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
+  if(!auth.token){
+    errEl.textContent = 'No hay sesión activa. Entra desde el inicio.';
+    errEl.style.display = 'block';
+    setTimeout(function(){ window.location.href = 'index.html'; }, 1400);
+    return;
+  }
+
+  const card = document.getElementById('card');
+  card.style.display = 'block';
+  document.getElementById('placaHero').textContent = placa;
+  _pintarEstadoBadge('');
+  document.getElementById('footerInfo').innerHTML = '<span class="loading"></span> Consultando…';
+  document.getElementById('btnEnviar').disabled = true;
+
+  try {
+    const [exp, sp] = await Promise.all([
+      Expediente.cargarPorPlaca(placa),
+      Expediente.cargarFirmaSP(placa)
+    ]);
+    __expediente = (exp && exp.ok) ? exp.data : null;
+    __firmaSP    = (sp  && sp.ok)  ? sp.data  : null;
+
+    if(!__expediente){
+      errEl.textContent = 'No hay expediente para '+placa+' en Contratos. Procesa la validación primero.';
+      errEl.style.display = 'block';
+      card.style.display = 'none';
+      return;
+    }
+    _pintar();
+  } catch(e){
+    errEl.textContent = 'Error de consulta: ' + (e.message||e);
+    errEl.style.display = 'block';
+  }
+}
+
+function _pintar(){
+  const d  = __expediente || {};
+  const sp = __firmaSP    || {};
+  const ced = d['cedula_prop'] || d['cedula-prop'] || {};
+  const cony= d['cedula_cony'] || d['cedula-cony'] || {};
+
+  // Estado actual
+  _pintarEstadoBadge(String(d.estadoProceso||'VALIDADO').toUpperCase());
+
+  // Titular
+  _txt('fPropietario',  d.propietario);
+  _txt('fCodDactTit',   ced.codigoDactilar);
+  _txt('fTelTit',       d.telefonoProp);
+  _txt('fDirTit',       d.domicilio);
+  _txt('fCorreoTit',    sp.correoTitular, { placeholder:'no disponible — sincroniza el Excel' });
+  _source('sCorreoTit', sp.correoTitular ? '📨 form SharePoint' : '📨 form no sincronizado',
+          sp.correoTitular ? 'source-form' : 'source-missing');
+
+  // Cónyuge: solo lo mostramos si tiene nombre o estado civil casado/unión
+  const ec = String(d.estadoCivil||'').toUpperCase();
+  const conyApplies = !!d.nombreCony || /CASAD|UNI[ÓO]N/.test(ec);
+  document.getElementById('grpCony').style.display = conyApplies ? 'block' : 'none';
+  if(conyApplies){
+    _txt('fConyuge',      d.nombreCony);
+    _txt('fCodDactCony',  cony.codigoDactilar);
+    _txt('fTelCony',      d.telefonoCony);
+    _txt('fDirCony',      d.domicilio);  // misma del titular según definición
+    _txt('fCorreoCony',   sp.correoCony, { placeholder:'no disponible — sincroniza el Excel' });
+    _source('sCorreoCony', sp.correoCony ? '📨 form SharePoint' : '📨 form no sincronizado',
+            sp.correoCony ? 'source-form' : 'source-missing');
+  }
+
+  // Footer info
+  const ult = sp.actualizado ? new Date(sp.actualizado) : null;
+  const txtSP = ult && !isNaN(ult.getTime())
+    ? 'Datos del form sincronizados: ' + ult.toLocaleString()
+    : 'Excel SharePoint aún no sincronizado para esta placa.';
+  document.getElementById('footerInfo').textContent = txtSP;
+
+  // Estado del botón
+  const btn = document.getElementById('btnEnviar');
+  const estado = String(d.estadoProceso||'').toUpperCase();
+  const idx = Expediente.indiceEstado(estado);
+  const idxEnviado = Expediente.indiceEstado('PENDIENTE_FIRMA');
+  if(idx >= idxEnviado){
+    btn.disabled = true;
+    btn.textContent = '✓ Ya enviado a firmar';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✓ Enviado a firmar';
+  }
+}
+
+async function enviarAFirmar(){
+  const d = __expediente;
+  if(!d || !d.placa){ _toast('Busca una placa primero','err'); return; }
+  if(!confirm('¿Marcar la placa '+d.placa+' como ENVIADA A FIRMAR?')) return;
+  const btn = document.getElementById('btnEnviar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Procesando...';
+  try {
+    const r = await Expediente.cambiarEstado(d.placa, 'PENDIENTE_FIRMA',
+      'Enviado a firma digital desde módulo Firmas');
+    if(r && r.ok){
+      d.estadoProceso = 'PENDIENTE_FIRMA';
+      _pintar();
+      _toast('Expediente '+d.placa+' marcado como "Enviado firma digital"', 'ok');
+    } else {
+      _toast('No se pudo marcar: ' + (r && r.message || 'error'), 'err');
+      btn.disabled = false; btn.textContent = '✓ Enviado a firmar';
+    }
+  } catch(e){
+    _toast('Error: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '✓ Enviado a firmar';
+  }
+}
+
+/* Si veníamos del dashboard con placa precargada */
+window.addEventListener('DOMContentLoaded', function(){
+  try{
+    const pre = sessionStorage.getItem('autocor_placa_preload');
+    if(pre){
+      sessionStorage.removeItem('autocor_placa_preload');
+      document.getElementById('placa').value = pre;
+      setTimeout(buscar, 250);
+    }
+  }catch(_){}
+});
+</script>
+</body>
+</html>
