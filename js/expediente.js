@@ -128,25 +128,40 @@
   }
 
   /* Pipeline de estados (orden = avance) */
-  const ESTADOS = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','FIRMADO','APROBADO'];
+  const ESTADOS = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','PENDIENTE_FIRMA','FIRMADO','APROBADO'];
   const ESTADO_LABEL = {
     'NUEVO':'Nuevo',
     'VALIDADO':'Validado',
     'LIQUIDADO':'Liquidado',
     'CONTRATADO':'Contratado',
+    'PENDIENTE_FIRMA':'Enviado firma digital',
     'FIRMADO':'Firmado',
     'APROBADO':'Aprobado',
     'RECHAZADO':'Rechazado'
   };
   const ESTADO_COLOR = {
-    'NUEVO':       { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' },
-    'VALIDADO':    { bg:'#dbeafe', fg:'#1e40af', bd:'#93c5fd' },
-    'LIQUIDADO':   { bg:'#fae8ff', fg:'#86198f', bd:'#e9d5ff' },
-    'CONTRATADO':  { bg:'#fef3c7', fg:'#92400e', bd:'#fde68a' },
-    'FIRMADO':     { bg:'#cffafe', fg:'#155e75', bd:'#67e8f9' },
-    'APROBADO':    { bg:'#dcfce7', fg:'#166534', bd:'#86efac' },
-    'RECHAZADO':   { bg:'#fee2e2', fg:'#991b1b', bd:'#fca5a5' }
+    'NUEVO':           { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' },
+    'VALIDADO':        { bg:'#dbeafe', fg:'#1e40af', bd:'#93c5fd' },
+    'LIQUIDADO':       { bg:'#fae8ff', fg:'#86198f', bd:'#e9d5ff' },
+    'CONTRATADO':      { bg:'#fef3c7', fg:'#92400e', bd:'#fde68a' },
+    'PENDIENTE_FIRMA': { bg:'#ede9fe', fg:'#5b21b6', bd:'#c4b5fd' },
+    'FIRMADO':         { bg:'#cffafe', fg:'#155e75', bd:'#67e8f9' },
+    'APROBADO':        { bg:'#dcfce7', fg:'#166534', bd:'#86efac' },
+    'RECHAZADO':       { bg:'#fee2e2', fg:'#991b1b', bd:'#fca5a5' }
   };
+
+  /* ── cargarFirmaSP(placa) ──────────────────────────────────────
+     Trae los correos sincronizados desde el Excel de SharePoint
+     (via Office Script). Devuelve { ok, data:{correoTitular,correoCony,...} } */
+  async function cargarFirmaSP(placa){
+    const p = String(placa||'').replace(/\s/g,'').toUpperCase();
+    if(!p) return { ok:false, message:'placa vacía' };
+    try {
+      return await _post('getFirmaSPByPlaca', { placa: p });
+    } catch(err){
+      return { ok:false, message:'error de red: '+err.message };
+    }
+  }
 
   /* ── cambiarEstado(placa, estado, observacion) ──────────────── */
   async function cambiarEstado(placa, estado, observacion){
@@ -173,6 +188,7 @@
 
   global.Expediente = {
     cargarPorPlaca: cargarPorPlaca,
+    cargarFirmaSP:  cargarFirmaSP,
     estadoPorPlaca: estadoPorPlaca,
     autollenar:     autollenar,
     mostrarBadge:   mostrarBadge,

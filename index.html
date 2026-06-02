@@ -642,11 +642,11 @@
                 </div>
                 <span class="exp-pill-state">·</span>
               </div>
-              <div class="exp-pill" data-step="firmas" data-target="" data-disabled="1">
+              <div class="exp-pill" data-step="firmas" data-target="firmas">
                 <span class="exp-pill-num">3</span>
                 <div>
                   <div class="exp-pill-title">Firmas electrónicas</div>
-                  <div class="exp-pill-sub">próximamente</div>
+                  <div class="exp-pill-sub">—</div>
                 </div>
                 <span class="exp-pill-state">·</span>
               </div>
@@ -896,7 +896,8 @@
       liquidacion: { nombre: 'Liquidaciones', url: 'liquidacion.html' },
       pagos:       { nombre: 'Pagos',         url: 'pagos.html'       },
       ventas:      { nombre: 'Ventas',         url: 'ventas.html'      },
-      contratos:   { nombre: 'Contratos',      url: 'contratos.html'   }
+      contratos:   { nombre: 'Contratos',      url: 'contratos.html'   },
+      firmas:      { nombre: 'Firmas',         url: 'firmas.html'      }
     };
 
     let moduloActivo = null; // clave del módulo que inició el login
@@ -1090,7 +1091,7 @@
     const _PIPELINE_MIN = {
       validacion:  'VALIDADO',
       liquidacion: 'LIQUIDADO',
-      firmas:      'FIRMADO',
+      firmas:      'PENDIENTE_FIRMA',
       pagos:       'APROBADO',
       ventas:      null  // independiente
     };
