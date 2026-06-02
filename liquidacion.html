@@ -627,6 +627,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 .empty-support{border:1px dashed #cbd5e1;border-radius:12px;padding:24px;color:var(--muted);font-size:13px;text-align:center;}
 
 </style>
+<script src="js/expediente.js"></script>
 </head>
 <body>
 
@@ -2270,10 +2271,47 @@ async function buscarPlaca(placaRaw){
   }
 
   setStatus('BUSCANDO PLACA ' + placa + '...');
-  const resp = await apiCall("getByPlaca", { placa });
+  let resp;
+  try {
+    resp = await apiCall("getByPlaca", { placa });
+  } catch(e){
+    // Si no hay registro en Liquidaciones, igual intentamos cargar
+    // los datos base desde el Expediente (Contratos) para autollenar.
+    resp = { data: null };
+  }
   window.__loadedRecord = resp.data || null;
   cargarFormularioDesdeData(resp.data, placa);
-  setStatus('CARGADO DESDE LÍNEA — ' + placa, false, true);
+  await _autollenarDesdeExpediente(placa);
+  setStatus('CARGADO — ' + placa, false, true);
+}
+
+/* Autollena campos vacíos con datos del expediente de Contratos.
+   No sobrescribe lo que ya tenga la liquidación existente. */
+async function _autollenarDesdeExpediente(placa){
+  if(typeof Expediente === 'undefined') return;
+  try {
+    const r = await Expediente.cargarPorPlaca(placa);
+    if(!r || !r.ok || !r.data) return;
+    const d = r.data;
+    // Mapeo input → campo del expediente
+    const map = {
+      placa:        'placa',
+      cedula:       'cedulaPropietario',
+      marca:        'marca',
+      modelo:       'modelo',
+      anio:         'anio',
+      color:        'color',
+      motor:        'motor',
+      chasis:       'chasis'
+    };
+    const n = Expediente.autollenar(map, d, { sobrescribir:false });
+    if(n > 0){
+      const cont = document.querySelector('.screen') || document.body;
+      Expediente.mostrarBadge(cont,
+        n+' campo(s) autollenados desde el expediente de Contratos');
+      console.log('[Expediente] '+n+' campo(s) cargados para placa '+placa);
+    }
+  } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); }
 }
 
 function _escapeRegExp(s){return String(s||"").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");}
@@ -3462,6 +3500,19 @@ async function generarPDFSaneamiento(placa){
   syncAutoBox();
   renderAuthUI();
   renderSupportPrints();
+
+  // Si veníamos del dashboard con una placa precargada, dispararla
+  try{
+    const pre = sessionStorage.getItem('autocor_placa_preload');
+    if(pre){
+      sessionStorage.removeItem('autocor_placa_preload');
+      setTimeout(function(){
+        const inp = document.getElementById('placa');
+        if(inp){ inp.value = pre; }
+        if(typeof buscarPlaca === 'function') buscarPlaca(pre);
+      }, 400);
+    }
+  }catch(_){}
 
   // Mostrar la UI de login o cartilla de inmediato sin esperar al servidor
   if(currentUser && authToken){
