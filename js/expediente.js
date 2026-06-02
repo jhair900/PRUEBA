@@ -127,11 +127,60 @@
     setTimeout(function(){ badge.style.transition = 'opacity .6s'; badge.style.opacity = '0.55'; }, 6000);
   }
 
+  /* Pipeline de estados (orden = avance) */
+  const ESTADOS = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','FIRMADO','APROBADO'];
+  const ESTADO_LABEL = {
+    'NUEVO':'Nuevo',
+    'VALIDADO':'Validado',
+    'LIQUIDADO':'Liquidado',
+    'CONTRATADO':'Contratado',
+    'FIRMADO':'Firmado',
+    'APROBADO':'Aprobado',
+    'RECHAZADO':'Rechazado'
+  };
+  const ESTADO_COLOR = {
+    'NUEVO':       { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' },
+    'VALIDADO':    { bg:'#dbeafe', fg:'#1e40af', bd:'#93c5fd' },
+    'LIQUIDADO':   { bg:'#fae8ff', fg:'#86198f', bd:'#e9d5ff' },
+    'CONTRATADO':  { bg:'#fef3c7', fg:'#92400e', bd:'#fde68a' },
+    'FIRMADO':     { bg:'#cffafe', fg:'#155e75', bd:'#67e8f9' },
+    'APROBADO':    { bg:'#dcfce7', fg:'#166534', bd:'#86efac' },
+    'RECHAZADO':   { bg:'#fee2e2', fg:'#991b1b', bd:'#fca5a5' }
+  };
+
+  /* ── cambiarEstado(placa, estado, observacion) ──────────────── */
+  async function cambiarEstado(placa, estado, observacion){
+    const p = String(placa||'').replace(/\s/g,'').toUpperCase();
+    if(!p) return { ok:false, message:'placa vacía' };
+    if(ESTADOS.indexOf(String(estado).toUpperCase()) < 0
+       && String(estado).toUpperCase() !== 'RECHAZADO'){
+      return { ok:false, message:'estado inválido: '+estado };
+    }
+    try {
+      return await _post('setEstadoProceso', {
+        placa: p, estado: String(estado).toUpperCase(),
+        observacion: observacion || ''
+      });
+    } catch(err){
+      return { ok:false, message:'error de red: '+err.message };
+    }
+  }
+
+  /* Devuelve la posición del estado en el pipeline (-1 si no aplica). */
+  function indiceEstado(estado){
+    return ESTADOS.indexOf(String(estado||'').toUpperCase());
+  }
+
   global.Expediente = {
     cargarPorPlaca: cargarPorPlaca,
     estadoPorPlaca: estadoPorPlaca,
     autollenar:     autollenar,
-    mostrarBadge:   mostrarBadge
+    mostrarBadge:   mostrarBadge,
+    cambiarEstado:  cambiarEstado,
+    indiceEstado:   indiceEstado,
+    ESTADOS:        ESTADOS,
+    ESTADO_LABEL:   ESTADO_LABEL,
+    ESTADO_COLOR:   ESTADO_COLOR
   };
 
   /* Estilo base para campos autollenados (solo se inyecta una vez) */

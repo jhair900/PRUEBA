@@ -212,6 +212,12 @@ function handleAction_(action, payload) {
     return getContratoByPlaca_(payload.placa, session);
   }
 
+  if (action === 'setEstadoProceso') {
+    const session = validateSession_(payload.sessionToken);
+    if (!session.ok) return session;
+    return setEstadoProceso_(payload.placa, payload.estado, payload.observacion, session);
+  }
+
   if (action === 'listContratos') {
     const session = validateSession_(payload.sessionToken);
     if (!session.ok) return session;
@@ -1125,6 +1131,12 @@ function getContratosSheet_() {
   return ss.getSheetByName(CONTRATOS_SHEET);
 }
 
+/* ── Estados válidos del expediente ─────────────────────────────
+   Pipeline: NUEVO → VALIDADO → LIQUIDADO → CONTRATADO → FIRMADO → APROBADO
+   Los módulos pueden saltar estados pero el dashboard usa este
+   orden para mostrar el progreso.                                  */
+const ESTADOS_PROCESO = ['NUEVO','VALIDADO','LIQUIDADO','CONTRATADO','FIRMADO','APROBADO','RECHAZADO'];
+
 function ensureContratosSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(CONTRATOS_SHEET);
@@ -1132,7 +1144,7 @@ function ensureContratosSheet_() {
   if (!sh) sh = ss.insertSheet(CONTRATOS_SHEET);
 
   if (sh.getLastRow() === 0) {
-    sh.getRange(1, 1, 1, 8).setValues([[
+    sh.getRange(1, 1, 1, 9).setValues([[
       'PLACA',
       'PROPIETARIO',
       'CEDULA_PROP',
@@ -1140,10 +1152,11 @@ function ensureContratosSheet_() {
       'ASESOR',
       'RIESGO_VALIDACION',
       'UPDATED_AT',
-      'DATA_JSON'
+      'DATA_JSON',
+      'ESTADO_PROCESO'
     ]]);
     // Formato de encabezados
-    const hdr = sh.getRange(1, 1, 1, 8);
+    const hdr = sh.getRange(1, 1, 1, 9);
     hdr.setFontWeight('bold');
     hdr.setBackground('#1e3a5f');
     hdr.setFontColor('#ffffff');
@@ -1156,6 +1169,15 @@ function ensureContratosSheet_() {
     sh.setColumnWidth(6, 140); // RIESGO_VALIDACION
     sh.setColumnWidth(7, 160); // UPDATED_AT
     sh.setColumnWidth(8, 60);  // DATA_JSON (contenido largo)
+    sh.setColumnWidth(9, 140); // ESTADO_PROCESO
+  } else {
+    // Migración suave: si la hoja existía con 8 columnas, añadir ESTADO_PROCESO
+    const cols = sh.getLastColumn();
+    if (cols < 9) {
+      sh.getRange(1, 9).setValue('ESTADO_PROCESO');
+      sh.getRange(1, 9).setFontWeight('bold').setBackground('#1e3a5f').setFontColor('#ffffff');
+      sh.setColumnWidth(9, 140);
+    }
   }
 
   return sh;
@@ -1185,6 +1207,20 @@ function saveContrato_(data, session) {
     data.asesor        = buildResponsablesLabel_(history);
     data.fechaActualizacion = new Date().toISOString();
 
+    // Estado del expediente: al guardar desde contratos se considera VALIDADO
+    // si no existía estado previo. Preserva estados más avanzados.
+    const estadoPrevio = (existingData && existingData.estadoProceso) || (row > 0 ? sheet.getRange(row, 9).getValue() : '') || '';
+    const idxPrevio = ESTADOS_PROCESO.indexOf(String(estadoPrevio||'').toUpperCase());
+    const idxValidado = ESTADOS_PROCESO.indexOf('VALIDADO');
+    let estadoFinal = (idxPrevio >= idxValidado) ? estadoPrevio.toUpperCase() : 'VALIDADO';
+    if (data.estadoProceso) {
+      const idxNuevo = ESTADOS_PROCESO.indexOf(String(data.estadoProceso).toUpperCase());
+      if (idxNuevo > idxPrevio) estadoFinal = String(data.estadoProceso).toUpperCase();
+    }
+    data.estadoProceso = estadoFinal;
+    data.estadoActualizadoEn = new Date().toISOString();
+    data.estadoActualizadoPor = session.user || data.estadoActualizadoPor || '';
+
     const rowData = [
       placa,
       data.propietario        || '',
@@ -1193,18 +1229,61 @@ function saveContrato_(data, session) {
       data.asesor             || session.user || '',
       data.riesgoValidacion   || '',
       new Date(),
-      JSON.stringify(data)
+      JSON.stringify(data),
+      estadoFinal
     ];
 
     if (row > 0) {
-      sheet.getRange(row, 1, 1, 8).setValues([rowData]);
-      return { ok: true, message: 'Contrato actualizado.', placa: placa, updated: true, data: data };
+      sheet.getRange(row, 1, 1, 9).setValues([rowData]);
+      return { ok: true, message: 'Contrato actualizado.', placa: placa, updated: true, data: data, estadoProceso: estadoFinal };
     } else {
       sheet.appendRow(rowData);
-      return { ok: true, message: 'Contrato guardado.', placa: placa, updated: false, data: data };
+      return { ok: true, message: 'Contrato guardado.', placa: placa, updated: false, data: data, estadoProceso: estadoFinal };
     }
   } catch (err) {
     return { ok: false, message: 'Error al guardar contrato: ' + err.message };
+  }
+}
+
+/* ── setEstadoProceso(placa, estado, observacion) ─────────────
+   Avanza o retrocede el estado del expediente. Registra quién y
+   cuándo lo cambió. Mantiene un historial dentro del data JSON. */
+function setEstadoProceso_(placa, estado, observacion, session) {
+  try {
+    const p = normalizePlaca_(placa);
+    if (!p) return { ok: false, message: 'Placa requerida.' };
+    const est = String(estado||'').toUpperCase().trim();
+    if (ESTADOS_PROCESO.indexOf(est) < 0) {
+      return { ok: false, message: 'Estado inválido: ' + estado };
+    }
+
+    const sheet = getContratosSheet_();
+    const row = findRowByPlaca_(sheet, p);
+    if (row <= 0) return { ok: false, message: 'No existe expediente para esa placa. Guarda primero en Contratos.' };
+
+    const json = sheet.getRange(row, 8).getValue();
+    const data = json ? JSON.parse(json) : {};
+    const ahora = new Date().toISOString();
+    const evento = {
+      estado: est,
+      usuario: (session && session.user) || '',
+      cuando: ahora,
+      observacion: String(observacion||'').substring(0,500)
+    };
+    data.historialEstados = Array.isArray(data.historialEstados) ? data.historialEstados : [];
+    data.historialEstados.push(evento);
+    data.estadoProceso = est;
+    data.estadoActualizadoEn = ahora;
+    data.estadoActualizadoPor = evento.usuario;
+    data.observacionEstado = evento.observacion;
+
+    sheet.getRange(row, 8).setValue(JSON.stringify(data));
+    sheet.getRange(row, 9).setValue(est);
+    sheet.getRange(row, 7).setValue(new Date());
+
+    return { ok: true, message: 'Estado actualizado a '+est+'.', placa: p, estadoProceso: est, data: data };
+  } catch (err) {
+    return { ok: false, message: 'Error al cambiar estado: ' + err.message };
   }
 }
 
@@ -1223,7 +1302,13 @@ function getContratoByPlaca_(placa, session) {
     data.asesorEditor  = lastEditor_(history);
     data.asesor        = buildResponsablesLabel_(history);
 
-    return { ok: true, data: data, openedBy: session.user };
+    // Asegurar que el estado en columna y en data esté sincronizado
+    let estadoCol = '';
+    try { estadoCol = String(sheet.getRange(row, 9).getValue() || ''); } catch(_){}
+    if (estadoCol && !data.estadoProceso) data.estadoProceso = estadoCol.toUpperCase();
+    if (!data.estadoProceso) data.estadoProceso = 'VALIDADO';
+
+    return { ok: true, data: data, openedBy: session.user, estadoProceso: data.estadoProceso };
   } catch (err) {
     return { ok: false, message: 'Error al buscar contrato: ' + err.message };
   }
