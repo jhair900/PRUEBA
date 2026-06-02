@@ -125,6 +125,7 @@
     background:#f8fafc;flex-wrap:wrap;
   }
   .footer-info{font-size:11px;color:var(--gray-2)}
+  .footer-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .btn-enviar{
     padding:12px 22px;border:none;border-radius:12px;cursor:pointer;
     background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
@@ -134,6 +135,15 @@
   }
   .btn-enviar:hover{transform:translateY(-1px)}
   .btn-enviar:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.4)}
+  .btn-firmado{
+    padding:12px 22px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(135deg,#0891b2,#155e75);color:#fff;
+    font-weight:800;font-size:13px;letter-spacing:.4px;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 8px 20px rgba(8,145,178,.28);transition:transform .12s;
+  }
+  .btn-firmado:hover{transform:translateY(-1px)}
+  .btn-firmado:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.4)}
 
   .loading{display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:var(--brand);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -256,9 +266,14 @@
 
     <div class="card-footer">
       <div class="footer-info" id="footerInfo">—</div>
-      <button type="button" class="btn-enviar" id="btnEnviar" onclick="enviarAFirmar()">
-        ✓ Enviado a firmar
-      </button>
+      <div class="footer-actions">
+        <button type="button" class="btn-enviar" id="btnEnviar" onclick="enviarAFirmar()">
+          ✓ Enviado a firmar
+        </button>
+        <button type="button" class="btn-firmado" id="btnFirmado" onclick="marcarComoFirmado()" style="display:none">
+          📝 Marcar como firmado
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -392,17 +407,58 @@ function _pintar(){
     : 'Excel SharePoint aún no sincronizado para esta placa.';
   document.getElementById('footerInfo').textContent = txtSP;
 
-  // Estado del botón
-  const btn = document.getElementById('btnEnviar');
+  // Visibilidad y estado de los botones según el pipeline
+  const btnEnviar  = document.getElementById('btnEnviar');
+  const btnFirmado = document.getElementById('btnFirmado');
   const estado = String(d.estadoProceso||'').toUpperCase();
-  const idx = Expediente.indiceEstado(estado);
+  const idx        = Expediente.indiceEstado(estado);
   const idxEnviado = Expediente.indiceEstado('PENDIENTE_FIRMA');
-  if(idx >= idxEnviado){
-    btn.disabled = true;
-    btn.textContent = '✓ Ya enviado a firmar';
+  const idxFirmado = Expediente.indiceEstado('FIRMADO');
+
+  if(idx < idxEnviado){
+    // Aún no se envió a firmar
+    btnEnviar.disabled = false;
+    btnEnviar.style.display = 'inline-flex';
+    btnEnviar.textContent = '✓ Enviado a firmar';
+    btnFirmado.style.display = 'none';
+  } else if(idx === idxEnviado){
+    // Ya se envió, pendiente de firma → mostrar "marcar firmado"
+    btnEnviar.disabled = true;
+    btnEnviar.style.display = 'inline-flex';
+    btnEnviar.textContent = '✓ Ya enviado a firmar';
+    btnFirmado.disabled = false;
+    btnFirmado.style.display = 'inline-flex';
+    btnFirmado.textContent = '📝 Marcar como firmado';
   } else {
-    btn.disabled = false;
-    btn.textContent = '✓ Enviado a firmar';
+    // FIRMADO o más avanzado
+    btnEnviar.style.display = 'none';
+    btnFirmado.disabled = true;
+    btnFirmado.style.display = 'inline-flex';
+    btnFirmado.textContent = '✓ Ya firmado';
+  }
+}
+
+async function marcarComoFirmado(){
+  const d = __expediente;
+  if(!d || !d.placa){ _toast('Busca una placa primero','err'); return; }
+  if(!confirm('¿Marcar la placa '+d.placa+' como FIRMADA? El expediente pasará a Pagos para aprobación.')) return;
+  const btn = document.getElementById('btnFirmado');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Procesando...';
+  try {
+    const r = await Expediente.cambiarEstado(d.placa, 'FIRMADO',
+      'Firma electrónica recibida y confirmada en módulo Firmas');
+    if(r && r.ok){
+      d.estadoProceso = 'FIRMADO';
+      _pintar();
+      _toast('Expediente '+d.placa+' marcado como FIRMADO · pasa a Pagos','ok');
+    } else {
+      _toast('No se pudo marcar: ' + (r && r.message || 'error'), 'err');
+      btn.disabled = false; btn.textContent = '📝 Marcar como firmado';
+    }
+  } catch(e){
+    _toast('Error: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '📝 Marcar como firmado';
   }
 }
 

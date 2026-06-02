@@ -1095,15 +1095,26 @@ function _renderResumenExpediente(d){
     ult ? ('Último cambio: '+ult.estado+' por '+(ult.usuario||'?')+' · '+
            (new Date(ult.cuando)).toLocaleString()) : '';
 
-  // Estado del botón aprobar
+  // Estado del botón aprobar — solo se habilita si el expediente
+  // ya pasó por Firmas (estado FIRMADO o posterior)
   const btn = document.getElementById('btnAprobarExpediente');
   if(btn){
     if(estado === 'APROBADO'){
       btn.disabled = true;
       btn.textContent = '✓ Expediente ya aprobado';
+    } else if(estado === 'RECHAZADO'){
+      btn.disabled = true;
+      btn.textContent = '✗ Expediente rechazado';
     } else {
-      btn.disabled = false;
-      btn.textContent = '✓ Aprobar y enviar a contabilidad';
+      const idxActual  = Expediente.indiceEstado(estado);
+      const idxFirmado = Expediente.indiceEstado('FIRMADO');
+      if(idxActual < idxFirmado){
+        btn.disabled = true;
+        btn.textContent = '⚠ Falta firmar primero (' + (Expediente.ESTADO_LABEL[estado] || estado) + ')';
+      } else {
+        btn.disabled = false;
+        btn.textContent = '✓ Aprobar y enviar a contabilidad';
+      }
     }
   }
 }
@@ -1111,6 +1122,13 @@ function _renderResumenExpediente(d){
 async function aprobarExpediente(){
   const d = window.__expedienteActual;
   if(!d || !d.placa){ alert('Primero busca una placa con expediente.'); return; }
+  const estado = String(d.estadoProceso||'').toUpperCase();
+  const idxActual  = Expediente.indiceEstado(estado);
+  const idxFirmado = Expediente.indiceEstado('FIRMADO');
+  if(idxActual < idxFirmado){
+    alert('Este expediente aún no está firmado (estado actual: '+(Expediente.ESTADO_LABEL[estado]||estado)+'). Debe pasar por Firmas antes de aprobarse.');
+    return;
+  }
   if(!confirm('¿Aprobar el expediente de la placa '+d.placa+' y enviar a contabilidad?')) return;
   const btn = document.getElementById('btnAprobarExpediente');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
