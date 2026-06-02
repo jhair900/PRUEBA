@@ -784,6 +784,7 @@
     .validate-toast.visible{transform:translate(0,0)}
   }
 </style>
+<script src="js/expediente.js"></script>
 </head>
 <body>
 
@@ -6439,6 +6440,14 @@ async function validarTodoEnConjunto(){
         if(sub) sub.textContent = 'Proceso guardado automáticamente al generar los contratos (placa '+placa+').';
         window._contratoPlacaGuardada = placa;
         console.log('[GuardarContrato] Auto-guardado OK para placa', placa);
+        // Avanzar estado: se generaron los Word → CONTRATADO
+        try{
+          if(typeof Expediente !== 'undefined'){
+            Expediente.cambiarEstado(placa, 'CONTRATADO', 'Contratos Word generados')
+              .then(function(r){ if(r && r.ok) console.log('[Expediente] estado → CONTRATADO'); })
+              .catch(function(e){ console.warn('[Expediente] estado falló:', e); });
+          }
+        }catch(_){}
         return { ok:true, placa: placa, message: json.message || 'guardado' };
       } else {
         console.warn('[GuardarContrato] Auto-guardado falló:', json.message);

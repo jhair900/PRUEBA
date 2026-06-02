@@ -2232,6 +2232,14 @@ async function guardar(){
   syncPrintValues();
   renderQr();
   setStatus('GUARDADO CORRECTAMENTE — ' + placa, false, true);
+  // Avanzar el estado del expediente a LIQUIDADO (silencioso, sin bloquear)
+  try{
+    if(typeof Expediente !== 'undefined'){
+      Expediente.cambiarEstado(placa, 'LIQUIDADO', 'Liquidación guardada')
+        .then(function(r){ if(r && r.ok) console.log('[Expediente] estado → LIQUIDADO'); })
+        .catch(function(e){ console.warn('[Expediente] estado falló:', e); });
+    }
+  }catch(_){}
   alert("Liquidación guardada/actualizada correctamente para: " + placa);
   limpiar();
   await renderReporte();

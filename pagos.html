@@ -356,6 +356,42 @@
   .cbtn{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;display:inline-block;margin-left:4px;vertical-align:middle;transition:border-color .15s,transform .15s;}
   .cbtn:hover,.cbtn.on{border-color:#fff;transform:scale(1.3);}
   @media print{.cbtn{display:none!important;}}
+
+/* ── Resumen del Expediente ──────────────────────────────────── */
+.resumen-expediente{
+  margin:18px 0 0;padding:18px 20px;
+  background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);
+  border:1.5px solid #cbd5e1;border-radius:14px;
+  box-shadow:0 4px 14px rgba(0,0,0,.04);
+}
+.re-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.re-title{font-size:15px;font-weight:800;color:#0f172a;letter-spacing:.3px;text-transform:uppercase}
+.re-sub{font-size:11px;color:#64748b;margin-top:2px}
+.re-state{
+  padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;
+  letter-spacing:.5px;text-transform:uppercase;
+  background:#f3f4f6;color:#6b7280;border:1.5px solid #d1d5db;
+}
+.re-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px}
+.re-block{padding:12px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+.re-label{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64748b;margin-bottom:4px}
+.re-value{font-size:14px;font-weight:700;color:#0f172a;line-height:1.3}
+.re-sublabel{font-size:11px;color:#64748b;margin-top:6px}
+.re-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px dashed #cbd5e1}
+.re-btn-aprobar{
+  padding:10px 18px;border:none;border-radius:10px;cursor:pointer;
+  background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;
+  font-weight:800;font-size:13px;letter-spacing:.4px;text-transform:uppercase;
+  box-shadow:0 6px 16px rgba(22,163,74,.28);
+}
+.re-btn-aprobar:hover{filter:brightness(1.07)}
+.re-btn-aprobar:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.4)}
+.re-btn-rechazar{
+  padding:10px 14px;border:1.5px solid #fca5a5;border-radius:10px;cursor:pointer;
+  background:#fff;color:#dc2626;font-weight:700;font-size:12px;
+}
+.re-btn-rechazar:hover{background:#fef2f2}
+.re-historial{font-size:11px;color:#64748b;margin-left:auto}
 </style>
 <script src="js/expediente.js"></script>
 </head>
@@ -392,6 +428,46 @@
 
   <!-- Status -->
   <div id="statusBar" class="status-bar">LISTO PARA TRABAJAR</div>
+
+  <!-- ── Resumen del Expediente (auto-rellenado al buscar placa) ─── -->
+  <div id="resumenExpediente" class="resumen-expediente" style="display:none">
+    <div class="re-header">
+      <div>
+        <div class="re-title">Resumen del Expediente</div>
+        <div class="re-sub">Datos consolidados desde Contratos · Verificación previa a la aprobación</div>
+      </div>
+      <div class="re-state" id="reState">—</div>
+    </div>
+    <div class="re-grid">
+      <div class="re-block">
+        <div class="re-label">Vehículo</div>
+        <div class="re-value" id="reVehiculo">—</div>
+        <div class="re-sublabel">Chasis: <span id="reChasis">—</span> · Motor: <span id="reMotor">—</span></div>
+      </div>
+      <div class="re-block">
+        <div class="re-label">Propietario</div>
+        <div class="re-value" id="rePropietario">—</div>
+        <div class="re-sublabel">Cédula: <span id="reCedula">—</span> · Estado civil: <span id="reEstadoCivil">—</span></div>
+      </div>
+      <div class="re-block">
+        <div class="re-label">Datos comerciales</div>
+        <div class="re-value">Valor toma: <span id="reValor">—</span></div>
+        <div class="re-sublabel">Km: <span id="reKm">—</span> · Fecha: <span id="reFecha">—</span></div>
+      </div>
+      <div class="re-block">
+        <div class="re-label">Asesor / contacto</div>
+        <div class="re-value" id="reAsesor">—</div>
+        <div class="re-sublabel">Tel: <span id="reTel">—</span> · Email: <span id="reEmail">—</span></div>
+      </div>
+    </div>
+    <div class="re-actions">
+      <button type="button" class="re-btn-aprobar" id="btnAprobarExpediente" onclick="aprobarExpediente()">
+        ✓ Aprobar y enviar a contabilidad
+      </button>
+      <button type="button" class="re-btn-rechazar" onclick="rechazarExpediente()">Rechazar / devolver</button>
+      <span class="re-historial" id="reHistorial"></span>
+    </div>
+  </div>
 
   <!-- Tabla principal -->
   <div class="sheet" style="margin-top:14px;">
@@ -964,20 +1040,160 @@ async function _autollenarPagoDesdeExpediente(placa){
   if(typeof Expediente === 'undefined') return;
   try {
     const r = await Expediente.cargarPorPlaca(placa);
-    if(!r || !r.ok || !r.data) return;
+    if(!r || !r.ok || !r.data){
+      // sin expediente: ocultar panel resumen
+      const pe = document.getElementById('resumenExpediente');
+      if(pe) pe.style.display = 'none';
+      return;
+    }
     const d = r.data;
+    window.__expedienteActual = d;
     const map = {
       placaValue:        'placa',
       clienteValue:      'propietario',
       responsableValue:  'asesor'
     };
-    const n = Expediente.autollenar(map, d, { sobrescribir:false });
-    if(n > 0){
-      const cont = document.querySelector('.sheet, .form, body') || document.body;
-      Expediente.mostrarBadge(cont,
-        n+' campo(s) autollenados desde el expediente de Contratos');
-    }
+    Expediente.autollenar(map, d, { sobrescribir:false });
+    _renderResumenExpediente(d);
   } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); }
+}
+
+function _renderResumenExpediente(d){
+  const panel = document.getElementById('resumenExpediente');
+  if(!panel) return;
+  panel.style.display = 'block';
+
+  const veh = [d.marca, d.modelo, d.anio].filter(Boolean).join(' ');
+  const txt = function(id, v){ const e = document.getElementById(id); if(e) e.textContent = v || '—'; };
+  txt('reVehiculo',   veh || '—');
+  txt('reChasis',     d.chasis || '—');
+  txt('reMotor',      d.motor  || '—');
+  txt('rePropietario',d.propietario || '—');
+  txt('reCedula',     d.cedulaPropietario || '—');
+  txt('reEstadoCivil',d.estadoCivil || '—');
+  txt('reValor',      d.valorToma ? '$'+d.valorToma : '—');
+  txt('reKm',         d.km || '—');
+  txt('reFecha',      d.fechaRegistro || '—');
+  txt('reAsesor',     d.asesor || '—');
+  txt('reTel',        d.telefonoProp || '—');
+  txt('reEmail',      d.emailProp || '—');
+
+  // Badge de estado
+  const estado = String(d.estadoProceso||'VALIDADO').toUpperCase();
+  const badge = document.getElementById('reState');
+  const col = (Expediente.ESTADO_COLOR||{})[estado] || { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' };
+  const lab = (Expediente.ESTADO_LABEL||{})[estado] || estado;
+  badge.textContent = lab;
+  badge.style.background = col.bg;
+  badge.style.color = col.fg;
+  badge.style.borderColor = col.bd;
+
+  // Historial corto
+  const h = Array.isArray(d.historialEstados) ? d.historialEstados : [];
+  const ult = h.length ? h[h.length-1] : null;
+  document.getElementById('reHistorial').textContent =
+    ult ? ('Último cambio: '+ult.estado+' por '+(ult.usuario||'?')+' · '+
+           (new Date(ult.cuando)).toLocaleString()) : '';
+
+  // Estado del botón aprobar
+  const btn = document.getElementById('btnAprobarExpediente');
+  if(btn){
+    if(estado === 'APROBADO'){
+      btn.disabled = true;
+      btn.textContent = '✓ Expediente ya aprobado';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✓ Aprobar y enviar a contabilidad';
+    }
+  }
+}
+
+async function aprobarExpediente(){
+  const d = window.__expedienteActual;
+  if(!d || !d.placa){ alert('Primero busca una placa con expediente.'); return; }
+  if(!confirm('¿Aprobar el expediente de la placa '+d.placa+' y enviar a contabilidad?')) return;
+  const btn = document.getElementById('btnAprobarExpediente');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
+  try {
+    const r = await Expediente.cambiarEstado(d.placa, 'APROBADO',
+      'Aprobado en módulo de Pagos · ' + (currentUser||''));
+    if(r && r.ok){
+      d.estadoProceso = 'APROBADO';
+      _renderResumenExpediente(d);
+      _descargarCuadroAprobacion(d);
+      alert('Expediente APROBADO. Se descargó el cuadro para contabilidad.');
+    } else {
+      alert('No se pudo aprobar: ' + (r && r.message || 'error desconocido'));
+      if(btn){ btn.disabled = false; btn.textContent = '✓ Aprobar y enviar a contabilidad'; }
+    }
+  } catch(e){
+    alert('Error: ' + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = '✓ Aprobar y enviar a contabilidad'; }
+  }
+}
+
+async function rechazarExpediente(){
+  const d = window.__expedienteActual;
+  if(!d || !d.placa){ alert('Primero busca una placa con expediente.'); return; }
+  const obs = prompt('Motivo del rechazo (se devolverá al responsable):','');
+  if(!obs) return;
+  const r = await Expediente.cambiarEstado(d.placa, 'RECHAZADO',
+    'Rechazado en Pagos · ' + (currentUser||'') + ' · ' + obs);
+  if(r && r.ok){
+    d.estadoProceso = 'RECHAZADO';
+    _renderResumenExpediente(d);
+    alert('Expediente rechazado. Motivo registrado en historial.');
+  } else {
+    alert('No se pudo rechazar: ' + (r && r.message || 'error desconocido'));
+  }
+}
+
+/* Genera un HTML imprimible (PDF vía Ctrl+P del navegador) con el
+   cuadro consolidado del expediente para enviar a contabilidad. */
+function _descargarCuadroAprobacion(d){
+  const fecha = new Date().toLocaleString();
+  const rows = [
+    ['Placa', d.placa],
+    ['Vehículo', [d.marca,d.modelo,d.anio].filter(Boolean).join(' ')],
+    ['Chasis', d.chasis], ['Motor', d.motor], ['Color', d.color],
+    ['Propietario', d.propietario], ['Cédula', d.cedulaPropietario],
+    ['Estado civil', d.estadoCivil],
+    ['Cónyuge', d.nombreCony || '—'], ['Cédula cónyuge', d.ciCony || '—'],
+    ['Teléfono propietario', d.telefonoProp], ['Email propietario', d.emailProp],
+    ['Domicilio', d.domicilio],
+    ['Valor toma', d.valorToma ? '$'+d.valorToma : '—'],
+    ['Kilometraje', d.km],
+    ['Asesor', d.asesor],
+    ['Fecha registro contrato', d.fechaRegistro],
+    ['Estado expediente', d.estadoProceso],
+    ['Aprobado por', currentUser || ''],
+    ['Fecha aprobación', fecha]
+  ];
+  const html =
+    '<!doctype html><html><head><meta charset="utf-8"><title>Cuadro de Aprobación - '+d.placa+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;color:#0f172a;max-width:900px;margin:30px auto;padding:0 24px}'
+    +'h1{font-size:22px;border-bottom:3px solid #16a34a;padding-bottom:8px;margin-bottom:6px}'
+    +'.sub{color:#64748b;font-size:13px;margin-bottom:24px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
+    +'th,td{padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:13px}'
+    +'th{background:#f1f5f9;width:32%;font-weight:700;color:#334155}'
+    +'.ok-badge{display:inline-block;padding:4px 12px;background:#dcfce7;color:#166534;border-radius:999px;font-weight:800;font-size:12px;letter-spacing:.5px}'
+    +'.footer{margin-top:30px;font-size:11px;color:#94a3b8;text-align:center}'
+    +'</style></head><body>'
+    +'<h1>Cuadro de Aprobación · '+d.placa+' <span class="ok-badge">APROBADO</span></h1>'
+    +'<div class="sub">Documento generado automáticamente desde el módulo de Pagos · '+fecha+'</div>'
+    +'<table>'
+    +rows.map(function(r){ return '<tr><th>'+r[0]+'</th><td>'+(r[1]||'—')+'</td></tr>'; }).join('')
+    +'</table>'
+    +'<div class="footer">AUTOCOR · Sistema de saneamiento vehicular · Cuadro generado para Contabilidad</div>'
+    +'</body></html>';
+  const blob = new Blob([html], { type:'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cuadro_aprobacion_'+d.placa+'.html';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 
 function buscarPorPlacaPrompt(){

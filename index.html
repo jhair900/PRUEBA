@@ -574,6 +574,22 @@
   }
   .exp-loading{display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:var(--red-1);border-radius:50%;animation:expspin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
   @keyframes expspin{to{transform:rotate(360deg)}}
+  .exp-state-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .exp-state-label{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#6b7280}
+  .exp-state-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 14px;border-radius:999px;
+    font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+    background:#f3f4f6;color:#6b7280;border:1.5px solid #d1d5db;
+  }
+  .exp-state-meta{font-size:12px;color:#6b7280}
+  .exp-pill.pipe-done{border-color:#86efac;background:#f0fdf4}
+  .exp-pill.pipe-done .exp-pill-num{background:#16a34a;color:#fff}
+  .exp-pill.pipe-done .exp-pill-state{background:#dcfce7;color:#166534}
+  .exp-pill.pipe-active{border-color:#fbbf24;background:#fffbeb;box-shadow:0 0 0 3px rgba(251,191,36,.18)}
+  .exp-pill.pipe-active .exp-pill-num{background:#f59e0b;color:#fff}
+  .exp-pill.pipe-active .exp-pill-state{background:#fef3c7;color:#92400e}
+  .exp-pill.pipe-future{opacity:.6}
 </style>
 <script src="js/expediente.js"></script>
 </head>
@@ -603,6 +619,11 @@
                 Buscar
               </button>
               <button type="button" class="exp-btn-ghost" onclick="limpiarExpediente()" id="expBtnLimpiar" style="display:none">Limpiar</button>
+            </div>
+            <div class="exp-state-row" id="expStateRow" style="display:none">
+              <span class="exp-state-label">Estado actual:</span>
+              <span class="exp-state-badge" id="expStateBadge">—</span>
+              <span class="exp-state-meta" id="expStateMeta"></span>
             </div>
             <div class="exp-status-grid" id="expStatus" style="display:none">
               <div class="exp-pill" data-step="validacion" data-target="contratos">
@@ -1013,26 +1034,87 @@
 
       const grid = document.getElementById('expStatus');
       const btnLimpiar = document.getElementById('expBtnLimpiar');
+      const stateRow = document.getElementById('expStateRow');
       grid.style.display = 'grid';
+      stateRow.style.display = 'flex';
       btnLimpiar.style.display = 'inline-block';
 
       // Reset visual
       grid.querySelectorAll('.exp-pill').forEach(function(p){
-        p.classList.remove('ok','pending');
+        p.classList.remove('ok','pending','pipe-done','pipe-active','pipe-future');
         p.querySelector('.exp-pill-state').innerHTML = '<span class="exp-loading"></span>';
         p.querySelector('.exp-pill-sub').textContent = 'consultando…';
       });
+      document.getElementById('expStateBadge').textContent = '…';
+      document.getElementById('expStateBadge').style.background = '#f3f4f6';
+      document.getElementById('expStateBadge').style.color = '#6b7280';
+      document.getElementById('expStateMeta').textContent = '';
 
       try {
         const est = await Expediente.estadoPorPlaca(placa);
+        const estadoActual = est._contratos && est._contratos.estadoProceso
+          ? String(est._contratos.estadoProceso).toUpperCase() : (est.contratos ? 'VALIDADO' : 'NUEVO');
+        _pintarEstadoBadge(estadoActual, est._contratos);
         _pintarPill('validacion', est.contratos,   est._contratos,   'datos validados', 'sin validación');
         _pintarPill('liquidacion', est.liquidacion, est._liquidacion, 'liquidación guardada', 'sin liquidación');
         _pintarPill('pagos',       est.pagos,       est._pagos,       'pago registrado', 'sin pago');
         _pintarPill('ventas',      est.ventas,      est._ventas,      'venta registrada', 'sin venta');
+        _aplicarColorPipeline(estadoActual);
       } catch(e){
         err.textContent = 'No se pudo consultar el expediente: '+(e.message||e);
         err.style.display = 'block';
       }
+    }
+
+    function _pintarEstadoBadge(estado, dataContratos){
+      const b = document.getElementById('expStateBadge');
+      const meta = document.getElementById('expStateMeta');
+      const col = (Expediente.ESTADO_COLOR||{})[estado] || { bg:'#f3f4f6', fg:'#6b7280', bd:'#d1d5db' };
+      const lab = (Expediente.ESTADO_LABEL||{})[estado] || estado;
+      b.textContent = lab;
+      b.style.background = col.bg;
+      b.style.color = col.fg;
+      b.style.borderColor = col.bd;
+      let texto = '';
+      if(dataContratos){
+        if(dataContratos.estadoActualizadoPor) texto += 'por ' + dataContratos.estadoActualizadoPor;
+        if(dataContratos.estadoActualizadoEn){
+          const f = new Date(dataContratos.estadoActualizadoEn);
+          if(!isNaN(f.getTime())) texto += (texto?' · ':'') + f.toLocaleString();
+        }
+      }
+      meta.textContent = texto;
+    }
+
+    /* Mapeo etapa → estado mínimo del pipeline */
+    const _PIPELINE_MIN = {
+      validacion:  'VALIDADO',
+      liquidacion: 'LIQUIDADO',
+      firmas:      'FIRMADO',
+      pagos:       'APROBADO',
+      ventas:      null  // independiente
+    };
+
+    function _aplicarColorPipeline(estadoActual){
+      const idxActual = Expediente.indiceEstado(estadoActual);
+      document.querySelectorAll('.exp-pill').forEach(function(p){
+        const step = p.getAttribute('data-step');
+        if(!step || step === 'ventas') return; // ventas no entra al pipeline lineal
+        const min = _PIPELINE_MIN[step];
+        if(!min) return;
+        const idxMin = Expediente.indiceEstado(min);
+        p.classList.remove('pipe-done','pipe-active','pipe-future','ok','pending');
+        if(idxActual >= idxMin){
+          p.classList.add('pipe-done');
+          p.querySelector('.exp-pill-state').textContent = 'Completado';
+        } else if(idxActual + 1 === idxMin){
+          p.classList.add('pipe-active');
+          p.querySelector('.exp-pill-state').textContent = 'En curso';
+        } else {
+          p.classList.add('pipe-future');
+          p.querySelector('.exp-pill-state').textContent = 'Pendiente';
+        }
+      });
     }
 
     function _pintarPill(step, ok, data, msgOk, msgPend){
