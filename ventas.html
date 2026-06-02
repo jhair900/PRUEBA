@@ -380,6 +380,7 @@
   .cbtn:hover,.cbtn.on{border-color:#fff;transform:scale(1.3);}
   @media print{.cbtn{display:none!important;}}
 </style>
+<script src="js/expediente.js"></script>
 </head>
 <body>
 
@@ -1226,9 +1227,30 @@ async function buscarPorPlaca(placa){
   const placaNorm = normalizeValue(placa);
   if(!placaNorm) return;
   setStatus('BUSCANDO CUADRO POR PLACA...');
-  const resp = await apiCall('getVentaByPlaca', { placa: placaNorm });
+  let resp;
+  try { resp = await apiCall('getVentaByPlaca', { placa: placaNorm }); }
+  catch(e){ resp = { data: {} }; }
   cargarFormularioVenta(resp.data || {});
-  setStatus('CUADRO CARGADO DESDE LÍNEA', false, true);
+  await _autollenarVentaDesdeExpediente(placaNorm);
+  setStatus('CUADRO CARGADO', false, true);
+}
+
+/* Solo datos del vehículo desde el expediente. Datos comerciales de
+   la venta (comprador, etc.) son externos al saneamiento. */
+async function _autollenarVentaDesdeExpediente(placa){
+  if(typeof Expediente === 'undefined') return;
+  try {
+    const r = await Expediente.cargarPorPlaca(placa);
+    if(!r || !r.ok || !r.data) return;
+    const d = r.data;
+    const map = { placaValue: 'placa' };
+    const n = Expediente.autollenar(map, d, { sobrescribir:false });
+    if(n > 0){
+      const cont = document.querySelector('.sheet, .form, body') || document.body;
+      Expediente.mostrarBadge(cont,
+        'Vehículo identificado en el expediente · '+(d.marca||'')+' '+(d.modelo||''));
+    }
+  } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); }
 }
 
 function buscarPorPlacaPrompt(){
@@ -1361,6 +1383,19 @@ renderSupportPrints();
 renderAuthUI();
 if(!currentUser) setStatus('DEBES INICIAR SESIÓN PARA GUARDAR Y BUSCAR');
 else setStatus('SESIÓN RECUPERADA');
+
+/* Placa precargada desde el dashboard */
+try{
+  const pre = sessionStorage.getItem('autocor_placa_preload');
+  if(pre){
+    sessionStorage.removeItem('autocor_placa_preload');
+    setTimeout(function(){
+      const inp = document.getElementById('placaValue');
+      if(inp){ inp.value = pre; }
+      if(typeof buscarPorPlaca === 'function') buscarPorPlaca(pre);
+    }, 400);
+  }
+}catch(_){}
 </script>
 </body>
 </html>

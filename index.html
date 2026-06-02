@@ -500,7 +500,82 @@
     .photo-mask{clip-path:ellipse(92% 78% at 50% 50%)}
     .footer-note{text-align:center;padding:14px 16px 20px}
   }
+
+  /* ── Dashboard expediente ───────────────────────────────────── */
+  .expediente-search{
+    margin:18px 0 26px;
+    padding:18px 20px;
+    background:linear-gradient(135deg,#ffffff 0%,#fafafa 100%);
+    border:1.5px solid #e5e7eb;
+    border-radius:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,.04);
+  }
+  .exp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #expPlaca{
+    flex:1;min-width:200px;
+    padding:13px 16px;
+    border:2px solid #e5e7eb;border-radius:12px;
+    font-size:18px;font-weight:800;letter-spacing:3px;
+    text-transform:uppercase;
+    transition:border-color .14s, box-shadow .14s;
+  }
+  #expPlaca:focus{outline:none;border-color:var(--red-1);box-shadow:0 0 0 4px rgba(229,63,46,.12)}
+  .exp-btn{
+    padding:13px 22px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2));color:#fff;
+    font-weight:800;font-size:14px;letter-spacing:.5px;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:8px;
+    transition:transform .12s, box-shadow .12s;
+    box-shadow:0 8px 20px rgba(229,63,46,.25);
+  }
+  .exp-btn:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(229,63,46,.32)}
+  .exp-btn-ghost{
+    padding:11px 16px;border:1.5px solid #d1d5db;border-radius:12px;cursor:pointer;
+    background:#fff;color:#6b7280;font-weight:700;font-size:13px;
+  }
+  .exp-btn-ghost:hover{background:#f9fafb;color:#111}
+  .exp-status-grid{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;margin-top:14px;
+  }
+  @media(min-width:1100px){.exp-status-grid{grid-template-columns:repeat(4,minmax(0,1fr));}.exp-pill-aside{grid-column:1/-1}}
+  .exp-pill{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 14px;border-radius:14px;
+    background:#fff;border:1.5px solid #e5e7eb;
+    cursor:pointer;transition:all .14s;
+    position:relative;overflow:hidden;
+  }
+  .exp-pill:hover{border-color:#9ca3af;transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.06)}
+  .exp-pill[data-disabled="1"]{opacity:.55;cursor:not-allowed}
+  .exp-pill[data-disabled="1"]:hover{transform:none;box-shadow:none}
+  .exp-pill-num{
+    flex-shrink:0;width:30px;height:30px;border-radius:50%;
+    background:#f3f4f6;color:#6b7280;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;
+  }
+  .exp-pill-title{font-weight:800;font-size:13px;color:#111;letter-spacing:.2px}
+  .exp-pill-sub{font-size:11px;color:#6b7280;margin-top:2px}
+  .exp-pill-state{
+    margin-left:auto;flex-shrink:0;
+    font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+    padding:4px 9px;border-radius:999px;background:#f3f4f6;color:#9ca3af;
+  }
+  .exp-pill.ok{border-color:#86efac;background:#f0fdf4}
+  .exp-pill.ok .exp-pill-num{background:#16a34a;color:#fff}
+  .exp-pill.ok .exp-pill-state{background:#dcfce7;color:#166534}
+  .exp-pill.pending{border-color:#fde68a;background:#fffbeb}
+  .exp-pill.pending .exp-pill-num{background:#f59e0b;color:#fff}
+  .exp-pill.pending .exp-pill-state{background:#fef3c7;color:#92400e}
+  .exp-error{
+    margin-top:12px;padding:10px 14px;border-radius:10px;
+    background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:13px;
+  }
+  .exp-loading{display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:var(--red-1);border-radius:50%;animation:expspin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes expspin{to{transform:rotate(360deg)}}
 </style>
+<script src="js/expediente.js"></script>
 </head>
 <body>
   <main class="page">
@@ -512,6 +587,67 @@
             <img class="headline-logo" src="assets/logo.png" alt="AUTOCOR">
             <p>Selecciona una opción para continuar con el proceso que necesites.</p>
           </div>
+
+          <!-- ── Dashboard: buscar expediente por placa ───────────── -->
+          <section class="expediente-search" id="expSearch" aria-label="Buscar expediente por placa">
+            <div class="exp-row">
+              <input id="expPlaca" type="text" placeholder="PLACA (ej. PDY6688)"
+                     autocomplete="off" maxlength="10"
+                     oninput="this.value=this.value.toUpperCase()"
+                     onkeydown="if(event.key==='Enter') buscarExpediente()">
+              <button type="button" class="exp-btn" onclick="buscarExpediente()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                Buscar
+              </button>
+              <button type="button" class="exp-btn-ghost" onclick="limpiarExpediente()" id="expBtnLimpiar" style="display:none">Limpiar</button>
+            </div>
+            <div class="exp-status-grid" id="expStatus" style="display:none">
+              <div class="exp-pill" data-step="validacion" data-target="contratos">
+                <span class="exp-pill-num">1</span>
+                <div>
+                  <div class="exp-pill-title">Validación documental</div>
+                  <div class="exp-pill-sub">—</div>
+                </div>
+                <span class="exp-pill-state">·</span>
+              </div>
+              <div class="exp-pill" data-step="liquidacion" data-target="liquidacion">
+                <span class="exp-pill-num">2</span>
+                <div>
+                  <div class="exp-pill-title">Liquidación + Contratos</div>
+                  <div class="exp-pill-sub">—</div>
+                </div>
+                <span class="exp-pill-state">·</span>
+              </div>
+              <div class="exp-pill" data-step="firmas" data-target="" data-disabled="1">
+                <span class="exp-pill-num">3</span>
+                <div>
+                  <div class="exp-pill-title">Firmas electrónicas</div>
+                  <div class="exp-pill-sub">próximamente</div>
+                </div>
+                <span class="exp-pill-state">·</span>
+              </div>
+              <div class="exp-pill" data-step="pagos" data-target="pagos">
+                <span class="exp-pill-num">4</span>
+                <div>
+                  <div class="exp-pill-title">Pagos (aprobación final)</div>
+                  <div class="exp-pill-sub">—</div>
+                </div>
+                <span class="exp-pill-state">·</span>
+              </div>
+              <div class="exp-pill exp-pill-aside" data-step="ventas" data-target="ventas">
+                <span class="exp-pill-num">↗</span>
+                <div>
+                  <div class="exp-pill-title">Ventas (externo al saneamiento)</div>
+                  <div class="exp-pill-sub">—</div>
+                </div>
+                <span class="exp-pill-state">·</span>
+              </div>
+            </div>
+            <div class="exp-error" id="expError" style="display:none"></div>
+          </section>
 
           <div class="cards">
             <section class="card dark">
@@ -849,6 +985,123 @@
       if(e.key === 'Escape'){
         cerrarLogin();
         cerrarModalDev();
+      }
+    });
+
+    /* ── Dashboard expediente: búsqueda por placa ──────────────── */
+    async function buscarExpediente(){
+      const inp = document.getElementById('expPlaca');
+      const placa = (inp.value||'').replace(/\s/g,'').toUpperCase();
+      const err = document.getElementById('expError');
+      err.style.display = 'none';
+      if(!placa){
+        err.textContent = 'Ingresa una placa para buscar.';
+        err.style.display = 'block';
+        inp.focus();
+        return;
+      }
+
+      // Requiere sesión para consultar las hojas
+      let auth = {};
+      try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
+      if(!auth.token){
+        // sin sesión → pedir login y reintentar al volver
+        sessionStorage.setItem('autocor_pending_search', placa);
+        abrirLogin('contratos');
+        return;
+      }
+
+      const grid = document.getElementById('expStatus');
+      const btnLimpiar = document.getElementById('expBtnLimpiar');
+      grid.style.display = 'grid';
+      btnLimpiar.style.display = 'inline-block';
+
+      // Reset visual
+      grid.querySelectorAll('.exp-pill').forEach(function(p){
+        p.classList.remove('ok','pending');
+        p.querySelector('.exp-pill-state').innerHTML = '<span class="exp-loading"></span>';
+        p.querySelector('.exp-pill-sub').textContent = 'consultando…';
+      });
+
+      try {
+        const est = await Expediente.estadoPorPlaca(placa);
+        _pintarPill('validacion', est.contratos,   est._contratos,   'datos validados', 'sin validación');
+        _pintarPill('liquidacion', est.liquidacion, est._liquidacion, 'liquidación guardada', 'sin liquidación');
+        _pintarPill('pagos',       est.pagos,       est._pagos,       'pago registrado', 'sin pago');
+        _pintarPill('ventas',      est.ventas,      est._ventas,      'venta registrada', 'sin venta');
+      } catch(e){
+        err.textContent = 'No se pudo consultar el expediente: '+(e.message||e);
+        err.style.display = 'block';
+      }
+    }
+
+    function _pintarPill(step, ok, data, msgOk, msgPend){
+      const pill = document.querySelector('.exp-pill[data-step="'+step+'"]');
+      if(!pill) return;
+      const sub = pill.querySelector('.exp-pill-sub');
+      const state = pill.querySelector('.exp-pill-state');
+      if(ok){
+        pill.classList.add('ok');
+        state.textContent = 'Completado';
+        const resumen = _resumirData(step, data);
+        sub.textContent = resumen || msgOk;
+      } else {
+        pill.classList.add('pending');
+        state.textContent = 'Pendiente';
+        sub.textContent = msgPend;
+      }
+    }
+
+    function _resumirData(step, d){
+      if(!d) return '';
+      try {
+        if(step === 'validacion'){
+          const p = d.propietario || '';
+          const m = d.marca || ''; const md = d.modelo || '';
+          const trozos = [p, [m,md].filter(Boolean).join(' ')].filter(Boolean);
+          return trozos.join(' · ');
+        }
+        if(step === 'liquidacion'){
+          return d.cliente || d.propietario || 'registro encontrado';
+        }
+        if(step === 'pagos'){
+          return d.cliente || 'pago registrado';
+        }
+        if(step === 'ventas'){
+          return d.cliente || d.comprador || 'venta registrada';
+        }
+      } catch(_){}
+      return '';
+    }
+
+    function limpiarExpediente(){
+      document.getElementById('expPlaca').value = '';
+      document.getElementById('expStatus').style.display = 'none';
+      document.getElementById('expError').style.display = 'none';
+      document.getElementById('expBtnLimpiar').style.display = 'none';
+      document.getElementById('expPlaca').focus();
+    }
+
+    /* Click en una pill abre el módulo correspondiente con la placa
+       precargada en sessionStorage para que el destino la lea. */
+    document.addEventListener('click', function(e){
+      const pill = e.target.closest('.exp-pill');
+      if(!pill) return;
+      if(pill.getAttribute('data-disabled') === '1') return;
+      const target = pill.getAttribute('data-target');
+      if(!target) return;
+      const placa = (document.getElementById('expPlaca').value||'').replace(/\s/g,'').toUpperCase();
+      if(placa) sessionStorage.setItem('autocor_placa_preload', placa);
+      abrirLogin(target);
+    });
+
+    /* Si veníamos de un login forzado por búsqueda, retomarla. */
+    window.addEventListener('DOMContentLoaded', function(){
+      const pending = sessionStorage.getItem('autocor_pending_search');
+      if(pending){
+        sessionStorage.removeItem('autocor_pending_search');
+        const inp = document.getElementById('expPlaca');
+        if(inp){ inp.value = pending; setTimeout(buscarExpediente, 200); }
       }
     });
   </script>
