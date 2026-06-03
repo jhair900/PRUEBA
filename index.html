@@ -75,8 +75,25 @@
     margin:0 auto;
     width:100%;
   }
-  .intro{max-width:none;margin:0;text-align:center}
-  .intro p{margin:0 auto;max-width:520px}
+  .intro{max-width:none;margin:0;text-align:left}
+  .intro p{margin:0;max-width:520px}
+  /* Fila con texto a la izquierda y logo grande a la derecha */
+  .welcome-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:36px;align-items:center;
+    margin-bottom:6px;
+  }
+  .welcome-logo{
+    height:140px;width:auto;max-width:340px;object-fit:contain;
+    filter:drop-shadow(0 8px 20px rgba(0,0,0,.18));
+  }
+  @media(max-width:900px){
+    .welcome-row{grid-template-columns:1fr;text-align:center;gap:18px}
+    .intro{text-align:center}
+    .intro p{margin:0 auto}
+    .welcome-logo{height:110px;margin:0 auto}
+  }
 
   .intro{
     margin-top:6px;
@@ -521,6 +538,15 @@
     background:#fff;
   }
   .top-header .logo-mini{height:38px;width:auto;display:block}
+  .header-title{
+    flex:1;text-align:center;
+    font-size:clamp(14px,1.6vw,18px);font-weight:800;
+    color:var(--black);letter-spacing:1.2px;text-transform:uppercase;
+    padding:0 12px;line-height:1.2;
+  }
+  @media(max-width:720px){
+    .header-title{flex:none;text-align:left;font-size:13px;letter-spacing:.8px;width:100%}
+  }
   .top-search{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
   .top-search input{
     padding:10px 14px;border:2px solid #e5e7eb;border-radius:10px;
@@ -642,9 +668,10 @@
 </head>
 <body>
   <main class="page">
-    <!-- ── Top header: logo + buscador compacto ────────────────── -->
+    <!-- ── Top header: logo + título + buscador compacto ──────── -->
     <header class="top-header">
       <img class="logo-mini" src="assets/logo.png" alt="AUTOCOR">
+      <div class="header-title">Ver el estado del vehículo</div>
       <div class="top-search">
         <input id="expPlaca" type="text" placeholder="PLACA (EJ. PDY6688)"
                autocomplete="off" maxlength="10"
@@ -716,10 +743,13 @@
     <section class="hero">
       <div class="left">
         <div>
-          <div class="intro">
-            <div class="eyebrow">Bienvenido a AUTOCOR</div>
-            <h1 class="welcome-title">Siempre nuevos.</h1>
-            <p>Selecciona una opción para continuar con el proceso que necesites.</p>
+          <div class="welcome-row">
+            <div class="intro">
+              <div class="eyebrow">Bienvenido a AUTOCOR</div>
+              <h1 class="welcome-title">Siempre nuevos.</h1>
+              <p>Selecciona una opción para continuar con el proceso que necesites.</p>
+            </div>
+            <img class="welcome-logo" src="assets/logo.png" alt="AUTOCOR">
           </div>
 
           <div class="cards">
