@@ -311,8 +311,22 @@
   .icon-liquidaciones .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
   .icon-liquidaciones .accent{fill:var(--red-1)}
 
+  /* ── Iconos: color depende del fondo de la card (no del icono) ── */
+  .card.dark .icon-svg .stroke-main,
+  .card.gray .icon-svg .stroke-main,
+  .card.red  .icon-svg .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .card.navy .icon-svg .stroke-main{stroke:#0f172a;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .card.dark .icon-svg .accent,
+  .card.gray .icon-svg .accent,
+  .card.red  .icon-svg .accent{fill:rgba(255,255,255,.25)}
+  .card.navy .icon-svg .accent{fill:rgba(229,63,46,.85)}
+  .card .icon-svg .accent-dark{fill:rgba(0,0,0,.35)}
+  /* Pagos shield/check sigue siendo negro+rojo (no usa stroke-main) */
   .icon-pagos .shield{fill:#000}
   .icon-pagos .check{stroke:var(--red-1);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── Icono Firmas (nuevo) ───────────────────────────────────── */
+  .icon-firmas .stroke-main{stroke-linecap:round;stroke-linejoin:round}
 
   .card h2{
     margin:0 0 10px;
@@ -753,30 +767,51 @@
           </div>
 
           <div class="cards">
+            <!-- 1) Validación de Documentación → contratos.html -->
             <section class="card dark">
               <div class="icon-ring">
-                <svg class="icon-svg icon-liquidaciones" viewBox="0 0 64 64" aria-hidden="true">
-                  <rect x="15" y="10" width="28" height="36" rx="5" class="stroke-main"></rect>
-                  <line x1="21" y1="21" x2="37" y2="21" class="stroke-main"></line>
-                  <line x1="21" y1="28" x2="37" y2="28" class="stroke-main"></line>
-                  <line x1="21" y1="35" x2="31" y2="35" class="stroke-main"></line>
-                  <path d="M43 19l7 0 0 9" class="stroke-main"></path>
-                  <path d="M42 28l8-9" class="stroke-main"></path>
-                  <circle cx="42" cy="42" r="12" class="accent"></circle>
-                  <text x="42" y="46" text-anchor="middle" font-size="16" font-weight="800" fill="#fff">$</text>
+                <svg class="icon-svg icon-contratos" viewBox="0 0 64 64" aria-hidden="true">
+                  <path d="M10 22h44v28a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V22z" class="stroke-main"></path>
+                  <path d="M10 22v-4a4 4 0 0 1 4-4h10l4 6h22a4 4 0 0 1 4 4" class="stroke-main"></path>
+                  <line x1="22" y1="34" x2="42" y2="34" class="stroke-main"></line>
+                  <line x1="22" y1="41" x2="42" y2="41" class="stroke-main"></line>
+                  <line x1="22" y1="48" x2="34" y2="48" class="stroke-main"></line>
+                  <circle cx="46" cy="46" r="9" class="accent"></circle>
+                  <path d="M42 46l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
               </div>
-              <h2>Liquidaciones</h2>
-              <p>Gestiona y revisa las liquidaciones de vehículos de forma rápida y segura.</p>
+              <h2>Validación de Documentación</h2>
+              <p>Valida tus documentos y genera contratos y liquidación.</p>
               <div class="actions">
-                <button type="button" class="btn red" onclick="abrirLogin('liquidacion')">
+                <button type="button" class="btn red" onclick="abrirLogin('contratos')">
                   <span>INGRESAR</span>
                   <span class="arrow">›</span>
                 </button>
               </div>
             </section>
 
+            <!-- 2) Firmas Digitales → firmas.html -->
             <section class="card gray">
+              <div class="icon-ring">
+                <svg class="icon-svg icon-firmas" viewBox="0 0 64 64" aria-hidden="true">
+                  <!-- Pluma firmando -->
+                  <path d="M40 12l12 12-26 26-14 4 4-14L40 12z" class="stroke-main"></path>
+                  <path d="M36 16l12 12" class="stroke-main"></path>
+                  <path d="M10 56h44" class="stroke-main"></path>
+                </svg>
+              </div>
+              <h2>Firmas Digitales</h2>
+              <p>Genera los datos y descarga los documentos para la firma.</p>
+              <div class="actions">
+                <button type="button" class="btn silver" onclick="abrirLogin('firmas')">
+                  <span>INGRESAR</span>
+                  <span class="arrow">›</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- 3) Pagos → pagos.html -->
+            <section class="card red">
               <div class="icon-ring">
                 <svg class="icon-svg icon-pagos" viewBox="0 0 64 64" aria-hidden="true">
                   <path class="shield" d="M32 10l14 6v10c0 11-6.5 18.5-14 22-7.5-3.5-14-11-14-22V16l14-6z"></path>
@@ -784,60 +819,33 @@
                 </svg>
               </div>
               <h2>Pagos</h2>
-              <p>Valida y controla los pagos y documentos legales de cada vehículo.</p>
+              <p>Valida toda la información generada para poder pagar el vehículo.</p>
               <div class="actions">
-                <button type="button" class="btn silver" onclick="abrirLogin('pagos')">
+                <button type="button" class="btn dark" onclick="abrirLogin('pagos')">
                   <span>INGRESAR</span>
                   <span class="arrow">›</span>
                 </button>
               </div>
             </section>
 
-            <section class="card red">
+            <!-- 4) Ventas → ventas.html -->
+            <section class="card navy">
               <div class="icon-ring">
                 <svg class="icon-svg icon-ventas" viewBox="0 0 64 64" aria-hidden="true">
-                  <!-- Cuerpo del vehículo -->
                   <rect x="7" y="34" width="42" height="13" rx="4" class="stroke-main"></rect>
                   <path d="M13 34l7-13h18l7 13" class="stroke-main"></path>
-                  <!-- Ruedas -->
                   <circle cx="18" cy="47" r="6" class="stroke-main"></circle>
                   <circle cx="42" cy="47" r="6" class="stroke-main"></circle>
                   <circle cx="18" cy="47" r="2" class="accent-dark"></circle>
                   <circle cx="42" cy="47" r="2" class="accent-dark"></circle>
-                  <!-- Badge de precio -->
                   <circle cx="46" cy="18" r="11" class="accent"></circle>
                   <text x="46" y="23" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">$</text>
                 </svg>
               </div>
               <h2>Ventas</h2>
-              <p>Registro y seguimiento del proceso de venta de vehículos.</p>
+              <p>Valida toda la información de la venta para poder entregar el vehículo.</p>
               <div class="actions">
-                <button type="button" class="btn dark" onclick="abrirLogin('ventas')">
-                  <span>INGRESAR</span>
-                  <span class="arrow">›</span>
-                </button>
-              </div>
-            </section>
-
-            <section class="card navy">
-              <div class="icon-ring">
-                <svg class="icon-svg icon-contratos" viewBox="0 0 64 64" aria-hidden="true">
-                  <!-- Carpeta base -->
-                  <path d="M10 22h44v28a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V22z" class="stroke-main"></path>
-                  <path d="M10 22v-4a4 4 0 0 1 4-4h10l4 6h22a4 4 0 0 1 4 4" class="stroke-main"></path>
-                  <!-- Líneas documento -->
-                  <line x1="22" y1="34" x2="42" y2="34" class="stroke-main"></line>
-                  <line x1="22" y1="41" x2="42" y2="41" class="stroke-main"></line>
-                  <line x1="22" y1="48" x2="34" y2="48" class="stroke-main"></line>
-                  <!-- Badge check -->
-                  <circle cx="46" cy="46" r="9" class="accent"></circle>
-                  <path d="M42 46l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </div>
-              <h2>Contratos</h2>
-              <p>Gestión y verificación de documentos para contratos de vehículos.</p>
-              <div class="actions">
-                <button type="button" class="btn navy" onclick="abrirLogin('contratos')">
+                <button type="button" class="btn navy" onclick="abrirLogin('ventas')">
                   <span>INGRESAR</span>
                   <span class="arrow">›</span>
                 </button>
