@@ -40,28 +40,20 @@
 
   .hero{
     position:relative;
-    min-height:760px;
+    min-height:auto;
     display:grid;
-    grid-template-columns:1.02fr .98fr;
-    background:linear-gradient(110deg, #f7f7f7 0%, #ffffff 36%, #f6f6f6 55%, #efefef 100%);
+    grid-template-columns:1fr;
+    background:linear-gradient(180deg, #fafafa 0%, #ffffff 60%);
     isolation:isolate;
   }
+  .right{display:none !important}
 
   .hero::before{
-    content:"";
-    position:absolute;
-    inset:-8% auto -12% 42%;
-    width:36%;
-    background:linear-gradient(180deg, rgba(229,63,46,.96), rgba(232,61,46,.96));
-    border-radius:48% 52% 50% 50% / 10% 12% 88% 90%;
-    transform:rotate(12deg);
-    z-index:0;
-    opacity:.98;
+    content:none;
   }
 
   .hero::after{
-    content:"";
-    position:absolute;
+    content:none;
     inset:auto -8% -24% 47%;
     width:58%;
     height:60%;
@@ -73,11 +65,15 @@
   .left{
     position:relative;
     z-index:2;
-    padding:42px 46px 24px 60px;
+    padding:42px 48px 28px;
     display:flex;
     flex-direction:column;
-    justify-content:space-between;
+    gap:18px;
+    max-width:1200px;
+    margin:0 auto;
+    width:100%;
   }
+  .intro{max-width:none;margin:0}
 
   .intro{
     margin-top:6px;
@@ -92,11 +88,11 @@
     text-transform:uppercase;
   }
 
-  .headline-logo{
-    width:min(430px, 92%);
-    height:auto;
-    display:block;
-    margin:0 0 22px 0;
+  .headline-logo{display:none}
+  .welcome-title{
+    font-size:clamp(28px, 3.4vw, 44px);
+    font-weight:800;letter-spacing:-.5px;
+    margin:0 0 14px 0;color:var(--black);
   }
 
   .intro p{
@@ -108,10 +104,14 @@
   }
 
   .cards{
-    margin-top:26px;
+    margin-top:18px;
     display:grid;
-    grid-template-columns:repeat(2, minmax(0, 260px));
-    gap:24px;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:22px;
+    max-width:1100px;
+  }
+  @media(min-width:1280px){
+    .cards{grid-template-columns:repeat(2, minmax(0, 1fr));max-width:none}
   }
 
   .card{
@@ -501,17 +501,40 @@
     .footer-note{text-align:center;padding:14px 16px 20px}
   }
 
-  /* ── Dashboard expediente (full-width, encima del hero) ─────── */
+  /* ── Top header bar con logo y buscador compacto ──────────── */
+  .top-header{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:24px;padding:14px 28px;
+    border-bottom:1px solid rgba(148,145,149,.18);
+    background:#fff;
+  }
+  .top-header .logo-mini{height:38px;width:auto;display:block}
+  .top-search{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+  .top-search input{
+    padding:10px 14px;border:2px solid #e5e7eb;border-radius:10px;
+    font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+    width:200px;transition:border-color .12s, box-shadow .12s;
+  }
+  .top-search input:focus{outline:none;border-color:var(--red-1);box-shadow:0 0 0 3px rgba(229,63,46,.12)}
+  .top-search .exp-btn{padding:10px 18px;font-size:13px;border:none;border-radius:10px;cursor:pointer;background:linear-gradient(135deg,var(--red-1),var(--red-2));color:#fff;font-weight:800;letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 14px rgba(229,63,46,.22)}
+  .top-search .exp-btn:hover{transform:translateY(-1px)}
+  .top-search .exp-btn-ghost{padding:9px 12px;border:1.5px solid #d1d5db;border-radius:10px;background:#fff;color:#6b7280;font-weight:700;font-size:12px;cursor:pointer}
+  @media(max-width:720px){
+    .top-header{flex-direction:column;gap:12px;padding:12px 16px}
+    .top-search input{width:100%}
+  }
+
+  /* ── Panel de resultados (desplegable bajo el header) ──────── */
   .expediente-search{
-    margin:24px 28px 6px;
-    padding:22px 26px;
+    margin:0 28px;
+    padding:18px 22px 16px;
     background:linear-gradient(135deg,#ffffff 0%,#fafafa 100%);
-    border:1.5px solid #e5e7eb;
-    border-radius:18px;
-    box-shadow:0 6px 18px rgba(0,0,0,.04);
+    border:1.5px solid #e5e7eb;border-top:none;
+    border-radius:0 0 18px 18px;
+    box-shadow:0 8px 20px rgba(0,0,0,.06);
   }
   @media(max-width:720px){
-    .expediente-search{margin:14px 14px 4px;padding:16px 16px;}
+    .expediente-search{margin:0 14px;padding:14px 16px}
   }
   .exp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   #expPlaca{
@@ -607,28 +630,33 @@
 </head>
 <body>
   <main class="page">
-    <!-- ── Dashboard: buscar expediente por placa (ancho completo) ── -->
-    <section class="expediente-search" id="expSearch" aria-label="Buscar expediente por placa">
-      <div class="exp-row">
-        <input id="expPlaca" type="text" placeholder="PLACA (ej. PDY6688)"
+    <!-- ── Top header: logo + buscador compacto ────────────────── -->
+    <header class="top-header">
+      <img class="logo-mini" src="assets/logo.png" alt="AUTOCOR">
+      <div class="top-search">
+        <input id="expPlaca" type="text" placeholder="PLACA (EJ. PDY6688)"
                autocomplete="off" maxlength="10"
                oninput="this.value=this.value.toUpperCase()"
                onkeydown="if(event.key==='Enter') buscarExpediente()">
         <button type="button" class="exp-btn" onclick="buscarExpediente()">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           Buscar
         </button>
-        <button type="button" class="exp-btn-ghost" onclick="limpiarExpediente()" id="expBtnLimpiar" style="display:none">Limpiar</button>
+        <button type="button" class="exp-btn-ghost" onclick="limpiarExpediente()" id="expBtnLimpiar" style="display:none">×</button>
       </div>
-      <div class="exp-state-row" id="expStateRow" style="display:none">
+    </header>
+
+    <!-- ── Panel resultados (se despliega bajo el header) ──────── -->
+    <section class="expediente-search" id="expSearch" aria-label="Resultados del expediente" style="display:none">
+      <div class="exp-state-row" id="expStateRow">
         <span class="exp-state-label">Estado actual:</span>
         <span class="exp-state-badge" id="expStateBadge">—</span>
         <span class="exp-state-meta" id="expStateMeta"></span>
       </div>
-      <div class="exp-status-grid" id="expStatus" style="display:none">
+      <div class="exp-status-grid" id="expStatus">
         <div class="exp-pill" data-step="validacion" data-target="contratos">
           <span class="exp-pill-num">1</span>
           <div>
@@ -677,8 +705,8 @@
       <div class="left">
         <div>
           <div class="intro">
-            <div class="eyebrow">Bienvenido a</div>
-            <img class="headline-logo" src="assets/logo.png" alt="AUTOCOR">
+            <div class="eyebrow">Bienvenido a AUTOCOR</div>
+            <h1 class="welcome-title">Siempre nuevos.</h1>
             <p>Selecciona una opción para continuar con el proceso que necesites.</p>
           </div>
 
@@ -1048,9 +1076,11 @@
       const grid = document.getElementById('expStatus');
       const btnLimpiar = document.getElementById('expBtnLimpiar');
       const stateRow = document.getElementById('expStateRow');
+      const panel = document.getElementById('expSearch');
+      panel.style.display = 'block';
       grid.style.display = 'grid';
       stateRow.style.display = 'flex';
-      btnLimpiar.style.display = 'inline-block';
+      btnLimpiar.style.display = 'inline-flex';
 
       // Reset visual
       grid.querySelectorAll('.exp-pill').forEach(function(p){
@@ -1171,8 +1201,7 @@
 
     function limpiarExpediente(){
       document.getElementById('expPlaca').value = '';
-      document.getElementById('expStatus').style.display = 'none';
-      document.getElementById('expError').style.display = 'none';
+      document.getElementById('expSearch').style.display = 'none';
       document.getElementById('expBtnLimpiar').style.display = 'none';
       document.getElementById('expPlaca').focus();
     }
