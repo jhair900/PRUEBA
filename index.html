@@ -43,7 +43,9 @@
     min-height:auto;
     display:grid;
     grid-template-columns:1fr;
-    background:linear-gradient(180deg, #fafafa 0%, #ffffff 60%);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,255,255,.78) 60%, rgba(255,255,255,.86) 100%),
+      url('assets/fondo.png') center/cover no-repeat;
     isolation:isolate;
   }
   .right{display:none !important}
@@ -162,18 +164,27 @@
   }
 
   .card.navy{
-    background:linear-gradient(180deg, #1e3a5f 0%, #0f2440 100%);
-    color:#fff;
+    background:linear-gradient(180deg, #ffffff 0%, #f6f6f6 100%);
+    color:var(--black);
+    border:1.5px solid rgba(0,0,0,.08);
   }
+  .card.navy h2, .card.navy p{color:var(--black)}
 
   .btn.navy{
-    background:linear-gradient(135deg, #1e3a5f, #0f2440);
-    color:#fff;
-    box-shadow:0 10px 24px rgba(15,36,64,.42);
+    background:linear-gradient(135deg, #ffffff, #f0f0f0);
+    color:var(--black);
+    border:1.5px solid rgba(0,0,0,.12);
+    box-shadow:0 8px 20px rgba(0,0,0,.10);
   }
+  .btn.navy .arrow{color:var(--red-1)}
 
-  .icon-contratos .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
-  .icon-contratos .accent{fill:rgba(255,255,255,.22)}
+  .icon-contratos .stroke-main{stroke:#0f172a;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .icon-contratos .accent{fill:rgba(229,63,46,.85)}
+  .card.navy .icon-ring{
+    border:1.5px solid rgba(0,0,0,.10);
+    background:radial-gradient(circle at center, rgba(0,0,0,.03), rgba(0,0,0,.01));
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.03);
+  }
 
   .icon-ventas .stroke-main{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
   .icon-ventas .accent{fill:rgba(255,255,255,.25)}
@@ -344,13 +355,13 @@
   }
 
   .features{
-    margin-top:26px;
-    width:calc(100% + 270px);
-    margin-right:-270px;
+    margin:32px auto 0;
+    width:100%;
+    max-width:1200px;
     background:linear-gradient(90deg, #151516 0%, #1a1a1d 45%, #111111 100%);
     color:#fff;
-    border-radius:30px;
-    padding:18px 14px;
+    border-radius:22px;
+    padding:18px 24px;
     display:grid;
     grid-template-columns:repeat(4, minmax(0,1fr));
     gap:0;
@@ -941,6 +952,7 @@
     };
 
     let moduloActivo = null; // clave del módulo que inició el login
+    let loginSoloBusqueda = false; // si true, tras login NO navega — sólo reintenta la búsqueda
 
     async function apiCall(action, payload){
       const body = Object.assign({ action: action }, payload);
@@ -959,14 +971,20 @@
       el.type = el.type === 'password' ? 'text' : 'password';
     }
 
-    function abrirLogin(modulo){
+    function abrirLogin(modulo, opts){
       moduloActivo = modulo;
+      loginSoloBusqueda = !!(opts && opts.soloBusqueda);
       const cfg = MODULOS[modulo];
 
-      // Si ya hay sesión activa, acceder directo
+      // Si ya hay sesión activa, acceder directo (pero no si es solo búsqueda)
       try{
         const auth = JSON.parse(sessionStorage.getItem('autocor_auth') || 'null');
         if(auth && auth.token){
+          if(loginSoloBusqueda){
+            loginSoloBusqueda = false;
+            buscarExpediente();
+            return;
+          }
           accederModulo(cfg);
           return;
         }
@@ -1024,7 +1042,13 @@
           isAdmin:     !!(resp.user && resp.user.isAdmin),
           token:       resp.sessionToken || ''
         }));
-        accederModulo(MODULOS[moduloActivo]);
+        if(loginSoloBusqueda){
+          loginSoloBusqueda = false;
+          cerrarLogin();
+          buscarExpediente();
+        } else {
+          accederModulo(MODULOS[moduloActivo]);
+        }
       }catch(err){
         document.getElementById('mlError').textContent = err.message || 'Usuario o clave incorrectos.';
         document.getElementById('mlPassword').value = '';
@@ -1067,9 +1091,9 @@
       let auth = {};
       try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
       if(!auth.token){
-        // sin sesión → pedir login y reintentar al volver
-        sessionStorage.setItem('autocor_pending_search', placa);
-        abrirLogin('contratos');
+        // sin sesión → abrir modal de login en modo "solo búsqueda" para
+        // que tras autenticar reintente la búsqueda sin navegar a contratos
+        abrirLogin('contratos', { soloBusqueda: true });
         return;
       }
 
