@@ -280,9 +280,6 @@
         <button type="button" class="btn-enviar" id="btnEnviar" onclick="enviarAFirmar()">
           ✓ Enviado a firmar
         </button>
-        <button type="button" class="btn-firmado" id="btnFirmado" onclick="marcarComoFirmado()" style="display:none">
-          📝 Marcar como firmado
-        </button>
       </div>
     </div>
   </div>
@@ -419,75 +416,37 @@ function _pintar(){
     : 'Excel SharePoint aún no sincronizado para esta placa.';
   document.getElementById('footerInfo').textContent = txtSP;
 
-  // Visibilidad y estado de los botones según el pipeline
+  // Visibilidad y estado del botón
   const btnEnviar  = document.getElementById('btnEnviar');
-  const btnFirmado = document.getElementById('btnFirmado');
   const estado = String(d.estadoProceso||'').toUpperCase();
   const idx        = Expediente.indiceEstado(estado);
-  const idxEnviado = Expediente.indiceEstado('PENDIENTE_FIRMA');
   const idxFirmado = Expediente.indiceEstado('FIRMADO');
 
-  if(idx < idxEnviado){
-    // Aún no se envió a firmar
+  if(idx < idxFirmado){
     btnEnviar.disabled = false;
-    btnEnviar.style.display = 'inline-flex';
     btnEnviar.textContent = '✓ Enviado a firmar';
-    btnFirmado.style.display = 'none';
-  } else if(idx === idxEnviado){
-    // Ya se envió, pendiente de firma → mostrar "marcar firmado"
-    btnEnviar.disabled = true;
-    btnEnviar.style.display = 'inline-flex';
-    btnEnviar.textContent = '✓ Ya enviado a firmar';
-    btnFirmado.disabled = false;
-    btnFirmado.style.display = 'inline-flex';
-    btnFirmado.textContent = '📝 Marcar como firmado';
   } else {
-    // FIRMADO o más avanzado
-    btnEnviar.style.display = 'none';
-    btnFirmado.disabled = true;
-    btnFirmado.style.display = 'inline-flex';
-    btnFirmado.textContent = '✓ Ya firmado';
-  }
-}
-
-async function marcarComoFirmado(){
-  const d = __expediente;
-  if(!d || !d.placa){ _toast('Busca una placa primero','err'); return; }
-  if(!confirm('¿Marcar la placa '+d.placa+' como FIRMADA? El expediente pasará a Pagos para aprobación.')) return;
-  const btn = document.getElementById('btnFirmado');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loading"></span> Procesando...';
-  try {
-    const r = await Expediente.cambiarEstado(d.placa, 'FIRMADO',
-      'Firma electrónica recibida y confirmada en módulo Firmas');
-    if(r && r.ok){
-      d.estadoProceso = 'FIRMADO';
-      _pintar();
-      _toast('Expediente '+d.placa+' marcado como FIRMADO · pasa a Pagos','ok');
-    } else {
-      _toast('No se pudo marcar: ' + (r && r.message || 'error'), 'err');
-      btn.disabled = false; btn.textContent = '📝 Marcar como firmado';
-    }
-  } catch(e){
-    _toast('Error: ' + e.message, 'err');
-    btn.disabled = false; btn.textContent = '📝 Marcar como firmado';
+    btnEnviar.disabled = true;
+    btnEnviar.textContent = '✓ Ya firmado';
   }
 }
 
 async function enviarAFirmar(){
   const d = __expediente;
   if(!d || !d.placa){ _toast('Busca una placa primero','err'); return; }
-  if(!confirm('¿Marcar la placa '+d.placa+' como ENVIADA A FIRMAR?')) return;
+  if(!confirm('¿Marcar la placa '+d.placa+' como FIRMADA y pasarla a Pagos?')) return;
   const btn = document.getElementById('btnEnviar');
   btn.disabled = true;
   btn.innerHTML = '<span class="loading"></span> Procesando...';
   try {
-    const r = await Expediente.cambiarEstado(d.placa, 'PENDIENTE_FIRMA',
+    // Se cambia directo a FIRMADO al pulsar "Enviado a firmar" — no se
+    // espera la confirmación física de la firma de las partes.
+    const r = await Expediente.cambiarEstado(d.placa, 'FIRMADO',
       'Enviado a firma digital desde módulo Firmas');
     if(r && r.ok){
-      d.estadoProceso = 'PENDIENTE_FIRMA';
+      d.estadoProceso = 'FIRMADO';
       _pintar();
-      _toast('Expediente '+d.placa+' marcado como "Enviado firma digital"', 'ok');
+      _toast('Expediente '+d.placa+' marcado como FIRMADO · pasa a Pagos', 'ok');
     } else {
       _toast('No se pudo marcar: ' + (r && r.message || 'error'), 'err');
       btn.disabled = false; btn.textContent = '✓ Enviado a firmar';
