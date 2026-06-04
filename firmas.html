@@ -210,6 +210,11 @@
             <div class="field-source source-sistema" id="sPropietario">📋 sistema</div>
           </div>
           <div class="field">
+            <div class="field-label">Cédula titular</div>
+            <div class="field-value" id="fCedulaTit">—</div>
+            <div class="field-source source-sistema" id="sCedulaTit">📋 sistema</div>
+          </div>
+          <div class="field">
             <div class="field-label">Código dactilar titular</div>
             <div class="field-value" id="fCodDactTit">—</div>
             <div class="field-source source-sistema" id="sCodDactTit">📋 sistema</div>
@@ -239,6 +244,11 @@
             <div class="field-label">Cónyuge</div>
             <div class="field-value" id="fConyuge">—</div>
             <div class="field-source source-sistema" id="sConyuge">📋 sistema</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Cédula cónyuge</div>
+            <div class="field-value" id="fCedulaCony">—</div>
+            <div class="field-source source-sistema" id="sCedulaCony">📋 sistema</div>
           </div>
           <div class="field">
             <div class="field-label">Código dactilar cónyuge</div>
@@ -379,6 +389,7 @@ function _pintar(){
 
   // Titular
   _txt('fPropietario',  d.propietario);
+  _txt('fCedulaTit',    d.cedulaPropietario || ced.numeroCedula);
   _txt('fCodDactTit',   ced.codigoDactilar);
   _txt('fTelTit',       d.telefonoProp);
   _txt('fDirTit',       d.domicilio);
@@ -392,6 +403,7 @@ function _pintar(){
   document.getElementById('grpCony').style.display = conyApplies ? 'block' : 'none';
   if(conyApplies){
     _txt('fConyuge',      d.nombreCony);
+    _txt('fCedulaCony',   d.ciCony || cony.numeroCedula);
     _txt('fCodDactCony',  cony.codigoDactilar);
     _txt('fTelCony',      d.telefonoCony);
     _txt('fDirCony',      d.domicilio);  // misma del titular según definición
