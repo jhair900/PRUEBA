@@ -6059,21 +6059,39 @@ async function validarTodoEnConjunto(){
         saveResult = await window._autoGuardarConContrato(extra);
       }
 
-      // 3️⃣ Feedback al usuario antes de cerrar
+      // 3️⃣ Feedback al usuario + botón para continuar el flujo
       if(saveResult && saveResult.ok){
         errorEl.className = 'gen-error';
         errorEl.style.background = '#f0fdf4';
         errorEl.style.borderColor = '#86efac';
         errorEl.style.color = '#166534';
-        errorEl.textContent = '✓ Contratos descargados y datos guardados en la hoja (placa '+saveResult.placa+').';
+        errorEl.innerHTML = '✓ Contratos descargados y datos guardados (placa '+saveResult.placa+').'
+          + '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+          + '<button type="button" id="btnContinuarLiquidacion" '
+          + 'style="padding:12px 22px;border:none;border-radius:12px;cursor:pointer;'
+          + 'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;'
+          + 'font-weight:800;font-size:13px;letter-spacing:.5px;text-transform:uppercase;'
+          + 'display:inline-flex;align-items:center;gap:8px;'
+          + 'box-shadow:0 8px 20px rgba(22,163,74,.3)">'
+          + '→ Proceder con liquidación y saneamiento</button>'
+          + '<button type="button" id="btnCerrarModalGen" '
+          + 'style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:12px;cursor:pointer;'
+          + 'background:#fff;color:#6b7280;font-weight:700;font-size:12px">'
+          + 'Cerrar</button>'
+          + '</div>';
         errorEl.style.display = 'block';
-        // Cerrar tras 1.8s
-        setTimeout(function(){
+        // Cablear los botones
+        var btnCont = document.getElementById('btnContinuarLiquidacion');
+        if(btnCont) btnCont.onclick = function(){
+          try { sessionStorage.setItem('autocor_placa_preload', saveResult.placa); } catch(_){}
+          window.location.href = 'liquidacion.html';
+        };
+        var btnCer = document.getElementById('btnCerrarModalGen');
+        if(btnCer) btnCer.onclick = function(){
           cerrarModalGenerarContratos();
-          // Restaurar estilo del error para próxima vez
           errorEl.removeAttribute('style');
           errorEl.style.display = 'none';
-        }, 1800);
+        };
       } else {
         // Descarga OK pero guardado falló (o sin sesión)
         var msg = (saveResult && saveResult.message) || 'sesión no detectada';
