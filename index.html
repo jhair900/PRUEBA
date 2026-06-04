@@ -652,9 +652,15 @@
   .exp-pill.ok{border-color:#86efac;background:#f0fdf4}
   .exp-pill.ok .exp-pill-num{background:#16a34a;color:#fff}
   .exp-pill.ok .exp-pill-state{background:#dcfce7;color:#166534}
-  .exp-pill.pending{border-color:#fde68a;background:#fffbeb}
-  .exp-pill.pending .exp-pill-num{background:#f59e0b;color:#fff}
-  .exp-pill.pending .exp-pill-state{background:#fef3c7;color:#92400e}
+  .exp-pill.pending{border-color:#e5e7eb;background:#f9fafb}
+  .exp-pill.pending .exp-pill-num{background:#9ca3af;color:#fff}
+  .exp-pill.pending .exp-pill-state{background:#f3f4f6;color:#6b7280}
+  .exp-pill.warn{border-color:#fde68a;background:#fffbeb}
+  .exp-pill.warn .exp-pill-num{background:#f59e0b;color:#fff}
+  .exp-pill.warn .exp-pill-state{background:#fef3c7;color:#92400e}
+  .exp-pill.err{border-color:#fca5a5;background:#fef2f2}
+  .exp-pill.err .exp-pill-num{background:#dc2626;color:#fff}
+  .exp-pill.err .exp-pill-state{background:#fee2e2;color:#991b1b}
   .exp-error{
     margin-top:12px;padding:10px 14px;border-radius:10px;
     background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:13px;
@@ -1160,16 +1166,101 @@
         const est = await Expediente.estadoPorPlaca(placa);
         const estadoActual = est._contratos && est._contratos.estadoProceso
           ? String(est._contratos.estadoProceso).toUpperCase() : (est.contratos ? 'VALIDADO' : 'NUEVO');
+        const idxActual = Expediente.indiceEstado(estadoActual);
         _pintarEstadoBadge(estadoActual, est._contratos);
-        _pintarPill('validacion', est.contratos,   est._contratos,   'datos validados', 'sin validación');
-        _pintarPill('liquidacion', est.liquidacion, est._liquidacion, 'liquidación guardada', 'sin liquidación');
-        _pintarPill('pagos',       est.pagos,       est._pagos,       'pago registrado', 'sin pago');
-        _pintarPill('ventas',      est.ventas,      est._ventas,      'venta registrada', 'sin venta');
-        _aplicarColorPipeline(estadoActual);
+
+        // Validación documental: ok si la placa está en Contratos
+        _pintarPill('validacion', est.contratos, est._contratos,
+                    'datos validados', 'sin validación');
+
+        // Liquidación + Contratos: ok si existe liquidación guardada
+        _pintarPill('liquidacion', est.liquidacion, est._liquidacion,
+                    'liquidación guardada', 'sin liquidación');
+
+        // Firmas: ok si el estado del expediente ya pasó por firma
+        const yaFirmado = idxActual >= Expediente.indiceEstado('FIRMADO');
+        const enFirma   = idxActual === Expediente.indiceEstado('PENDIENTE_FIRMA');
+        _pintarPillFirmas(yaFirmado, enFirma);
+
+        // Pagos: el color y la etiqueta vienen del DICTAMEN LEGAL FINAL
+        _pintarPillPagos(est._pagos, idxActual);
+
+        // Ventas: ok si existe venta registrada
+        _pintarPill('ventas', est.ventas, est._ventas,
+                    'venta registrada', 'sin venta');
       } catch(e){
         err.textContent = 'No se pudo consultar el expediente: '+(e.message||e);
         err.style.display = 'block';
       }
+    }
+
+    /* Firmas: ya firmado = verde, en proceso = amarillo, sino pendiente */
+    function _pintarPillFirmas(yaFirmado, enFirma){
+      const pill = document.querySelector('.exp-pill[data-step="firmas"]');
+      if(!pill) return;
+      const sub = pill.querySelector('.exp-pill-sub');
+      const state = pill.querySelector('.exp-pill-state');
+      pill.classList.remove('ok','pending','warn','err');
+      if(yaFirmado){
+        pill.classList.add('ok');
+        state.textContent = 'Firmado';
+        sub.textContent = 'expediente firmado';
+      } else if(enFirma){
+        pill.classList.add('warn');
+        state.textContent = 'En proceso';
+        sub.textContent = 'enviado a firma digital';
+      } else {
+        pill.classList.add('pending');
+        state.textContent = 'Pendiente';
+        sub.textContent = 'sin firma';
+      }
+    }
+
+    /* Pagos: lee el dictamenColor + dictamenValue de la hoja Pagos */
+    function _pintarPillPagos(dataPagos, idxEstadoExp){
+      const pill = document.querySelector('.exp-pill[data-step="pagos"]');
+      if(!pill) return;
+      const sub = pill.querySelector('.exp-pill-sub');
+      const state = pill.querySelector('.exp-pill-state');
+      pill.classList.remove('ok','pending','warn','err');
+
+      if(!dataPagos){
+        // No hay registro de pago aún
+        const idxFirmado = Expediente.indiceEstado('FIRMADO');
+        if(idxEstadoExp >= idxFirmado){
+          pill.classList.add('warn');
+          state.textContent = 'En curso';
+          sub.textContent = 'pendiente de aprobar';
+        } else {
+          pill.classList.add('pending');
+          state.textContent = 'Pendiente';
+          sub.textContent = 'sin pago';
+        }
+        return;
+      }
+
+      // Pago registrado: leer dictamen
+      const dictColor = String(dataPagos.dictamenColor || '').toLowerCase();
+      const dictTxt   = String(dataPagos.dictamenValue || '').trim();
+      const txt = dictTxt || (dictColor==='dict-verde' ? 'Pago aprobado'
+                            : dictColor==='dict-rojo'  ? 'Pago rechazado'
+                            : dictColor==='dict-amarillo' ? 'Riesgo medio'
+                            : 'Revisión manual');
+
+      if(dictColor === 'dict-verde'){
+        pill.classList.add('ok');
+        state.textContent = 'Aprobado';
+      } else if(dictColor === 'dict-rojo'){
+        pill.classList.add('err');
+        state.textContent = 'Rechazado';
+      } else if(dictColor === 'dict-amarillo'){
+        pill.classList.add('warn');
+        state.textContent = 'Riesgo medio';
+      } else {
+        pill.classList.add('warn');
+        state.textContent = 'En revisión';
+      }
+      sub.textContent = txt;
     }
 
     function _pintarEstadoBadge(estado, dataContratos){
@@ -1190,37 +1281,6 @@
         }
       }
       meta.textContent = texto;
-    }
-
-    /* Mapeo etapa → estado mínimo del pipeline */
-    const _PIPELINE_MIN = {
-      validacion:  'VALIDADO',
-      liquidacion: 'LIQUIDADO',
-      firmas:      'PENDIENTE_FIRMA',
-      pagos:       'APROBADO',
-      ventas:      null  // independiente
-    };
-
-    function _aplicarColorPipeline(estadoActual){
-      const idxActual = Expediente.indiceEstado(estadoActual);
-      document.querySelectorAll('.exp-pill').forEach(function(p){
-        const step = p.getAttribute('data-step');
-        if(!step || step === 'ventas') return; // ventas no entra al pipeline lineal
-        const min = _PIPELINE_MIN[step];
-        if(!min) return;
-        const idxMin = Expediente.indiceEstado(min);
-        p.classList.remove('pipe-done','pipe-active','pipe-future','ok','pending');
-        if(idxActual >= idxMin){
-          p.classList.add('pipe-done');
-          p.querySelector('.exp-pill-state').textContent = 'Completado';
-        } else if(idxActual + 1 === idxMin){
-          p.classList.add('pipe-active');
-          p.querySelector('.exp-pill-state').textContent = 'En curso';
-        } else {
-          p.classList.add('pipe-future');
-          p.querySelector('.exp-pill-state').textContent = 'Pendiente';
-        }
-      });
     }
 
     function _pintarPill(step, ok, data, msgOk, msgPend){
