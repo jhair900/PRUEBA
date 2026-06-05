@@ -1239,28 +1239,32 @@
         return;
       }
 
-      // Pago registrado: leer dictamen
+      // Pago registrado: leer dictamen (color o, como fallback, texto)
       const dictColor = String(dataPagos.dictamenColor || '').toLowerCase();
       const dictTxt   = String(dataPagos.dictamenValue || '').trim();
-      const txt = dictTxt || (dictColor==='dict-verde' ? 'Pago aprobado'
-                            : dictColor==='dict-rojo'  ? 'Pago rechazado'
-                            : dictColor==='dict-amarillo' ? 'Riesgo medio'
-                            : 'Revisión manual');
+      const txtUp     = dictTxt.toUpperCase();
 
-      if(dictColor === 'dict-verde'){
+      const esAprobado  = dictColor === 'dict-verde'    || /\bAPROBAD[OA]\b/.test(txtUp);
+      const esRechazado = dictColor === 'dict-rojo'     || /\bRECHAZAD[OA]\b/.test(txtUp) || /\bNEGAD[OA]\b/.test(txtUp);
+      const esRiesgo    = dictColor === 'dict-amarillo' || /\bRIESGO\b/.test(txtUp) || /\bMEDIO\b/.test(txtUp) || /\bOBSERVAD[OA]\b/.test(txtUp);
+
+      if(esAprobado){
         pill.classList.add('ok');
         state.textContent = 'Aprobado';
-      } else if(dictColor === 'dict-rojo'){
+        sub.textContent = dictTxt || 'Pago aprobado';
+      } else if(esRechazado){
         pill.classList.add('err');
         state.textContent = 'Rechazado';
-      } else if(dictColor === 'dict-amarillo'){
+        sub.textContent = dictTxt || 'Pago rechazado';
+      } else if(esRiesgo){
         pill.classList.add('warn');
         state.textContent = 'Riesgo medio';
+        sub.textContent = dictTxt || 'Pago con observaciones';
       } else {
         pill.classList.add('warn');
         state.textContent = 'En revisión';
+        sub.textContent = dictTxt || 'Pago en revisión manual';
       }
-      sub.textContent = txt;
     }
 
     function _pintarEstadoBadge(estado, dataContratos){
