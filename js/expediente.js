@@ -9,7 +9,7 @@
 (function(global){
   'use strict';
 
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
 
   function _getToken(){
     try { return (JSON.parse(sessionStorage.getItem('autocor_auth')||'{}')).token || ''; }
