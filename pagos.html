@@ -978,11 +978,10 @@ async function _autollenarPagoDesdeExpediente(placa){
     window.__expedienteActual = d;
     window.__liquidacionActual = liq;
 
-    // 2) Campos básicos
+    // 2) Campos básicos (Responsable se deja vacío, lo llena quien edita)
     Expediente.autollenar({
-      placaValue:        'placa',
-      clienteValue:      'propietario',
-      responsableValue:  'asesor'
+      placaValue:    'placa',
+      clienteValue:  'propietario'
     }, d, { sobrescribir:false });
 
     // 3) Restaurar plantilla por defecto si las tablas quedaron vacías
