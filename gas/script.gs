@@ -220,6 +220,19 @@ function handleAction_(action, payload) {
     return setEstadoProceso_(payload.placa, payload.estado, payload.observacion, session);
   }
 
+  // ── Drive: subir expediente (PDFs + Word→PDF) ─────────────────
+  if (action === 'subirExpedienteDrive') {
+    const session = validateSession_(payload.sessionToken);
+    if (!session.ok) return session;
+    return subirExpedienteDrive_(payload.placa, payload.archivos, session);
+  }
+
+  if (action === 'convertirDocxAPdf') {
+    const session = validateSession_(payload.sessionToken);
+    if (!session.ok) return session;
+    return convertirDocxAPdf_(payload.docxBase64, payload.nombre);
+  }
+
   // ── Firmas SP (sincronización desde Excel via Office Script) ────
   // recibirFirmasSP no requiere sesión: se autentica con un secreto
   // compartido (Script Property FIRMAS_SP_SECRET) porque el Office
@@ -1492,5 +1505,162 @@ function deleteContratoByPlaca_(placa, session) {
     return { ok: true, message: 'Registro de contrato eliminado.' };
   } catch (err) {
     return { ok: false, message: 'Error al eliminar contrato: ' + err.message };
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DRIVE: almacenamiento del expediente físico (PDFs por placa)
+   Estructura:
+     AUTOCOR_Expedientes/
+       └── <PLACA>/
+            ├── CEDULA TITULAR.pdf
+            ├── CEDULA CONYUGE.pdf
+            ├── MATRICULA.pdf
+            ├── CUV.pdf
+            ├── NOTARIA.pdf
+            └── CONTRATO_<tipo>.pdf  (uno por contrato Word generado)
+   ══════════════════════════════════════════════════════════════════ */
+
+const DRIVE_ROOT_FOLDER = 'AUTOCOR_Expedientes';
+
+/* Devuelve la carpeta raíz creándola si no existe. */
+function _getOrCreateRootFolder_() {
+  const it = DriveApp.getFoldersByName(DRIVE_ROOT_FOLDER);
+  if (it.hasNext()) return it.next();
+  return DriveApp.createFolder(DRIVE_ROOT_FOLDER);
+}
+
+/* Devuelve la carpeta de la placa creándola si no existe. */
+function _getOrCreatePlacaFolder_(placa) {
+  const root = _getOrCreateRootFolder_();
+  const it = root.getFoldersByName(placa);
+  if (it.hasNext()) return it.next();
+  return root.createFolder(placa);
+}
+
+/* Sobrescribe (o crea) un PDF dentro de la carpeta de la placa. */
+function _saveOrReplacePdf_(folder, nombre, bytes) {
+  // borrar versiones previas con el mismo nombre
+  const it = folder.getFilesByName(nombre);
+  while (it.hasNext()) it.next().setTrashed(true);
+  const blob = Utilities.newBlob(bytes, 'application/pdf', nombre);
+  return folder.createFile(blob);
+}
+
+/* Decodifica base64 a Bytes. Acepta "data:application/pdf;base64,..." */
+function _decodeBase64Pdf_(b64) {
+  let raw = String(b64 || '');
+  const idx = raw.indexOf('base64,');
+  if (idx >= 0) raw = raw.substring(idx + 7);
+  return Utilities.base64Decode(raw);
+}
+
+/* Convierte un .docx (base64) a PDF usando el servicio avanzado de Drive.
+   Devuelve { ok, pdfBase64, mimeType, message }. */
+function convertirDocxAPdf_(docxB64, nombre) {
+  try {
+    if (!docxB64) return { ok: false, message: 'Sin docxBase64 a convertir.' };
+    nombre = String(nombre || 'documento').replace(/[\/\\?*:"<>|]/g, '_');
+    const bytes = _decodeBase64Pdf_(docxB64);
+    const docxBlob = Utilities.newBlob(bytes,
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      nombre + '.docx');
+
+    // Subir como Google Doc (esto lo convierte) y luego exportarlo a PDF
+    const tempMeta = {
+      name: '__tmp_' + nombre + '_' + new Date().getTime(),
+      mimeType: 'application/vnd.google-apps.document'
+    };
+    let tempDoc;
+    try {
+      tempDoc = Drive.Files.create(tempMeta, docxBlob);
+    } catch (eAdv) {
+      // Fallback: si Advanced Drive Service no está habilitado
+      const tmpFile = DriveApp.createFile(docxBlob);
+      tempDoc = { id: tmpFile.getId() };
+    }
+    const pdfBlob = DriveApp.getFileById(tempDoc.id).getAs('application/pdf');
+    // Cleanup
+    try { DriveApp.getFileById(tempDoc.id).setTrashed(true); } catch (_){}
+    return {
+      ok: true,
+      pdfBase64: Utilities.base64Encode(pdfBlob.getBytes()),
+      mimeType: 'application/pdf'
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error convertir docx→pdf: ' + err.message };
+  }
+}
+
+/* Recibe { placa, archivos: [{ nombre, contenidoBase64, esDocx? }] } y
+   los guarda en la carpeta de la placa. Sobrescribe versiones previas.
+   Devuelve URLs útiles para que el cliente las muestre. */
+function subirExpedienteDrive_(placa, archivos, session) {
+  try {
+    const p = String(placa || '').replace(/\s/g, '').toUpperCase();
+    if (!p) return { ok: false, message: 'placa requerida' };
+    if (!Array.isArray(archivos) || archivos.length === 0) {
+      return { ok: false, message: 'No se recibieron archivos.' };
+    }
+
+    const folder = _getOrCreatePlacaFolder_(p);
+    const resultado = { ok: true, placa: p, folderUrl: folder.getUrl(), folderId: folder.getId(), archivos: [] };
+
+    archivos.forEach(function (a) {
+      try {
+        let nombre = String(a.nombre || 'documento').replace(/[\/\\?*:"<>|]/g, '_').trim();
+        if (!nombre) return;
+        if (!/\.pdf$/i.test(nombre)) nombre += '.pdf';
+        let bytes;
+        if (a.esDocx) {
+          // Convertir docx → pdf y guardar el pdf
+          const conv = convertirDocxAPdf_(a.contenidoBase64, nombre.replace(/\.pdf$/i, ''));
+          if (!conv.ok) {
+            resultado.archivos.push({ nombre: nombre, ok: false, error: conv.message });
+            return;
+          }
+          bytes = _decodeBase64Pdf_(conv.pdfBase64);
+        } else {
+          bytes = _decodeBase64Pdf_(a.contenidoBase64);
+        }
+        const file = _saveOrReplacePdf_(folder, nombre, bytes);
+        resultado.archivos.push({
+          nombre: nombre,
+          ok: true,
+          fileId: file.getId(),
+          url: file.getUrl(),
+          downloadUrl: 'https://drive.google.com/uc?export=download&id=' + file.getId()
+        });
+      } catch (e) {
+        resultado.archivos.push({ nombre: a.nombre, ok: false, error: e.message });
+      }
+    });
+
+    // Persistir los URLs en el DATA_JSON del expediente
+    try {
+      const sheet = getContratosSheet_();
+      const row = findRowByPlaca_(sheet, p);
+      if (row > 0) {
+        const json = sheet.getRange(row, 8).getValue();
+        const data = json ? JSON.parse(json) : {};
+        data.drive = {
+          folderUrl: resultado.folderUrl,
+          folderId: resultado.folderId,
+          archivos: resultado.archivos.filter(function(x){ return x.ok; }).map(function(x){
+            return { nombre: x.nombre, url: x.url, fileId: x.fileId };
+          }),
+          actualizadoEn: new Date().toISOString(),
+          actualizadoPor: (session && session.user) || ''
+        };
+        sheet.getRange(row, 8).setValue(JSON.stringify(data));
+        sheet.getRange(row, 7).setValue(new Date());
+      }
+    } catch (e) {
+      resultado.warningPersist = 'No se pudo persistir URLs en hoja Contratos: ' + e.message;
+    }
+
+    return resultado;
+  } catch (err) {
+    return { ok: false, message: 'Error en subirExpedienteDrive: ' + err.message };
   }
 }

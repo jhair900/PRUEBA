@@ -1264,6 +1264,7 @@
 <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
 <script src="js/contrato-templates.js" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
 <script src="js/generador-contratos.js"></script>
@@ -1873,7 +1874,7 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
-const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
 }
@@ -6059,13 +6060,35 @@ async function validarTodoEnConjunto(){
         saveResult = await window._autoGuardarConContrato(extra);
       }
 
+      // 2.5️⃣ Subir expediente físico a Drive (cédulas, matrícula,
+      // notaría, CUV y contratos generados como PDF)
+      var driveResult = null;
+      if(saveResult && saveResult.ok && typeof window._subirExpedienteADrive === 'function'){
+        btn.innerHTML = '☁️ Subiendo expediente a Drive...';
+        try {
+          driveResult = await window._subirExpedienteADrive(saveResult.placa);
+        } catch(eDrive){
+          console.warn('[Drive] error subiendo expediente:', eDrive);
+        }
+      }
+
       // 3️⃣ Feedback al usuario + botón para continuar el flujo
       if(saveResult && saveResult.ok){
         errorEl.className = 'gen-error';
         errorEl.style.background = '#f0fdf4';
         errorEl.style.borderColor = '#86efac';
         errorEl.style.color = '#166534';
+        var driveLine = '';
+        if(driveResult && driveResult.ok && driveResult.folderUrl){
+          var oks = (driveResult.archivos||[]).filter(function(a){ return a.ok; }).length;
+          driveLine = '<div style="margin-top:8px;font-size:12px">📁 '+oks+' archivo(s) subidos a Drive · '
+            + '<a href="'+driveResult.folderUrl+'" target="_blank" style="color:#166534;font-weight:700;text-decoration:underline">'
+            + 'Ver carpeta del expediente</a></div>';
+        } else if(driveResult && !driveResult.ok){
+          driveLine = '<div style="margin-top:8px;font-size:12px;color:#92400e">⚠ Drive: '+(driveResult.message||'no se pudo subir')+'</div>';
+        }
         errorEl.innerHTML = '✓ Contratos descargados y datos guardados (placa '+saveResult.placa+').'
+          + driveLine
           + '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
           + '<button type="button" id="btnContinuarLiquidacion" '
           + 'style="padding:12px 22px;border:none;border-radius:12px;cursor:pointer;'
@@ -6137,7 +6160,7 @@ async function validarTodoEnConjunto(){
 (function(){
 
   /* ── URL del API (mismo que index.html / liquidacion.html) ──── */
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
 
   /* ── Helpers de lectura de datos (reutiliza los de GenContratos) */
   function _pick(campo){
@@ -6490,6 +6513,153 @@ async function validarTodoEnConjunto(){
 
 })();
 
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   DRIVE — subida del expediente físico
+   - Captura el PDF original del CUV cuando se carga.
+   - Cuando se pulsa "Generar Contratos + Guardar" construye PDFs de
+     cédulas/matrícula/notaría/CUV/contratos y los envía al GAS, que
+     los guarda en Drive bajo AUTOCOR_Expedientes/<PLACA>/.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  window._cuvOriginalBase64 = null;
+
+  function _fileToDataUrl(file){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(r.result); };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // Patch onFileChange para capturar el CUV original y las imágenes
+  // que vienen por upload (no solo por paste)
+  var _origOFC = window.onFileChange;
+  window.onFileChange = async function(e, tipo){
+    try{
+      var f = e.target && e.target.files && e.target.files[0];
+      if(f){
+        var dataUrl = await _fileToDataUrl(f);
+        if(tipo === 'cuv'){
+          window._cuvOriginalBase64 = dataUrl;
+        } else if(tipo === 'cedula-prop' || tipo === 'cedula-cony'
+                 || tipo === 'matricula' || tipo === 'notaria'){
+          if(typeof pastedImages !== 'undefined'){
+            if(!pastedImages[tipo]) pastedImages[tipo] = { frontal:null, reverso:null };
+            if(!pastedImages[tipo].frontal) pastedImages[tipo].frontal = dataUrl;
+          }
+        }
+      }
+    } catch(_){}
+    return _origOFC ? _origOFC(e, tipo) : undefined;
+  };
+
+  function _loadImage(src){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){ resolve(img); };
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  // Construye un PDF a partir de dataURLs de imágenes (una por página),
+  // manteniendo la relación de aspecto y centrando en A4.
+  async function _imagenesAPdfDataUrl(dataUrls){
+    if(!window.jspdf) throw new Error('jsPDF no cargado');
+    var jsPDF = window.jspdf.jsPDF;
+    var pdf = new jsPDF({ unit:'mm', format:'a4' });
+    var pw = pdf.internal.pageSize.getWidth();
+    var ph = pdf.internal.pageSize.getHeight();
+    var margen = 8;
+    var maxW = pw - margen*2;
+    var maxH = ph - margen*2;
+    var pxToMm = 0.264583;
+    for(var i=0; i<dataUrls.length; i++){
+      if(i > 0) pdf.addPage();
+      var img = await _loadImage(dataUrls[i]);
+      var iwmm = img.naturalWidth * pxToMm;
+      var ihmm = img.naturalHeight * pxToMm;
+      var ratio = Math.min(maxW/iwmm, maxH/ihmm, 1.5);
+      var w = iwmm * ratio;
+      var h = ihmm * ratio;
+      var x = (pw - w) / 2;
+      var y = (ph - h) / 2;
+      var fmt = /^data:image\/png/i.test(dataUrls[i]) ? 'PNG' : 'JPEG';
+      pdf.addImage(dataUrls[i], fmt, x, y, w, h, undefined, 'FAST');
+    }
+    return pdf.output('datauristring'); // 'data:application/pdf;base64,XXXX'
+  }
+
+  /* Sube todos los archivos disponibles del expediente al GAS.
+     Devuelve { ok, folderUrl, archivos:[...] }. */
+  window._subirExpedienteADrive = async function(placa){
+    if(!placa) return { ok:false, message:'placa requerida' };
+    if(typeof pastedImages === 'undefined' || !window.jspdf){
+      return { ok:false, message:'entorno incompleto (pastedImages / jsPDF)' };
+    }
+    var auth = {};
+    try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
+    if(!auth.token) return { ok:false, message:'sin sesión' };
+
+    var archivos = [];
+
+    async function _addImgDoc(tipo, nombrePdf){
+      var d = pastedImages[tipo];
+      if(!d) return;
+      var paginas = [d.frontal, d.reverso].filter(Boolean);
+      if(paginas.length === 0) return;
+      try {
+        var pdfDataUrl = await _imagenesAPdfDataUrl(paginas);
+        archivos.push({ nombre: nombrePdf, contenidoBase64: pdfDataUrl });
+      } catch(e){ console.warn('[Drive] PDF '+nombrePdf+' falló:', e); }
+    }
+
+    await _addImgDoc('cedula-prop', 'CEDULA TITULAR.pdf');
+    await _addImgDoc('cedula-cony', 'CEDULA CONYUGE.pdf');
+    await _addImgDoc('matricula',   'MATRICULA.pdf');
+    await _addImgDoc('notaria',     'NOTARIA.pdf');
+
+    if(window._cuvOriginalBase64){
+      archivos.push({ nombre: 'CUV.pdf', contenidoBase64: window._cuvOriginalBase64 });
+    }
+
+    // Contratos generados (.docx) → marcados como esDocx para que el
+    // GAS los convierta a PDF antes de guardarlos.
+    var generados = (window._contratosGenerados && window._contratosGenerados.generados) || [];
+    if(typeof window._docxBufferToBase64 === 'function'){
+      generados.forEach(function(g){
+        try {
+          var b64 = window._docxBufferToBase64(g.buffer);
+          var nombrePdf = (g.nombre || ('CONTRATO_'+g.tipo)).replace(/\.docx$/i,'') + '.pdf';
+          archivos.push({ nombre: nombrePdf, contenidoBase64: b64, esDocx: true });
+        } catch(e){ console.warn('[Drive] contrato '+g.nombre+' no convertible:', e); }
+      });
+    }
+
+    if(archivos.length === 0) return { ok:false, message:'sin archivos para subir' };
+
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
+    try {
+      var r = await fetch(GAS_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'subirExpedienteDrive',
+          sessionToken: auth.token,
+          placa: placa,
+          archivos: archivos
+        })
+      });
+      var json = await r.json();
+      console.log('[Drive] resultado subida:', json);
+      return json;
+    } catch(err){
+      return { ok:false, message:'error red Drive: '+err.message };
+    }
+  };
 })();
 </script>
 </body>
