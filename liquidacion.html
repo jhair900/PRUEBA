@@ -2296,21 +2296,23 @@ async function buscarPlaca(placaRaw){
 /* Autollena campos vacíos con datos del expediente de Contratos.
    No sobrescribe lo que ya tenga la liquidación existente. */
 async function _autollenarDesdeExpediente(placa){
-  if(typeof Expediente === 'undefined') return;
+  if(typeof Expediente === 'undefined') return 0;
   try {
     const r = await Expediente.cargarPorPlaca(placa);
-    if(!r || !r.ok || !r.data) return;
+    if(!r || !r.ok || !r.data) return 0;
     const d = r.data;
     // Mapeo input → campo del expediente
     const map = {
       placa:        'placa',
       cedula:       'cedulaPropietario',
+      cliente:      'propietario',
       marca:        'marca',
       modelo:       'modelo',
       anio:         'anio',
       color:        'color',
       motor:        'motor',
-      chasis:       'chasis'
+      chasis:       'chasis',
+      valorToma:    'valorToma'
     };
     const n = Expediente.autollenar(map, d, { sobrescribir:false });
     if(n > 0){
@@ -2319,7 +2321,8 @@ async function _autollenarDesdeExpediente(placa){
         n+' campo(s) autollenados desde el expediente de Contratos');
       console.log('[Expediente] '+n+' campo(s) cargados para placa '+placa);
     }
-  } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); }
+    return n;
+  } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); return 0; }
 }
 
 function _escapeRegExp(s){return String(s||"").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");}
@@ -3509,15 +3512,29 @@ async function generarPDFSaneamiento(placa){
   renderAuthUI();
   renderSupportPrints();
 
-  // Si veníamos del dashboard con una placa precargada, dispararla
+  // Si veníamos del dashboard con una placa precargada, autollenamos
+  // SOLO desde la hoja Contratos (expediente). NO buscamos en
+  // Liquidaciones — el botón "🔍 Buscar Placa" queda reservado para
+  // eso. Así contratos y liquidaciones quedan independientes.
   try{
     const pre = sessionStorage.getItem('autocor_placa_preload');
     if(pre){
       sessionStorage.removeItem('autocor_placa_preload');
-      setTimeout(function(){
+      setTimeout(async function(){
         const inp = document.getElementById('placa');
         if(inp){ inp.value = pre; }
-        if(typeof buscarPlaca === 'function') buscarPlaca(pre);
+        setStatus('CARGANDO DATOS DESDE CONTRATOS — ' + pre + '...');
+        try {
+          const n = await _autollenarDesdeExpediente(pre);
+          if(n > 0){
+            setStatus('DATOS DEL EXPEDIENTE CARGADOS — ' + pre, false, true);
+          } else {
+            setStatus('SIN EXPEDIENTE DE CONTRATOS PARA ' + pre + '. Llena los campos manualmente.', false, false);
+          }
+        } catch(e){
+          console.error('[Preload] error autollenando:', e);
+          setStatus('NO SE PUDO CARGAR DESDE CONTRATOS', true);
+        }
       }, 400);
     }
   }catch(_){}
