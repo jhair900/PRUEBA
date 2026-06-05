@@ -238,19 +238,40 @@
 
     console.log('[Contratos] Generando para', vars.NOMBRE_PROP, '| Estado civil:', vars.ESTADO_CIVIL_PROP, '| Plantilla encargo:', encKey);
 
+    var generados = [];
+
     // 1. Encargo Fiduciario
     var bufEnc = generarDocx(templates[encKey], vars);
-    descargarDocx(bufEnc, 'Encargo_Fiduciario_'+placa+'_'+fecha+'.docx');
+    var nomEnc = 'Encargo_Fiduciario_'+placa+'_'+fecha+'.docx';
+    descargarDocx(bufEnc, nomEnc);
+    generados.push({ tipo:'encargo', nombre: nomEnc, buffer: bufEnc, casado: casado });
 
     // 2. Contrato Prestación de Servicios
     var bufPre = generarDocx(templates['prestacion-quito'], vars);
-    descargarDocx(bufPre, 'Prestacion_Servicios_'+placa+'_'+fecha+'.docx');
+    var nomPre = 'Prestacion_Servicios_'+placa+'_'+fecha+'.docx';
+    descargarDocx(bufPre, nomPre);
+    generados.push({ tipo:'prestacion', nombre: nomPre, buffer: bufPre });
 
-    return { encargo: encKey, vars: vars };
+    // Exponer los buffers para que contratos.html pueda subirlos a Drive
+    try { global._contratosGenerados = { placa: placa, fecha: fecha, generados: generados }; } catch(_){}
+
+    return { encargo: encKey, vars: vars, generados: generados };
+  }
+
+  /* Convierte un buffer .docx (Uint8Array) a base64 sin prefijo data: */
+  function bufferToBase64(buf){
+    var bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    var bin = '';
+    var chunk = 0x8000;
+    for(var i=0; i<bytes.length; i+=chunk){
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+    }
+    return btoa(bin);
   }
 
   /* ── Exponer ─────────────────────────────────────────────────── */
   global.generarContratos     = generarContratos;
   global._valorATextoHelper   = valorATexto;
+  global._docxBufferToBase64  = bufferToBase64;
 
 })(window);
