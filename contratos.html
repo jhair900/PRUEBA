@@ -1874,7 +1874,7 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
-const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
+const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
 }
@@ -6160,7 +6160,7 @@ async function validarTodoEnConjunto(){
 (function(){
 
   /* ── URL del API (mismo que index.html / liquidacion.html) ──── */
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
 
   /* ── Helpers de lectura de datos (reutiliza los de GenContratos) */
   function _pick(campo){
@@ -6641,7 +6641,7 @@ async function validarTodoEnConjunto(){
 
     if(archivos.length === 0) return { ok:false, message:'sin archivos para subir' };
 
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzVtbqm_4IsQIbAGy1oVTNWe9fru749dP6ge9ISt-NT-oKY2wiqUNsfHpefbToRC8sq/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
     try {
       var r = await fetch(GAS_URL, {
         method:'POST',
