@@ -1403,15 +1403,27 @@ renderAuthUI();
 if(!currentUser) setStatus('DEBES INICIAR SESIÓN PARA GUARDAR Y BUSCAR');
 else setStatus('SESIÓN RECUPERADA');
 
-/* Placa precargada desde el dashboard */
+/* Placa precargada desde el dashboard.
+   Solo consulta la hoja Contratos (expediente) para autollenar.
+   NO toca el pago guardado: eso queda reservado para el botón
+   🔍 Buscar Placa. Así el operario que viene del dashboard ve los
+   datos del expediente sin que se le rellene un responsable o un
+   dictamen viejos de un pago anterior. */
 try{
   const pre = sessionStorage.getItem('autocor_placa_preload');
   if(pre){
     sessionStorage.removeItem('autocor_placa_preload');
-    setTimeout(function(){
+    setTimeout(async function(){
       const inp = document.getElementById('placaValue');
       if(inp){ inp.value = pre; }
-      if(typeof buscarPorPlaca === 'function') buscarPorPlaca(pre);
+      setStatus('CARGANDO DATOS DESDE CONTRATOS — ' + pre + '...');
+      try {
+        await _autollenarPagoDesdeExpediente(normalizeValue(pre));
+        setStatus('DATOS DEL EXPEDIENTE CARGADOS — ' + pre, false, true);
+      } catch(e){
+        console.error('[Preload pagos] error autollenando:', e);
+        setStatus('NO SE PUDO CARGAR DESDE CONTRATOS', true);
+      }
     }, 400);
   }
 }catch(_){}
