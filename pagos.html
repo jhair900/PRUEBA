@@ -1062,7 +1062,10 @@ async function _autollenarPagoDesdeExpediente(placa){
 
     function _setIfEmpty(el, v){
       if(!el || !v) return;
-      if(String(el.value||'').trim() === '') el.value = v;
+      if(String(el.value||'').trim() === ''){
+        el.value = v;
+        try { el.dispatchEvent(new Event('input', { bubbles:true })); } catch(_){}
+      }
     }
     function _llenarFilaValidacion(tbody, idx, izq, der){
       if(!tbody) return;
@@ -1080,6 +1083,10 @@ async function _autollenarPagoDesdeExpediente(placa){
     // tbodyMatricula columnas: SRI (notaría) vs MATRÍCULA
     _llenarFilaValidacion(tbodyMat, 0, chasisNotaria, chasisMatric);
     _llenarFilaValidacion(tbodyMat, 1, motorNotaria,  motorMatric);
+
+    // Recalcular el status (CORRECTO/INCORRECTO) y pintado de filas
+    try { updateValidationGroup('tbodySri'); } catch(_){}
+    try { updateValidationGroup('tbodyMatricula'); } catch(_){}
 
     setStatus('DATOS AUTOLLENADOS DESDE CONTRATOS + LIQUIDACIÓN');
   } catch(e){
