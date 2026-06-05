@@ -985,32 +985,74 @@ async function _autollenarPagoDesdeExpediente(placa){
       responsableValue:  'asesor'
     }, d, { sobrescribir:false });
 
-    // 3) Documentación legal: LIQUIDACIÓN, PRESTACIÓN, ENCARGOS
-    //    Si el expediente ya está FIRMADO o más adelante, marcar CORRECTO.
+    // 3) Restaurar plantilla por defecto si las tablas quedaron vacías
+    //    (cargarFormularioPago limpia tbodyDocs cuando no hay pago guardado).
+    //    NUNCA inventamos filas; usamos las del docsBase original.
+    const tbodyDocs = document.getElementById('tbodyDocs');
+    const tbodySri  = document.getElementById('tbodySri');
+    const tbodyMat  = document.getElementById('tbodyMatricula');
+    if(tbodyDocs && tbodyDocs.children.length === 0 && typeof docsBase !== 'undefined'){
+      docsBase.forEach(function(x){ addDocRow(x); });
+    }
+    if(tbodySri && tbodySri.children.length === 0 && typeof sriBase !== 'undefined'){
+      sriBase.forEach(function(x){ addValRow('tbodySri', x); });
+    }
+    if(tbodyMat && tbodyMat.children.length === 0 && typeof matriculaBase !== 'undefined'){
+      matriculaBase.forEach(function(x){ addValRow('tbodyMatricula', x); });
+    }
+
+    // 4) Marcar como CORRECTO solo los 3 documentos que se mandan a
+    //    firma digital cuando el expediente ya está FIRMADO o más
+    //    adelante. El resto del cuadro queda intacto.
     const estado    = String(d.estadoProceso||'').toUpperCase();
     const idxActual = Expediente.indiceEstado(estado);
     const yaFirmado = idxActual >= Expediente.indiceEstado('FIRMADO');
-    const estadoLegal = yaFirmado ? 'CORRECTO' : 'PENDIENTE';
+    if(yaFirmado){
+      const DOC_FIRMADOS = [
+        'CONTRATO PRESTACION DE SERVICIO',
+        'ENCARGO FIDUCIARIO',
+        'LIQUIDACION DE COMPRA'
+      ];
+      const rows = tbodyDocs ? tbodyDocs.querySelectorAll('tr') : [];
+      rows.forEach(function(tr){
+        const nombreInp = tr.cells[0] && tr.cells[0].querySelector('input');
+        if(!nombreInp) return;
+        const nombre = String(nombreInp.value||'').toUpperCase().replace(/\s+/g,' ').trim();
+        if(DOC_FIRMADOS.indexOf(nombre) >= 0){
+          const sel = tr.cells[1] && tr.cells[1].querySelector('select');
+          if(sel){
+            sel.value = 'CORRECTO';
+            try { sel.dispatchEvent(new Event('change', { bubbles:true })); } catch(_){}
+          }
+        }
+      });
 
-    const valorToma = (liq && (liq.valorToma || liq.valor)) || d.valorToma || '';
-    const valorDesembolsar = (liq && (liq.valorDesembolsar || liq.valorAPagar || liq.totalAPagar)) || '';
-
-    const filasLegales = [
-      ['LIQUIDACIÓN',        estadoLegal, valorDesembolsar ? ('Valor a desembolsar: $' + valorDesembolsar) : ''],
-      ['PRESTACIÓN',         estadoLegal, ''],
-      ['ENCARGOS',           estadoLegal, '']
-    ];
-    const tbodyDocs = document.getElementById('tbodyDocs');
-    if(tbodyDocs && tbodyDocs.children.length === 0){
-      filasLegales.forEach(function(f){ addDocRow(f); });
+      // Si tenemos valor a desembolsar de la liquidación, completar la
+      // observación de LIQUIDACION DE COMPRA con el monto.
+      const valorDesembolsar = (liq && (liq.valorDesembolsar || liq.valorAPagar || liq.totalAPagar || liq.valorToma)) || d.valorToma || '';
+      if(valorDesembolsar){
+        rows.forEach(function(tr){
+          const nombreInp = tr.cells[0] && tr.cells[0].querySelector('input');
+          if(!nombreInp) return;
+          const nombre = String(nombreInp.value||'').toUpperCase().replace(/\s+/g,' ').trim();
+          if(nombre === 'LIQUIDACION DE COMPRA'){
+            const obsInp = tr.cells[3] && tr.cells[3].querySelector('input');
+            if(obsInp && /\$\s*$/.test(obsInp.value)){
+              obsInp.value = obsInp.value + valorDesembolsar;
+            } else if(obsInp && !obsInp.value){
+              obsInp.value = 'FIRMADOS DIGITALMENTE ANEFI TOTAL DESEMBOLSO $' + valorDesembolsar;
+            }
+          }
+        });
+      }
     }
 
-    // 4) Validación SRI vs ANT: chasis y motor
-    //    SRI = print/notaría;  ANT = CUV
+    // 5) Validación SRI / ANT / Matrícula: SOLO rellenar las
+    //    numeraciones en las filas existentes (no agregar filas ni
+    //    sobrescribir etiquetas).
     const notaria  = d.notaria  || {};
     const cuv      = d.cuv      || {};
     const matric   = d.matricula|| {};
-
     const chasisNotaria = notaria.chasis || notaria.serialChasis || notaria.vin || '';
     const motorNotaria  = notaria.motor  || notaria.numeroMotor  || '';
     const chasisCuv     = cuv.chasis     || cuv.serialChasis     || cuv.vin || '';
@@ -1018,29 +1060,32 @@ async function _autollenarPagoDesdeExpediente(placa){
     const chasisMatric  = matric.chasis  || matric.serialChasis  || matric.vin || '';
     const motorMatric   = matric.motor   || matric.numeroMotor   || '';
 
-    function coincide(a, b){
-      if(!a || !b) return '';
-      return String(a).trim().toUpperCase() === String(b).trim().toUpperCase() ? 'CORRECTO' : 'INCORRECTO';
+    function _setIfEmpty(el, v){
+      if(!el || !v) return;
+      if(String(el.value||'').trim() === '') el.value = v;
+    }
+    function _llenarFilaValidacion(tbody, idx, izq, der){
+      if(!tbody) return;
+      const tr = tbody.querySelectorAll('tr')[idx];
+      if(!tr) return;
+      const inpIzq = tr.cells[0] && tr.cells[0].querySelector('input');
+      const inpDer = tr.cells[2] && tr.cells[2].querySelector('input');
+      _setIfEmpty(inpIzq, izq);
+      _setIfEmpty(inpDer, der);
     }
 
-    const tbodySri = document.getElementById('tbodySri');
-    if(tbodySri && tbodySri.children.length === 0){
-      addValRow('tbodySri', ['CHASIS: ' + (chasisNotaria||'—'), coincide(chasisNotaria, chasisCuv), 'CHASIS ANT: ' + (chasisCuv||'—')]);
-      addValRow('tbodySri', ['MOTOR: '  + (motorNotaria||'—'),  coincide(motorNotaria,  motorCuv),  'MOTOR ANT: '  + (motorCuv||'—')]);
-    }
-
-    const tbodyMat = document.getElementById('tbodyMatricula');
-    if(tbodyMat && tbodyMat.children.length === 0){
-      addValRow('tbodyMatricula', ['CHASIS: ' + (chasisNotaria||'—'), coincide(chasisNotaria, chasisMatric), 'CHASIS MATRÍCULA: ' + (chasisMatric||'—')]);
-      addValRow('tbodyMatricula', ['MOTOR: '  + (motorNotaria||'—'),  coincide(motorNotaria,  motorMatric),  'MOTOR MATRÍCULA: '  + (motorMatric||'—')]);
-    }
+    // tbodySri columnas: SRI (notaría) vs ANT (CUV)
+    _llenarFilaValidacion(tbodySri, 0, chasisNotaria, chasisCuv);
+    _llenarFilaValidacion(tbodySri, 1, motorNotaria,  motorCuv);
+    // tbodyMatricula columnas: SRI (notaría) vs MATRÍCULA
+    _llenarFilaValidacion(tbodyMat, 0, chasisNotaria, chasisMatric);
+    _llenarFilaValidacion(tbodyMat, 1, motorNotaria,  motorMatric);
 
     setStatus('DATOS AUTOLLENADOS DESDE CONTRATOS + LIQUIDACIÓN');
   } catch(e){
     console.warn('[Pagos] error autollenando:', e.message);
   }
 }
-
 
 function buscarPorPlacaPrompt(){
   const placa = prompt('Ingresa la placa a buscar:','');
