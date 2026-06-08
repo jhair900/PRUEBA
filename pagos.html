@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -304,6 +304,34 @@
   }
   #passwordLogin{text-transform:none;}
   .notice{font-size:12px;color:var(--muted);margin-top:8px;}
+  .auto-alert-modal{width:min(390px,100%) !important;}
+  .auto-alert-body{text-align:center;padding:22px 20px 18px;}
+  .auto-alert-title{
+    margin:0 0 10px;
+    font-family:'Poppins',sans-serif;
+    font-size:15px;
+    line-height:1.35;
+    font-weight:700;
+    color:var(--ink);
+    text-transform:uppercase;
+  }
+  .auto-alert-copy{
+    margin:0 0 18px;
+    font-size:12px;
+    line-height:1.45;
+    color:var(--muted);
+  }
+  .auto-alert-btn{
+    border:none;
+    border-radius:9px;
+    background:var(--brand);
+    color:#fff;
+    padding:9px 22px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .auto-alert-btn:hover{background:var(--brand-dark);}
 
   /* ── Captura ── */
   #captureArea{overflow:hidden;}
@@ -506,6 +534,16 @@
       <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
         <button type="button" onclick="confirmarUsuario()" style="background:var(--brand);color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;">Ingresar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalAvisoAutollenado">
+  <div class="modal auto-alert-modal">
+    <div class="modal-body auto-alert-body">
+      <h3 class="auto-alert-title">POR FAVOR VALIDAR EL ESTADO DE LAS FIRMAS Y DEMAS DOCUMENTOS</h3>
+      <p class="auto-alert-copy">La informacion colocada automaticamente puede no ser correcta.</p>
+      <button type="button" class="auto-alert-btn" onclick="cerrarModal('modalAvisoAutollenado')">ACEPTO</button>
     </div>
   </div>
 </div>
@@ -715,6 +753,55 @@ function normalizeValue(v){
 
 function safeFileName(v){
   return String(v || '').trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'SIN_NOMBRE';
+}
+
+function parseMontoAutocor(v){
+  const raw = String(v ?? '').trim();
+  if(!raw) return NaN;
+  let s = raw.replace(/[^\d,.-]/g, '');
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if(lastComma > -1 && lastDot > -1){
+    if(lastComma > lastDot) s = s.replace(/\./g, '').replace(',', '.');
+    else s = s.replace(/,/g, '');
+  } else if(lastComma > -1){
+    s = s.replace(',', '.');
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function formatMontoAutocor(n){
+  return Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function obtenerValorDesembolsoLiquidacion(liq){
+  if(!liq) return '';
+  const directos = [
+    liq.valorDesembolsar,
+    liq.valorAPagar,
+    liq.totalAPagar,
+    liq.totalPagar,
+    liq.valorNeto,
+    liq.netoPagar
+  ];
+  for(const v of directos){
+    const n = parseMontoAutocor(v);
+    if(Number.isFinite(n) && n > 0) return formatMontoAutocor(n);
+  }
+  const totalDescuentos = (Array.isArray(liq.items) ? liq.items : []).reduce(function(sum, item){
+    const n = parseMontoAutocor(item && item.monto);
+    return Number.isFinite(n) ? sum + n : sum;
+  }, 0);
+  const valorToma = parseMontoAutocor(liq.valorToma);
+  if(Number.isFinite(valorToma)){
+    const desembolso = valorToma - totalDescuentos;
+    return desembolso > 0 ? formatMontoAutocor(desembolso) : '';
+  }
+  return '';
 }
 
 function addDocRow(data=['','','']){
@@ -962,7 +1049,7 @@ async function buscarPorPlaca(placa){
 }
 
 async function _autollenarPagoDesdeExpediente(placa){
-  if(typeof Expediente === 'undefined') return;
+  if(typeof Expediente === 'undefined') return false;
   try {
     // 1) Traer expediente (Contratos) + liquidación en paralelo
     const [expR, liqR] = await Promise.all([
@@ -973,7 +1060,7 @@ async function _autollenarPagoDesdeExpediente(placa){
     const liq = (liqR && liqR.data) ? liqR.data : null;
     if(!d){
       console.warn('[Pagos] No hay expediente Contratos para placa', placa);
-      return;
+      return false;
     }
     window.__expedienteActual = d;
     window.__liquidacionActual = liq;
@@ -1028,7 +1115,7 @@ async function _autollenarPagoDesdeExpediente(placa){
 
       // Si tenemos valor a desembolsar de la liquidación, completar la
       // observación de LIQUIDACION DE COMPRA con el monto.
-      const valorDesembolsar = (liq && (liq.valorDesembolsar || liq.valorAPagar || liq.totalAPagar || liq.valorToma)) || d.valorToma || '';
+      const valorDesembolsar = obtenerValorDesembolsoLiquidacion(liq);
       if(valorDesembolsar){
         rows.forEach(function(tr){
           const nombreInp = tr.cells[0] && tr.cells[0].querySelector('input');
@@ -1088,8 +1175,10 @@ async function _autollenarPagoDesdeExpediente(placa){
     try { updateValidationGroup('tbodyMatricula'); } catch(_){}
 
     setStatus('DATOS AUTOLLENADOS DESDE CONTRATOS + LIQUIDACIÓN');
+    return true;
   } catch(e){
     console.warn('[Pagos] error autollenando:', e.message);
+    return false;
   }
 }
 
@@ -1418,8 +1507,9 @@ try{
       if(inp){ inp.value = pre; }
       setStatus('CARGANDO DATOS DESDE CONTRATOS — ' + pre + '...');
       try {
-        await _autollenarPagoDesdeExpediente(normalizeValue(pre));
+        const autollenadoOk = await _autollenarPagoDesdeExpediente(normalizeValue(pre));
         setStatus('DATOS DEL EXPEDIENTE CARGADOS — ' + pre, false, true);
+        if(autollenadoOk) abrirModal('modalAvisoAutollenado');
       } catch(e){
         console.error('[Preload pagos] error autollenando:', e);
         setStatus('NO SE PUDO CARGAR DESDE CONTRATOS', true);
