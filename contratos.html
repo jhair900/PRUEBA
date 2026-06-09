@@ -3296,6 +3296,9 @@ var pastedImages = {
   'matricula':   { frontal: null, reverso: null },
   'notaria':     { frontal: null, reverso: null }
 };
+// Exponer al window para que el IIFE de Drive (fuera del wrapper
+// principal) los pueda leer al subir el expediente.
+window.pastedImages = pastedImages;
 var _activePaste = null; // { tipo, lado }
 
 function _activarPasteZone(el){
@@ -5633,8 +5636,10 @@ function _refreshValidateAllBar(){
   var sub = document.getElementById('validateAllSub');
   if(!btn || !sub) return;
 
-  // Documentos obligatorios para habilitar el botón (cónyuge y CUV son opcionales)
-  var OBLIGATORIOS = ['cedula-prop', 'matricula', 'notaria'];
+  // Documentos obligatorios para habilitar el botón
+  // CUV y Notaría son OPCIONALES. La papeleta de votación se sumará
+  // como obligatoria cuando se implemente su flujo IA + UI.
+  var OBLIGATORIOS = ['cedula-prop', 'matricula'];
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
@@ -5649,7 +5654,7 @@ function _refreshValidateAllBar(){
     btn.disabled = true;
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
-      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula Propietario, Matrícula y Print Notaría.';
+      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.';
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
     }
@@ -6546,9 +6551,10 @@ async function validarTodoEnConjunto(){
           window._cuvOriginalBase64 = dataUrl;
         } else if(tipo === 'cedula-prop' || tipo === 'cedula-cony'
                  || tipo === 'matricula' || tipo === 'notaria'){
-          if(typeof pastedImages !== 'undefined'){
-            if(!pastedImages[tipo]) pastedImages[tipo] = { frontal:null, reverso:null };
-            if(!pastedImages[tipo].frontal) pastedImages[tipo].frontal = dataUrl;
+          var pi = window.pastedImages;
+          if(pi){
+            if(!pi[tipo]) pi[tipo] = { frontal:null, reverso:null };
+            if(!pi[tipo].frontal) pi[tipo].frontal = dataUrl;
           }
         }
       }
@@ -6597,8 +6603,12 @@ async function validarTodoEnConjunto(){
      Devuelve { ok, folderUrl, archivos:[...] }. */
   window._subirExpedienteADrive = async function(placa){
     if(!placa) return { ok:false, message:'placa requerida' };
-    if(typeof pastedImages === 'undefined' || !window.jspdf){
-      return { ok:false, message:'entorno incompleto (pastedImages / jsPDF)' };
+    var imgs = window.pastedImages;
+    if(!imgs){
+      return { ok:false, message:'pastedImages no expuesto al window' };
+    }
+    if(!window.jspdf){
+      return { ok:false, message:'jsPDF no cargado — revisa la conexión a internet' };
     }
     var auth = {};
     try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
@@ -6607,7 +6617,7 @@ async function validarTodoEnConjunto(){
     var archivos = [];
 
     async function _addImgDoc(tipo, nombrePdf){
-      var d = pastedImages[tipo];
+      var d = imgs[tipo];
       if(!d) return;
       var paginas = [d.frontal, d.reverso].filter(Boolean);
       if(paginas.length === 0) return;
