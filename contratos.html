@@ -989,6 +989,74 @@
       <div class="doc-status pending" id="status-notaria"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
     </div>
 
+    <!-- 6. PAPELETA VOTACIÓN TITULAR -->
+    <div class="doc-card" data-type="papeleta-prop">
+      <div class="doc-icon icon-cuv">
+        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
+      </div>
+      <div class="doc-name">Papeleta<br>Votación Titular</div>
+      <div class="upload-zone" id="zone-papeleta-prop"
+           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-prop')">
+        <label class="upload-label" for="file-papeleta-prop">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Subir imagen</span>
+        </label>
+        <input type="file" id="file-papeleta-prop" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-prop')">
+      </div>
+      <div class="paste-container" style="margin-top:8px">
+        <div class="paste-side" id="paste-papeleta-prop-frontal" data-tipo="papeleta-prop" data-lado="frontal" tabindex="0">
+          <div class="paste-label">Papeleta</div>
+          <div class="paste-drop" id="pdrop-papeleta-prop-frontal">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
+            <span>Ctrl+V</span>
+          </div>
+          <div class="paste-preview" id="pprev-papeleta-prop-frontal">
+            <img alt="Papeleta votación titular">
+            <button type="button" class="paste-btn-remove" data-tipo="papeleta-prop" data-lado="frontal">&times;</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-prop">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Procesar imagen
+      </button>
+      <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+    </div>
+
+    <!-- 7. PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
+    <div class="doc-card" data-type="papeleta-cony">
+      <div class="doc-icon icon-cuv">
+        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
+      </div>
+      <div class="doc-name">Papeleta<br>Votación Cónyuge</div>
+      <div class="upload-zone" id="zone-papeleta-cony"
+           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-cony')">
+        <label class="upload-label" for="file-papeleta-cony">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Subir imagen</span>
+        </label>
+        <input type="file" id="file-papeleta-cony" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-cony')">
+      </div>
+      <div class="paste-container" style="margin-top:8px">
+        <div class="paste-side" id="paste-papeleta-cony-frontal" data-tipo="papeleta-cony" data-lado="frontal" tabindex="0">
+          <div class="paste-label">Papeleta</div>
+          <div class="paste-drop" id="pdrop-papeleta-cony-frontal">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
+            <span>Ctrl+V</span>
+          </div>
+          <div class="paste-preview" id="pprev-papeleta-cony-frontal">
+            <img alt="Papeleta votación cónyuge">
+            <button type="button" class="paste-btn-remove" data-tipo="papeleta-cony" data-lado="frontal">&times;</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-cony">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Procesar imagen
+      </button>
+      <div class="doc-status pending" id="status-papeleta-cony"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+    </div>
+
   </div><!-- /docs-grid -->
 
   <!-- ── Validar todo en conjunto ─────────────────────────────── -->
@@ -1293,11 +1361,13 @@ window.cerrarSesion = function(){
 /* ── State ────────────────────────────────────────────────────── */
 // datos[tipo] = object with extracted fields  (null = not loaded yet)
 const datos = {
-  'cedula-prop': null,
-  'cedula-cony': null,
-  'cuv':         null,
-  'matricula':   null,
-  'notaria':     null
+  'cedula-prop':  null,
+  'cedula-cony':  null,
+  'cuv':          null,
+  'matricula':    null,
+  'notaria':      null,
+  'papeleta-prop':null,
+  'papeleta-cony':null
 };
 let cuvDatosCompleto = null; // full CUV object for detail modal
 // Exponer datos en window para que generador-contratos.js pueda accederlos
@@ -1991,7 +2061,24 @@ const PROMPTS_IA = {
     '"vendedores":[{"tipoId":"","identificacion":"","nombre":""}]'+
     '}'+
     '\n\nSi no hay sección ÚLTIMO CONTRATO, deja valorContrato/fechaContrato/tipoTransferencia como "" '+
-    'y compradores/vendedores como []. Si hay varios compradores o vendedores, conserva todas las filas como lista y no los mezcles.'
+    'y compradores/vendedores como []. Si hay varios compradores o vendedores, conserva todas las filas como lista y no los mezcles.',
+
+  'papeleta':
+    'Eres un extractor de datos del CERTIFICADO DE VOTACIÓN ecuatoriano (papeleta de sufragio). '+
+    'Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido. Para campos no visibles usa "". '+
+    'NO inventes. Las fechas deben ir en formato DD/MM/YYYY. '+
+    '\n\n{'+
+    '"numeroCedula":"<10 dígitos del votante>",'+
+    '"apellidos":"<APELLIDOS en MAYÚSCULAS>",'+
+    '"nombres":"<NOMBRES en MAYÚSCULAS>",'+
+    '"fechaSufragio":"DD/MM/YYYY de la elección o referéndum",'+
+    '"tipoProceso":"<ej. ELECCIONES GENERALES, REFERÉNDUM, CONSULTA POPULAR, etc.>",'+
+    '"junta":"<número/letra de junta receptora del voto, si aparece>",'+
+    '"estado":"<VOTÓ, NO VOTÓ, EXENTO, MULTA, JUSTIFICACIÓN, etc.>"'+
+    '}'+
+    '\n\nIMPORTANTE: la fechaSufragio es la del proceso electoral, NO la fecha de emisión del certificado. '+
+    'Si el certificado muestra "Última elección: 16/11/2025" o "Proceso electoral: 16 de noviembre de 2025", '+
+    'devuelve "16/11/2025" en fechaSufragio.'
 };
 
 /* ── AI Status (window-exposed for retry button) ────────────── */
@@ -3291,10 +3378,12 @@ window.onFileChange = function(e,tipo){
    PEGADO DE IMÁGENES (Ctrl+V) PARA DOCUMENTOS CON FRONTAL/REVERSO
    ══════════════════════════════════════════════════════════════ */
 var pastedImages = {
-  'cedula-prop': { frontal: null, reverso: null },
-  'cedula-cony': { frontal: null, reverso: null },
-  'matricula':   { frontal: null, reverso: null },
-  'notaria':     { frontal: null, reverso: null }
+  'cedula-prop':  { frontal: null, reverso: null },
+  'cedula-cony':  { frontal: null, reverso: null },
+  'matricula':    { frontal: null, reverso: null },
+  'notaria':      { frontal: null, reverso: null },
+  'papeleta-prop':{ frontal: null, reverso: null },
+  'papeleta-cony':{ frontal: null, reverso: null }
 };
 // Exponer al window para que el IIFE de Drive (fuera del wrapper
 // principal) los pueda leer al subir el expediente.
@@ -3752,10 +3841,14 @@ async function _procesarNotariaPaste(){
   var btnCony = document.getElementById('pbtn-cedula-cony');
   var btnMat  = document.getElementById('pbtn-matricula');
   var btnNot  = document.getElementById('pbtn-notaria');
+  var btnPapP = document.getElementById('pbtn-papeleta-prop');
+  var btnPapC = document.getElementById('pbtn-papeleta-cony');
   if(btnProp) btnProp.addEventListener('click', function(){ _procesarCedulaPaste('cedula-prop'); });
   if(btnCony) btnCony.addEventListener('click', function(){ _procesarCedulaPaste('cedula-cony'); });
   if(btnMat)  btnMat.addEventListener('click', function(){ _procesarMatriculaPaste(); });
   if(btnNot)  btnNot.addEventListener('click', function(){ _procesarNotariaPaste(); });
+  if(btnPapP) btnPapP.addEventListener('click', function(){ _procesarPapeletaPaste('papeleta-prop'); });
+  if(btnPapC) btnPapC.addEventListener('click', function(){ _procesarPapeletaPaste('papeleta-cony'); });
 
   /* 4) Listener GLOBAL de paste (Ctrl+V) */
   document.addEventListener('paste', function(e){
@@ -3819,6 +3912,8 @@ async function procesarArchivo(file, tipo){
       await procesarMatricula(file, nombre);
     } else if(tipo==='notaria'){
       await procesarNotaria(file, nombre);
+    } else if(tipo==='papeleta-prop'||tipo==='papeleta-cony'){
+      await procesarPapeleta(file, tipo, nombre);
     }
   }catch(err){
     console.error('[Contratos] Error en '+tipo+':', err);
@@ -4149,6 +4244,72 @@ async function procesarNotaria(file, nombre){
   setStatus('notaria','loaded', lbl+' · '+nombre);
 }
 
+/* ── Papeleta de votación ────────────────────────────────────────
+   Procesa imagen del certificado de votación con IA. Extrae cédula,
+   nombres, fecha de sufragio. Valida que la fecha sea 16/11/2025
+   (proceso electoral oficial). El tipo es 'papeleta-prop' o
+   'papeleta-cony'. */
+async function procesarPapeleta(file, tipo, nombre){
+  if(!aiAvailable){
+    setStatus(tipo,'error','IA no disponible para papeleta');
+    throw new Error('La papeleta requiere IA disponible. No hay parser local.');
+  }
+  spinnerMsg('Analizando papeleta con IA...');
+  setSpinnerBar(40);
+  const dataUrl = await fileToDataUrl(file);
+  setSpinnerBar(60);
+  const raw = await analizarConGemini('papeleta', dataUrl);
+  setSpinnerBar(90);
+  // Saneamiento básico
+  const d = {
+    numeroCedula:  String(raw.numeroCedula  || '').replace(/\D/g,'').slice(0,10),
+    apellidos:     String(raw.apellidos     || '').toUpperCase().trim(),
+    nombres:       String(raw.nombres       || '').toUpperCase().trim(),
+    fechaSufragio: String(raw.fechaSufragio || '').trim(),
+    tipoProceso:   String(raw.tipoProceso   || '').toUpperCase().trim(),
+    junta:         String(raw.junta         || '').trim(),
+    estado:        String(raw.estado        || '').toUpperCase().trim(),
+    _source:       'ia'
+  };
+  datos[tipo] = d;
+  const quien = tipo === 'papeleta-prop' ? 'TITULAR' : 'CÓNYUGE';
+  setStatus(tipo, 'loaded', quien+' · '+(d.numeroCedula || nombre)+' · '+(d.fechaSufragio || 'sin fecha'));
+  setSpinnerBar(100);
+}
+
+/* Hook al botón "Procesar imagen" de las papeletas pegadas */
+async function _procesarPapeletaPaste(tipo){
+  const imgs = pastedImages[tipo];
+  if(!imgs || !imgs.frontal){
+    alert('Pega primero una imagen de la papeleta.');
+    return;
+  }
+  showSpinner('Procesando papeleta '+(tipo==='papeleta-prop'?'titular':'cónyuge')+'...');
+  try {
+    const blob = _dataUrlToBlob(imgs.frontal);
+    const file = new File([blob], 'papeleta-'+tipo+'.png', { type: blob.type || 'image/png' });
+    await procesarPapeleta(file, tipo, 'imagen pegada');
+    renderResultsSection();
+  } catch(err){
+    console.error('[Papeleta] '+tipo+' falló:', err);
+    setStatus(tipo, 'error', err.message || 'Error procesando papeleta');
+    alert('Error procesando papeleta: ' + err.message);
+  } finally {
+    hideSpinner();
+  }
+}
+
+/* Helper local: convierte dataURL → Blob (no depende de scope externo). */
+function _dataUrlToBlob(dataUrl){
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if(!m) throw new Error('dataURL inválido');
+  const mime = m[1];
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
 /* ══════════════════════════════════════════════════════════════
    RESULTS SECTION
    ══════════════════════════════════════════════════════════════ */
@@ -4158,7 +4319,9 @@ function tipoLabel(tipo){
     'cedula-cony':'Cédula Cónyuge',
     'cuv':'CUV',
     'matricula':'Matrícula',
-    'notaria':'Print Notaría'
+    'notaria':'Print Notaría',
+    'papeleta-prop':'Papeleta Votación Titular',
+    'papeleta-cony':'Papeleta Votación Cónyuge'
   }[tipo]||tipo;
 }
 
@@ -4255,18 +4418,39 @@ function getValidacionesCruzadas(){
     {
       campo: 'propietario', label: 'Propietario', modo: 'nombre',
       sources: [
-        { tipo:'cedula-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } },
-        { tipo:'cuv',         getValue:function(d){ return d.propietario||''; } },
-        { tipo:'matricula',   getValue:function(d){ return d.propietario||''; } },
-        { tipo:'notaria',     getValue:function(d){ return d.nombrePropietario||''; } }
+        { tipo:'cedula-prop',   getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } },
+        { tipo:'cuv',           getValue:function(d){ return d.propietario||''; } },
+        { tipo:'matricula',     getValue:function(d){ return d.propietario||''; } },
+        { tipo:'notaria',       getValue:function(d){ return d.nombrePropietario||''; } },
+        { tipo:'papeleta-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
       ]
     },
     {
       campo: 'cedulaPropietario', label: 'Cédula del propietario', modo: 'estricto',
       sources: [
-        { tipo:'cedula-prop', getValue:function(d){ return d.numeroCedula||''; } },
-        { tipo:'matricula',   getValue:function(d){ return d.cedulaRuc||''; } },
-        { tipo:'notaria',     getValue:function(d){ return d.identificacionPropietario||''; } }
+        { tipo:'cedula-prop',   getValue:function(d){ return d.numeroCedula||''; } },
+        { tipo:'matricula',     getValue:function(d){ return d.cedulaRuc||''; } },
+        { tipo:'notaria',       getValue:function(d){ return d.identificacionPropietario||''; } },
+        { tipo:'papeleta-prop', getValue:function(d){ return d.numeroCedula||''; } }
+      ]
+    },
+    {
+      campo: 'cedulaConyuge', label: 'Cédula del cónyuge', modo: 'estricto',
+      sources: [
+        { tipo:'cedula-cony',   getValue:function(d){ return d.numeroCedula||''; } },
+        { tipo:'papeleta-cony', getValue:function(d){ return d.numeroCedula||''; } }
+      ]
+    },
+    {
+      campo: 'fechaSufragioProp', label: 'Fecha sufragio titular', modo: 'estricto',
+      sources: [
+        { tipo:'papeleta-prop', getValue:function(d){ return d.fechaSufragio||''; } }
+      ]
+    },
+    {
+      campo: 'fechaSufragioCony', label: 'Fecha sufragio cónyuge', modo: 'estricto',
+      sources: [
+        { tipo:'papeleta-cony', getValue:function(d){ return d.fechaSufragio||''; } }
       ]
     },
     {
@@ -4547,6 +4731,33 @@ function computarValidaciones(){
       sources: v.sources
     });
   }
+
+  // ── Validación adicional: fecha de sufragio = 16/11/2025 ──
+  // Proceso electoral oficial Ecuador del 16 de noviembre de 2025.
+  const FECHA_SUFRAGIO_OFICIAL = '16/11/2025';
+  function _normFecha(s){
+    return String(s||'').trim().replace(/[\-\.]/g,'/').replace(/\s+/g,'');
+  }
+  resultados.forEach(function(r){
+    if(r.campo !== 'fechaSufragioProp' && r.campo !== 'fechaSufragioCony') return;
+    if(!r.valores || r.valores.length === 0) return;
+    const valDoc = _normFecha(r.valores[0].raw);
+    const ok = valDoc === FECHA_SUFRAGIO_OFICIAL
+            || valDoc === '16/11/25'
+            || /16.*11.*2025/.test(valDoc);
+    if(!ok){
+      r.estado = 'diff';
+      r.mensaje = 'No corresponde al proceso 16/11/2025';
+      r.sospechosos = [r.valores[0].tipo];
+      r.sugerido = FECHA_SUFRAGIO_OFICIAL;
+    } else {
+      r.estado = 'ok';
+      r.mensaje = 'Coincide con proceso oficial 16/11/2025';
+      r.sugerido = FECHA_SUFRAGIO_OFICIAL;
+      r.coincidentes = [r.valores[0].tipo];
+    }
+  });
+
   return resultados;
 }
 
@@ -5610,11 +5821,13 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
    ══════════════════════════════════════════════════════════════ */
 function _docsCargadosCount(){
   var n = 0;
-  if(datos['cedula-prop']) n++;
-  if(datos['cedula-cony']) n++;
-  if(datos['cuv'])         n++;
-  if(datos['matricula'])   n++;
-  if(datos['notaria'])     n++;
+  if(datos['cedula-prop'])   n++;
+  if(datos['cedula-cony'])   n++;
+  if(datos['cuv'])           n++;
+  if(datos['matricula'])     n++;
+  if(datos['notaria'])       n++;
+  if(datos['papeleta-prop']) n++;
+  if(datos['papeleta-cony']) n++;
   return n;
 }
 
@@ -5625,7 +5838,7 @@ function _hayImagenPegadaPendiente(tipo){
 }
 function _pendientesDeProcesar(){
   var pendientes = [];
-  ['cedula-prop','cedula-cony','matricula','notaria'].forEach(function(t){
+  ['cedula-prop','cedula-cony','matricula','notaria','papeleta-prop','papeleta-cony'].forEach(function(t){
     if(_hayImagenPegadaPendiente(t)) pendientes.push(t);
   });
   return pendientes;
@@ -5637,13 +5850,19 @@ function _refreshValidateAllBar(){
   if(!btn || !sub) return;
 
   // Documentos obligatorios para habilitar el botón
-  // CUV y Notaría son OPCIONALES. La papeleta de votación se sumará
-  // como obligatoria cuando se implemente su flujo IA + UI.
-  var OBLIGATORIOS = ['cedula-prop', 'matricula'];
+  // CUV y Notaría son OPCIONALES.
+  // Papeleta de votación titular es obligatoria; cónyuge solo si
+  // existe cédula del cónyuge cargada.
+  var OBLIGATORIOS = ['cedula-prop', 'matricula', 'papeleta-prop'];
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
     return !!(datos[t] || _hayImagenPegadaPendiente(t));
+  }
+
+  // Si hay cédula del cónyuge, también se exige papeleta del cónyuge
+  if(datos['cedula-cony'] || _hayImagenPegadaPendiente('cedula-cony')){
+    OBLIGATORIOS.push('papeleta-cony');
   }
 
   var faltantes = OBLIGATORIOS.filter(function(t){ return !docCubierto(t); });
@@ -5654,7 +5873,7 @@ function _refreshValidateAllBar(){
     btn.disabled = true;
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
-      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.';
+      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular, Matrícula y Papeleta de Votación Titular.';
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
     }
@@ -6627,10 +6846,12 @@ async function validarTodoEnConjunto(){
       } catch(e){ console.warn('[Drive] PDF '+nombrePdf+' falló:', e); }
     }
 
-    await _addImgDoc('cedula-prop', 'CEDULA TITULAR.pdf');
-    await _addImgDoc('cedula-cony', 'CEDULA CONYUGE.pdf');
-    await _addImgDoc('matricula',   'MATRICULA.pdf');
-    await _addImgDoc('notaria',     'NOTARIA.pdf');
+    await _addImgDoc('cedula-prop',   'CEDULA TITULAR.pdf');
+    await _addImgDoc('cedula-cony',   'CEDULA CONYUGE.pdf');
+    await _addImgDoc('matricula',     'MATRICULA.pdf');
+    await _addImgDoc('notaria',       'NOTARIA.pdf');
+    await _addImgDoc('papeleta-prop', 'PAPELETA VOTACION TITULAR.pdf');
+    await _addImgDoc('papeleta-cony', 'PAPELETA VOTACION CONYUGE.pdf');
 
     if(window._cuvOriginalBase64){
       archivos.push({ nombre: 'CUV.pdf', contenidoBase64: window._cuvOriginalBase64 });

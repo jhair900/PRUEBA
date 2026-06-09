@@ -34,7 +34,12 @@
     'SSANGYONG','SEAT','SKODA','OPEL','CITROEN','ALFA ROMEO',
     'MASERATI','FERRARI','LAMBORGHINI','PORSCHE','MINI','SMART',
     'HINO','KENWORTH','FREIGHTLINER','INTERNATIONAL','MACK',
-    'VOLVO TRUCK','IVECO','MAN','DAF','SCANIA','MERCEDES BENZ'
+    'VOLVO TRUCK','IVECO','MAN','DAF','SCANIA','MERCEDES BENZ',
+    // Chinos populares en Ecuador (añadidos)
+    'CHANGAN','GAC','MG','DONGFENG','BAIC','HAFEI','SHINERAY',
+    'JMC','MAXUS','SAIC','WULING','HONGQI','LEAPMOTOR','XPENG',
+    'OMODA','JAECOO','LYNK & CO','LINK','SOUEAST','HIGER','YUTONG',
+    'KING LONG','ANKAI','GOLDEN DRAGON','ZNA','TANK','AVATR'
   ];
 
   const CUV_COLORES = [
@@ -224,12 +229,35 @@
 
     /* MARCA */
     {
-      const mEt = bloqueVehiculo.match(/Marca\s*:\s*([A-Z][A-Z\s]{1,30}?)(?=\s+(?:Modelo|Color|Clase|Tipo|VIN|A[ñn]o|N[úu]m|\d))/i)
-               || bloqueVehiculo.match(/Marca\s*:\s*([A-Z][A-Z\-\.]{1,30})\b/i);
-      let cEt = mEt ? mEt[1].trim().toUpperCase() : null;
-      if(cEt && ETIQUETAS_CONOCIDAS.includes(cEt)) cEt = null;
+      // 1) Whitelist tiene mayor prioridad: si hay una marca conocida
+      //    en el bloque vehículo, ese es el ganador. Evita falsos
+      //    positivos por etiqueta desordenada.
       const marcaLista = buscarEnWhitelist(MARCAS_CONOCIDAS, bloqueVehiculo);
-      d.marca = primerCandidato([cEt, marcaLista], 'marca');
+
+      // 2) Búsqueda por etiqueta como fallback. Stop word extendido:
+      //    incluye CLASE, TIPO, SERVICIO, COMBUSTIBLE, PAIS, COLOR,
+      //    NO REGISTRADO, METALICA y otros falsos positivos.
+      const mEt = bloqueVehiculo.match(/Marca\s*:\s*([A-Z][A-Z\s\-\.&]{1,30}?)(?=\s+(?:Modelo|Color|Clase|Tipo|VIN|A[ñn]o|N[úu]m|Serv|Carrocer|Combustible|Pa[íi]s|Cilindraje|Operadora|NO\s+REGISTR|METALICA|\d))/i)
+               || bloqueVehiculo.match(/Marca\s*:\s*([A-Z][A-Z\-\.]{1,30})\b/i);
+      let cEt = mEt ? mEt[1].trim().toUpperCase().replace(/\s+/g,' ') : null;
+      // Descartar si el match es una etiqueta, ruido o no se parece a marca
+      if(cEt){
+        if(ETIQUETAS_CONOCIDAS.includes(cEt)) cEt = null;
+        else if(/^(NO\s+REGISTR|METALICA|GASOLINA|DIESEL|VEHICULO|UTILITARIO|PARTICULAR)/i.test(cEt)) cEt = null;
+        else if(cEt.length < 2 || cEt.length > 30) cEt = null;
+      }
+
+      // 3) Si el cEt no está en whitelist pero whitelist sí encontró
+      //    algo, preferir whitelist. Si ambos coinciden, da igual.
+      let elegida = '';
+      if(marcaLista){
+        elegida = marcaLista.toUpperCase();
+      } else if(cEt){
+        elegida = cEt;
+      }
+
+      console.log('[CUV] Marca etiqueta:', cEt, '· whitelist:', marcaLista, '→', elegida);
+      d.marca = primerCandidato([elegida], 'marca');
     }
 
     /* MODELO */
