@@ -114,6 +114,19 @@
   .field-label{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gray-2)}
   .field-value{font-size:14px;font-weight:700;color:var(--navy);min-height:18px;word-break:break-word}
   .field-source{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-top:2px}
+  .archivos-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .archivo-card{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;background:#f8fafc;border:1px solid var(--line);border-radius:10px;
+    text-decoration:none;color:var(--navy);font-size:12px;font-weight:600;
+    transition:all .14s;
+  }
+  .archivo-card:hover{background:#eff6ff;border-color:#93c5fd;transform:translateY(-1px);box-shadow:0 6px 14px rgba(15,23,42,.08)}
+  .archivo-card svg{width:28px;height:28px;flex-shrink:0;color:#dc2626}
+  .archivo-card-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+  .archivo-card-nombre{font-weight:700;font-size:12px;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .archivo-card-meta{font-size:10px;color:var(--gray-2);text-transform:uppercase;letter-spacing:.4px}
+  .archivos-vacio{padding:14px;text-align:center;color:var(--gray-2);font-size:12px;background:#f8fafc;border-radius:10px;border:1px dashed var(--line)}
   .source-sistema{color:#16a34a}
   .source-form{color:#0891b2}
   .source-missing{color:#dc2626}
@@ -272,6 +285,12 @@
           </div>
         </div>
       </div>
+
+      <!-- ── Archivos del expediente (descargables desde Drive) ── -->
+      <div class="group" id="grpArchivos" style="display:none">
+        <div class="group-title">Archivos del expediente (Drive)</div>
+        <div class="archivos-list" id="archivosList"></div>
+      </div>
     </div>
 
     <div class="card-footer">
@@ -416,6 +435,9 @@ function _pintar(){
     : 'Excel SharePoint aún no sincronizado para esta placa.';
   document.getElementById('footerInfo').textContent = txtSP;
 
+  // Lista de archivos del Drive (encargo, prestación, liquidación, cédulas)
+  _renderArchivosDrive(d.drive);
+
   // Visibilidad y estado del botón
   const btnEnviar  = document.getElementById('btnEnviar');
   const estado = String(d.estadoProceso||'').toUpperCase();
@@ -428,6 +450,71 @@ function _pintar(){
   } else {
     btnEnviar.disabled = true;
     btnEnviar.textContent = '✓ Ya firmado';
+  }
+}
+
+/* Renderiza la lista de archivos PDF del expediente desde Drive.
+   Filtra los relevantes para firmas: contratos, liquidación, cédulas. */
+function _renderArchivosDrive(drive){
+  const grp = document.getElementById('grpArchivos');
+  const list = document.getElementById('archivosList');
+  if(!grp || !list) return;
+  list.innerHTML = '';
+  if(!drive || !Array.isArray(drive.archivos) || drive.archivos.length === 0){
+    grp.style.display = 'block';
+    list.innerHTML = '<div class="archivos-vacio">Aún no hay archivos subidos en Drive para esta placa.</div>';
+    return;
+  }
+  // Priorizar los archivos relevantes para firmas
+  const prioridad = [
+    /encargo/i, /prestacion/i, /liquidacion/i, /saneamiento/i,
+    /cedula\s*titular/i, /cedula\s*conyuge/i,
+    /matricula/i, /cuv/i, /notaria/i,
+    /papeleta/i
+  ];
+  function _peso(nombre){
+    for(let i=0;i<prioridad.length;i++) if(prioridad[i].test(nombre)) return i;
+    return 99;
+  }
+  const ordenados = drive.archivos.slice().sort(function(a,b){
+    return _peso(a.nombre) - _peso(b.nombre);
+  });
+  grp.style.display = 'block';
+  ordenados.forEach(function(a){
+    if(!a.url) return;
+    const tipo = _peso(a.nombre) < 4 ? 'CONTRATO/LIQUIDACIÓN' : 'DOCUMENTO';
+    const link = document.createElement('a');
+    link.className = 'archivo-card';
+    link.href = a.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.title = 'Abrir ' + a.nombre + ' en Google Drive';
+    link.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      +'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
+      +'<polyline points="14 2 14 8 20 8"></polyline></svg>'
+      +'<div class="archivo-card-info">'
+      +'<span class="archivo-card-nombre">'+a.nombre+'</span>'
+      +'<span class="archivo-card-meta">'+tipo+'</span>'
+      +'</div>';
+    list.appendChild(link);
+  });
+  if(drive.folderUrl){
+    const carpetaLink = document.createElement('a');
+    carpetaLink.className = 'archivo-card';
+    carpetaLink.href = drive.folderUrl;
+    carpetaLink.target = '_blank';
+    carpetaLink.rel = 'noopener';
+    carpetaLink.style.background = '#fef3c7';
+    carpetaLink.style.borderColor = '#fbbf24';
+    carpetaLink.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      +'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'
+      +'<div class="archivo-card-info">'
+      +'<span class="archivo-card-nombre" style="color:#92400e">Abrir carpeta completa en Drive</span>'
+      +'<span class="archivo-card-meta" style="color:#92400e">CARPETA · '+drive.archivos.length+' archivo(s)</span>'
+      +'</div>';
+    list.appendChild(carpetaLink);
   }
 }
 

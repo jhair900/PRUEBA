@@ -2064,21 +2064,33 @@ const PROMPTS_IA = {
     'y compradores/vendedores como []. Si hay varios compradores o vendedores, conserva todas las filas como lista y no los mezcles.',
 
   'papeleta':
-    'Eres un extractor de datos del CERTIFICADO DE VOTACIÓN ecuatoriano (papeleta de sufragio). '+
-    'Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido. Para campos no visibles usa "". '+
-    'NO inventes. Las fechas deben ir en formato DD/MM/YYYY. '+
+    'Eres un extractor de datos del CERTIFICADO DE VOTACIÓN ecuatoriano emitido por el CNE '+
+    '(Consejo Nacional Electoral). El certificado muestra normalmente: encabezado azul con la '+
+    'fecha del proceso ("16 DE NOVIEMBRE DE 2025"), el nombre completo del votante (apellidos '+
+    'primero), la provincia, cantón, parroquia, zona, junta, género, número de cédula al final '+
+    '(rotulado "CC N°" o "C.C."). También aparece un número de certificado (N° ...) que NO es '+
+    'la cédula. Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido. Para campos no '+
+    'visibles devuelve "". NO inventes. Fechas en DD/MM/YYYY.'+
     '\n\n{'+
-    '"numeroCedula":"<10 dígitos del votante>",'+
-    '"apellidos":"<APELLIDOS en MAYÚSCULAS>",'+
-    '"nombres":"<NOMBRES en MAYÚSCULAS>",'+
-    '"fechaSufragio":"DD/MM/YYYY de la elección o referéndum",'+
-    '"tipoProceso":"<ej. ELECCIONES GENERALES, REFERÉNDUM, CONSULTA POPULAR, etc.>",'+
-    '"junta":"<número/letra de junta receptora del voto, si aparece>",'+
-    '"estado":"<VOTÓ, NO VOTÓ, EXENTO, MULTA, JUSTIFICACIÓN, etc.>"'+
+    '"numeroCedula":"<10 dígitos rotulados como CC N° o C.C. — NO el N° de certificado>",'+
+    '"apellidos":"<APELLIDOS del votante en MAYÚSCULAS, primer y segundo apellido>",'+
+    '"nombres":"<NOMBRES del votante en MAYÚSCULAS>",'+
+    '"fechaSufragio":"DD/MM/YYYY de la elección (la fecha del encabezado azul)",'+
+    '"tipoProceso":"<ej. ELECCIONES GENERALES, REFERÉNDUM, CONSULTA POPULAR>",'+
+    '"provincia":"<provincia mostrada>",'+
+    '"canton":"<cantón mostrado>",'+
+    '"parroquia":"<parroquia mostrada>",'+
+    '"junta":"<número de junta receptora del voto>",'+
+    '"genero":"<MASCULINO|FEMENINO según rotule>",'+
+    '"numeroCertificado":"<número largo del certificado, distinto a la cédula>"'+
     '}'+
-    '\n\nIMPORTANTE: la fechaSufragio es la del proceso electoral, NO la fecha de emisión del certificado. '+
-    'Si el certificado muestra "Última elección: 16/11/2025" o "Proceso electoral: 16 de noviembre de 2025", '+
-    'devuelve "16/11/2025" en fechaSufragio.'
+    '\n\nReglas importantes:\n'+
+    '1) El nombre completo aparece en una línea o dos seguidas; por convención CNE es '+
+    'APELLIDO1 APELLIDO2 NOMBRES (ej. "LEON PALACIOS ISABEL CRISTINA"). Asigna los dos '+
+    'primeros tokens a apellidos y el resto a nombres.\n'+
+    '2) numeroCedula es SIEMPRE 10 dígitos. Si ves "CC N° 1722821509", devuelve 1722821509. '+
+    'Si solo ves "N° 57924911" (sin CC), eso es número de certificado, NO la cédula.\n'+
+    '3) fechaSufragio: extrae del encabezado tipo "16 DE NOVIEMBRE DE 2025" → "16/11/2025".'
 };
 
 /* ── AI Status (window-exposed for retry button) ────────────── */
@@ -4262,14 +4274,18 @@ async function procesarPapeleta(file, tipo, nombre){
   setSpinnerBar(90);
   // Saneamiento básico
   const d = {
-    numeroCedula:  String(raw.numeroCedula  || '').replace(/\D/g,'').slice(0,10),
-    apellidos:     String(raw.apellidos     || '').toUpperCase().trim(),
-    nombres:       String(raw.nombres       || '').toUpperCase().trim(),
-    fechaSufragio: String(raw.fechaSufragio || '').trim(),
-    tipoProceso:   String(raw.tipoProceso   || '').toUpperCase().trim(),
-    junta:         String(raw.junta         || '').trim(),
-    estado:        String(raw.estado        || '').toUpperCase().trim(),
-    _source:       'ia'
+    numeroCedula:      String(raw.numeroCedula      || '').replace(/\D/g,'').slice(0,10),
+    apellidos:         String(raw.apellidos         || '').toUpperCase().trim(),
+    nombres:           String(raw.nombres           || '').toUpperCase().trim(),
+    fechaSufragio:     String(raw.fechaSufragio     || '').trim(),
+    tipoProceso:       String(raw.tipoProceso       || '').toUpperCase().trim(),
+    provincia:         String(raw.provincia         || '').toUpperCase().trim(),
+    canton:            String(raw.canton            || '').toUpperCase().trim(),
+    parroquia:         String(raw.parroquia         || '').toUpperCase().trim(),
+    junta:             String(raw.junta             || '').trim(),
+    genero:            String(raw.genero            || '').toUpperCase().trim(),
+    numeroCertificado: String(raw.numeroCertificado || '').trim(),
+    _source:           'ia'
   };
   datos[tipo] = d;
   const quien = tipo === 'papeleta-prop' ? 'TITULAR' : 'CÓNYUGE';
