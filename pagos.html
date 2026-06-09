@@ -779,27 +779,19 @@ function formatMontoAutocor(n){
 }
 
 function obtenerValorDesembolsoLiquidacion(liq){
+  // Valor de desembolso = total de descuentos (suma de items.monto).
+  // NO es el valor de toma. NO es valor de toma menos descuentos.
   if(!liq) return '';
-  const directos = [
-    liq.valorDesembolsar,
-    liq.valorAPagar,
-    liq.totalAPagar,
-    liq.totalPagar,
-    liq.valorNeto,
-    liq.netoPagar
-  ];
-  for(const v of directos){
-    const n = parseMontoAutocor(v);
-    if(Number.isFinite(n) && n > 0) return formatMontoAutocor(n);
-  }
   const totalDescuentos = (Array.isArray(liq.items) ? liq.items : []).reduce(function(sum, item){
     const n = parseMontoAutocor(item && item.monto);
     return Number.isFinite(n) ? sum + n : sum;
   }, 0);
-  const valorToma = parseMontoAutocor(liq.valorToma);
-  if(Number.isFinite(valorToma)){
-    const desembolso = valorToma - totalDescuentos;
-    return desembolso > 0 ? formatMontoAutocor(desembolso) : '';
+  if(totalDescuentos > 0) return formatMontoAutocor(totalDescuentos);
+  // Fallback a campos pre-calculados solo si no hay items detallados
+  const directos = [liq.valorDesembolsar, liq.totalDescuentos];
+  for(const v of directos){
+    const n = parseMontoAutocor(v);
+    if(Number.isFinite(n) && n > 0) return formatMontoAutocor(n);
   }
   return '';
 }
@@ -1175,11 +1167,36 @@ async function _autollenarPagoDesdeExpediente(placa){
     try { updateValidationGroup('tbodyMatricula'); } catch(_){}
 
     setStatus('DATOS AUTOLLENADOS DESDE CONTRATOS + LIQUIDACIÓN');
+
+    // Aviso al operario: la información puede no ser correcta.
+    _mostrarAvisoValidarFirmas();
+
     return true;
   } catch(e){
     console.warn('[Pagos] error autollenando:', e.message);
     return false;
   }
+}
+
+/* Modal pequeño que se muestra tras el autollenado para recordar al
+   operario que revise firmas y demás documentos. */
+function _mostrarAvisoValidarFirmas(){
+  if(document.getElementById('avisoFirmasOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'avisoFirmasOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:14px;padding:24px 26px 20px;max-width:380px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,.32);font-family:Arial,sans-serif">'
+    + '<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 6px 16px rgba(245,158,11,.32)">'
+    + '<span style="color:#fff;font-size:24px;font-weight:900">!</span>'
+    + '</div>'
+    + '<h3 style="margin:0 0 8px;font-size:15px;font-weight:800;color:#111;text-align:center;letter-spacing:.4px;text-transform:uppercase;line-height:1.3">Por favor validar el estado de las firmas y demás documentos</h3>'
+    + '<p style="margin:0 0 18px;font-size:11px;color:#6b7280;text-align:center;line-height:1.45">La información colocada automáticamente puede no ser correcta. Revisa cada fila antes de aprobar.</p>'
+    + '<button type="button" id="btnAceptoAvisoFirmas" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-weight:800;font-size:13px;letter-spacing:.5px;cursor:pointer;text-transform:uppercase;box-shadow:0 8px 18px rgba(22,163,74,.28)">Acepto</button>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  const btn = document.getElementById('btnAceptoAvisoFirmas');
+  if(btn) btn.onclick = function(){ overlay.remove(); };
 }
 
 function buscarPorPlacaPrompt(){
