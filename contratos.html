@@ -5854,6 +5854,9 @@ function _refreshValidateAllBar(){
   // Papeleta de votación titular es obligatoria; cónyuge solo si
   // existe cédula del cónyuge cargada.
   var OBLIGATORIOS = ['cedula-prop', 'matricula', 'papeleta-prop'];
+  // CUV y Notaría son OPCIONALES. La papeleta de votación se sumará
+  // como obligatoria cuando se implemente su flujo IA + UI.
+  var OBLIGATORIOS = ['cedula-prop', 'matricula'];
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
@@ -5874,6 +5877,7 @@ function _refreshValidateAllBar(){
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
       sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular, Matrícula y Papeleta de Votación Titular.';
+      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.';
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
     }
