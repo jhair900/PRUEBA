@@ -1948,11 +1948,25 @@ function agregarFila(){crearFila("DESCUENTO ADICIONAL",0,"");}
 function calcular(){
   let total=0;
   const usados=[];
+  // Defensa global: limpiar cualquier obs que sea exactamente el
+  // username actual (bug histórico). Se ejecuta en cada calcular()
+  // que se dispara con cualquier input. Logueamos para diagnosticar.
+  const _userUp = String(currentUser || '').trim().toUpperCase();
   [...tbody.querySelectorAll("tr")].forEach(r=>{
     const conceptInput=r.children[0].querySelector("input");
     const conceptoVal=conceptInput.value;
     const concepto=upperTrim(conceptoVal);
     const v = moneyParse(r.querySelector(".money-input").value);
+    const obsInputEl = r.children[2].querySelector("input");
+    if(_userUp && obsInputEl){
+      const obsCur = String(obsInputEl.value||'').trim().toUpperCase();
+      if(obsCur === _userUp){
+        console.warn('[Liquidacion] obs == currentUser, limpiando:', obsInputEl.value);
+        obsInputEl.value = '';
+        // remover clase autollenado por si quedó marcada
+        obsInputEl.classList.remove('expediente-autollenado');
+      }
+    }
     const obsVal=r.children[2].querySelector("input").value;
 
     total += v;
@@ -2279,6 +2293,14 @@ async function guardar(){
         .catch(function(e){ console.warn('[Expediente] estado falló:', e); });
     }
   }catch(_){}
+  // Subir PDF de saneamiento + PDF de liquidación a Drive en background
+  try {
+    if(typeof _subirPdfsLiquidacionADrive === 'function'){
+      _subirPdfsLiquidacionADrive(placa).catch(function(e){
+        console.warn('[Drive] subida PDFs liquidación falló:', e);
+      });
+    }
+  } catch(_){}
   alert("Liquidación guardada/actualizada correctamente para: " + placa);
   limpiar();
   await renderReporte();
@@ -3533,9 +3555,89 @@ async function generarPDFSaneamiento(placa){
     }
 
     doc.save(`SANEAMIENTO ${placa}.pdf`);
+    // Exponer el último PDF generado para que se pueda subir a Drive
+    try { window.__ultimoSaneamientoPdfBase64 = doc.output('datauristring'); } catch(_){}
 
   }finally{
     try{ wrap.remove(); }catch(e){}
+  }
+}
+
+/* Construye PDF de la liquidación pura (cartilla) y devuelve dataURL.
+   No descarga al disco — sólo lo usa la subida a Drive. */
+async function _construirPdfLiquidacionParaDrive(){
+  try {
+    if(!window.jspdf || !window.html2canvas) return null;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    // Captura del DOM principal de cartilla con html2canvas
+    const target = document.querySelector('.screen') || document.body;
+    const canvas = await html2canvas(target, { backgroundColor:'#ffffff', scale: 2, useCORS:true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pageW = 210, pageH = 297, margen = 8;
+    const wmm = pageW - margen*2;
+    const hmm = canvas.height * wmm / canvas.width;
+    // Soporte multi-página
+    let yOffset = 0;
+    if(hmm <= pageH - margen*2){
+      doc.addImage(imgData, 'JPEG', margen, margen, wmm, hmm);
+    } else {
+      // Página única simple — recorte; en caso ideal se haría multi-página pero
+      // para la mayoría de cartillas cabe en A4 con escala adecuada.
+      doc.addImage(imgData, 'JPEG', margen, margen, wmm, pageH - margen*2);
+    }
+    return doc.output('datauristring');
+  } catch(err){
+    console.warn('[Drive] Error construyendo PDF liquidación:', err);
+    return null;
+  }
+}
+
+/* Sube los PDFs de saneamiento y liquidación a Drive (carpeta de la placa). */
+async function _subirPdfsLiquidacionADrive(placa){
+  if(!placa) return;
+  let auth = {};
+  try{ auth = JSON.parse(sessionStorage.getItem('autocor_auth')||'{}'); }catch(_){}
+  if(!auth.token) return;
+
+  const archivos = [];
+  // 1) Saneamiento
+  try {
+    if(typeof generarPDFSaneamiento === 'function'){
+      await generarPDFSaneamiento(placa);
+    }
+    if(window.__ultimoSaneamientoPdfBase64){
+      archivos.push({ nombre: 'SANEAMIENTO.pdf', contenidoBase64: window.__ultimoSaneamientoPdfBase64 });
+    }
+  } catch(e){ console.warn('[Drive] saneamiento PDF falló:', e); }
+  // 2) Liquidación
+  try {
+    const liqPdf = await _construirPdfLiquidacionParaDrive();
+    if(liqPdf){
+      archivos.push({ nombre: 'LIQUIDACION.pdf', contenidoBase64: liqPdf });
+    }
+  } catch(e){ console.warn('[Drive] liquidación PDF falló:', e); }
+
+  if(archivos.length === 0){
+    console.warn('[Drive] No se generaron PDFs para subir.');
+    return;
+  }
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+  try {
+    const r = await fetch(GAS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'subirExpedienteDrive',
+        sessionToken: auth.token,
+        placa: placa,
+        archivos: archivos
+      })
+    });
+    const json = await r.json();
+    console.log('[Drive] PDFs liquidación subidos:', json);
+  } catch(err){
+    console.warn('[Drive] error red:', err);
   }
 }
 

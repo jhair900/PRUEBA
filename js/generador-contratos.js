@@ -133,8 +133,12 @@
     var valorText = valorNum ? valorATexto(parseFloat(valorNum)||0) : '';
     var valorDisp = (extra.valorNum  || '').replace('.',','); // mostrar con coma decimal
 
+    // Trailing space en NOMBRE_PROP para evitar que en encargos el
+    // texto "LA PARTE CONSTITUYENTE" quede pegado al nombre cuando el
+    // template usa el placeholder inmediatamente seguido del texto.
+    var nombrePropFmt = nombreProp ? (nombreProp + ' ') : '___________________';
     return {
-      NOMBRE_PROP:          nombreProp || '___________________',
+      NOMBRE_PROP:          nombrePropFmt,
       CI_PROP:              ciProp     || '___________',
       ESTADO_CIVIL_PROP:    estadoCivil|| '___________',
       NACIONALIDAD_PROP:    nacionalidad,
