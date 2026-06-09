@@ -2156,7 +2156,35 @@ function cargarFormularioDesdeData(data, placaFallback = "") {
   if ($("valorToma")) $("valorToma").value = data.valorToma || "";
 
   tbody.innerHTML = "";
-  (data.items || []).forEach(i => crearFila(i.concepto, i.monto, i.obs));
+  // Defensa: bug histórico que guardaba el username al final de la
+  // última observación. Limpiar coincidencias exactas con el usuario
+  // actual o con el asesor/historial guardado.
+  const _items = Array.isArray(data.items) ? data.items.map(i => ({...i})) : [];
+  const _userSet = new Set([
+    String(currentUser || '').trim().toUpperCase(),
+    String(data.asesor || '').trim().toUpperCase(),
+    String(data.asesorCreador || '').trim().toUpperCase(),
+    String(data.asesorEditor || '').trim().toUpperCase(),
+    ...(Array.isArray(data.historialUsuarios) ? data.historialUsuarios.map(u => String(u||'').toUpperCase().trim()) : [])
+  ].filter(Boolean));
+  _items.forEach(i => {
+    const obs = String(i.obs || '').trim();
+    if (!obs) return;
+    const obsUp = obs.toUpperCase();
+    // 1) Coincidencia exacta con un username conocido
+    if (_userSet.has(obsUp)) {
+      console.log('[Liquidacion] obs limpiada (era username):', JSON.stringify(i.obs));
+      i.obs = '';
+      return;
+    }
+    // 2) Sufijo tipo "...texto - JSANCHEZ" o "...texto / JSANCHEZ"
+    const m = obs.match(/^(.*?)([\s\-\/·|_]+)([A-Z][A-Z0-9]{2,15})\s*$/);
+    if (m && _userSet.has(m[3].toUpperCase())) {
+      console.log('[Liquidacion] obs limpiada (sufijo username):', JSON.stringify(i.obs), '→', JSON.stringify(m[1].trim()));
+      i.obs = m[1].trim();
+    }
+  });
+  _items.forEach(i => crearFila(i.concepto, i.monto, i.obs));
 
   actualizarTituloPorPlaca();
   refreshAuthorizationText(true);
@@ -2194,11 +2222,22 @@ function obtenerDatos(){
     obs:$("obs").value,
     valorToma: $("valorToma") ? $("valorToma").value : "",
     tipoDocumento: document.getElementById("tipoDocumento")?.value || "cartilla",
-    items:[...tbody.querySelectorAll("tr")].map(r=>({
-      concepto:r.children[0].querySelector("input").value,
-      monto:r.querySelector(".money-input").value,
-      obs:r.children[2].querySelector("input").value
-    }))
+    items:[...tbody.querySelectorAll("tr")].map(r=>{
+      const concepto = r.children[0].querySelector("input").value;
+      const monto    = r.querySelector(".money-input").value;
+      let obs        = r.children[2].querySelector("input").value || '';
+      // Saneamiento al guardar: nunca dejar el username solo o como
+      // sufijo de la observación. Defensa contra el bug histórico.
+      const obsTrim  = String(obs).trim();
+      const userUp   = String(currentUser || '').trim().toUpperCase();
+      if (obsTrim && userUp && obsTrim.toUpperCase() === userUp){
+        obs = '';
+      } else if (obsTrim && userUp){
+        const m = obsTrim.match(/^(.*?)([\s\-\/·|_]+)([A-Z][A-Z0-9]{2,15})\s*$/);
+        if (m && m[3].toUpperCase() === userUp) obs = m[1].trim();
+      }
+      return { concepto, monto, obs };
+    })
   };
 }
 
