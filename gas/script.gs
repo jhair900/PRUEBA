@@ -1643,12 +1643,21 @@ function subirExpedienteDrive_(placa, archivos, session) {
       if (row > 0) {
         const json = sheet.getRange(row, 8).getValue();
         const data = json ? JSON.parse(json) : {};
+        // MERGE de archivos: conservar los ya guardados (de contratos)
+        // y actualizar/añadir los nuevos (de liquidación, etc) por nombre.
+        const previos = (data.drive && Array.isArray(data.drive.archivos)) ? data.drive.archivos : [];
+        const nuevos = resultado.archivos.filter(function(x){ return x.ok; }).map(function(x){
+          return { nombre: x.nombre, url: x.url, fileId: x.fileId, downloadUrl: x.downloadUrl };
+        });
+        const porNombre = {};
+        previos.forEach(function(a){ if(a && a.nombre) porNombre[a.nombre] = a; });
+        nuevos.forEach(function(a){ if(a && a.nombre) porNombre[a.nombre] = a; });
+        const merged = Object.keys(porNombre).map(function(k){ return porNombre[k]; });
+
         data.drive = {
           folderUrl: resultado.folderUrl,
           folderId: resultado.folderId,
-          archivos: resultado.archivos.filter(function(x){ return x.ok; }).map(function(x){
-            return { nombre: x.nombre, url: x.url, fileId: x.fileId };
-          }),
+          archivos: merged,
           actualizadoEn: new Date().toISOString(),
           actualizadoPor: (session && session.user) || ''
         };
