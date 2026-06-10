@@ -860,6 +860,40 @@
     </div>
 
     <!-- 2. CÉDULA CÓNYUGE -->
+    <div class="doc-card" data-type="papeleta-prop">
+      <div class="doc-icon icon-cuv">
+        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
+      </div>
+      <div class="doc-name">Papeleta<br>Votación Titular</div>
+      <div class="upload-zone" id="zone-papeleta-prop"
+           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-prop')">
+        <label class="upload-label" for="file-papeleta-prop">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Subir imagen</span>
+        </label>
+        <input type="file" id="file-papeleta-prop" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-prop')">
+      </div>
+      <div class="paste-container" style="margin-top:8px">
+        <div class="paste-side" id="paste-papeleta-prop-frontal" data-tipo="papeleta-prop" data-lado="frontal" tabindex="0">
+          <div class="paste-label">Papeleta</div>
+          <div class="paste-drop" id="pdrop-papeleta-prop-frontal">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
+            <span>Ctrl+V</span>
+          </div>
+          <div class="paste-preview" id="pprev-papeleta-prop-frontal">
+            <img alt="Papeleta votación titular">
+            <button type="button" class="paste-btn-remove" data-tipo="papeleta-prop" data-lado="frontal">&times;</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-prop">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Procesar imagen
+      </button>
+      <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+    </div>
+
+    <!-- 7. PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
     <div class="doc-card" data-type="cedula-cony">
       <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-cedula-c">
@@ -898,27 +932,39 @@
     </div>
 
     <!-- 3. CUV -->
-    <div class="doc-card" data-type="cuv">
+    <div class="doc-card" data-type="papeleta-cony">
       <div class="doc-icon icon-cuv">
-        <svg viewBox="0 0 64 64"><rect x="14" y="8" width="30" height="40" rx="5"></rect><line x1="20" y1="20" x2="38" y2="20"></line><line x1="20" y1="27" x2="38" y2="27"></line><line x1="20" y1="34" x2="30" y2="34"></line><circle cx="44" cy="44" r="12" fill="rgba(255,255,255,.18)"></circle><path d="M40 44l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
       </div>
-      <div class="doc-name">Certificado<br>Único Vehicular</div>
-      <div class="upload-zone" id="zone-cuv"
-           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'cuv')">
-        <label class="upload-label" for="file-cuv">
+      <div class="doc-name">Papeleta<br>Votación Cónyuge</div>
+      <div class="upload-zone" id="zone-papeleta-cony"
+           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-cony')">
+        <label class="upload-label" for="file-papeleta-cony">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Subir PDF del CUV</span>
+          <span>Subir imagen</span>
         </label>
-        <input type="file" id="file-cuv" accept=".pdf" onchange="onFileChange(event,'cuv')">
+        <input type="file" id="file-papeleta-cony" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-cony')">
       </div>
-      <div class="doc-status pending" id="status-cuv"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
-      <button type="button" class="btn-doc-action navy" id="btn-ver-cuv" onclick="abrirModalCUV()">
-        <svg viewBox="0 0 24 24" width="13" height="13" stroke="#fff" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-        Ver detalles CUV
+      <div class="paste-container" style="margin-top:8px">
+        <div class="paste-side" id="paste-papeleta-cony-frontal" data-tipo="papeleta-cony" data-lado="frontal" tabindex="0">
+          <div class="paste-label">Papeleta</div>
+          <div class="paste-drop" id="pdrop-papeleta-cony-frontal">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
+            <span>Ctrl+V</span>
+          </div>
+          <div class="paste-preview" id="pprev-papeleta-cony-frontal">
+            <img alt="Papeleta votación cónyuge">
+            <button type="button" class="paste-btn-remove" data-tipo="papeleta-cony" data-lado="frontal">&times;</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-cony">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Procesar imagen
       </button>
+      <div class="doc-status pending" id="status-papeleta-cony"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
     </div>
 
-    <!-- 4. MATRÍCULA -->
     <div class="doc-card" data-type="matricula">
       <div class="doc-icon icon-matricula">
         <svg viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="28" rx="5"></rect><rect x="16" y="26" width="14" height="12" rx="2" fill="rgba(255,255,255,.18)"></rect><line x1="36" y1="28" x2="50" y2="28"></line><line x1="36" y1="34" x2="50" y2="34"></line><line x1="36" y1="40" x2="44" y2="40"></line></svg>
@@ -956,6 +1002,27 @@
     </div>
 
     <!-- 5. PRINT NOTARÍA -->
+    <div class="doc-card" data-type="cuv">
+      <div class="doc-icon icon-cuv">
+        <svg viewBox="0 0 64 64"><rect x="14" y="8" width="30" height="40" rx="5"></rect><line x1="20" y1="20" x2="38" y2="20"></line><line x1="20" y1="27" x2="38" y2="27"></line><line x1="20" y1="34" x2="30" y2="34"></line><circle cx="44" cy="44" r="12" fill="rgba(255,255,255,.18)"></circle><path d="M40 44l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+      <div class="doc-name">Certificado<br>Único Vehicular</div>
+      <div class="upload-zone" id="zone-cuv"
+           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'cuv')">
+        <label class="upload-label" for="file-cuv">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Subir PDF del CUV</span>
+        </label>
+        <input type="file" id="file-cuv" accept=".pdf" onchange="onFileChange(event,'cuv')">
+      </div>
+      <div class="doc-status pending" id="status-cuv"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+      <button type="button" class="btn-doc-action navy" id="btn-ver-cuv" onclick="abrirModalCUV()">
+        <svg viewBox="0 0 24 24" width="13" height="13" stroke="#fff" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        Ver detalles CUV
+      </button>
+    </div>
+
+    <!-- 4. MATRÍCULA -->
     <div class="doc-card" data-type="notaria">
       <div class="doc-icon icon-notaria">
         <svg viewBox="0 0 64 64"><rect x="12" y="8" width="32" height="42" rx="5"></rect><line x1="19" y1="20" x2="37" y2="20"></line><line x1="19" y1="27" x2="37" y2="27"></line><line x1="19" y1="34" x2="37" y2="34"></line><line x1="19" y1="41" x2="29" y2="41"></line><path d="M40 38l3-3 8 8-3 3-8-8z"></path><path d="M40 50l3-8" stroke-linecap="round"></path></svg>
@@ -990,73 +1057,6 @@
     </div>
 
     <!-- 6. PAPELETA VOTACIÓN TITULAR -->
-    <div class="doc-card" data-type="papeleta-prop">
-      <div class="doc-icon icon-cuv">
-        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
-      </div>
-      <div class="doc-name">Papeleta<br>Votación Titular</div>
-      <div class="upload-zone" id="zone-papeleta-prop"
-           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-prop')">
-        <label class="upload-label" for="file-papeleta-prop">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Subir imagen</span>
-        </label>
-        <input type="file" id="file-papeleta-prop" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-prop')">
-      </div>
-      <div class="paste-container" style="margin-top:8px">
-        <div class="paste-side" id="paste-papeleta-prop-frontal" data-tipo="papeleta-prop" data-lado="frontal" tabindex="0">
-          <div class="paste-label">Papeleta</div>
-          <div class="paste-drop" id="pdrop-papeleta-prop-frontal">
-            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
-            <span>Ctrl+V</span>
-          </div>
-          <div class="paste-preview" id="pprev-papeleta-prop-frontal">
-            <img alt="Papeleta votación titular">
-            <button type="button" class="paste-btn-remove" data-tipo="papeleta-prop" data-lado="frontal">&times;</button>
-          </div>
-        </div>
-      </div>
-      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-prop">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        Procesar imagen
-      </button>
-      <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
-    </div>
-
-    <!-- 7. PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
-    <div class="doc-card" data-type="papeleta-cony">
-      <div class="doc-icon icon-cuv">
-        <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
-      </div>
-      <div class="doc-name">Papeleta<br>Votación Cónyuge</div>
-      <div class="upload-zone" id="zone-papeleta-cony"
-           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-cony')">
-        <label class="upload-label" for="file-papeleta-cony">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Subir imagen</span>
-        </label>
-        <input type="file" id="file-papeleta-cony" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-cony')">
-      </div>
-      <div class="paste-container" style="margin-top:8px">
-        <div class="paste-side" id="paste-papeleta-cony-frontal" data-tipo="papeleta-cony" data-lado="frontal" tabindex="0">
-          <div class="paste-label">Papeleta</div>
-          <div class="paste-drop" id="pdrop-papeleta-cony-frontal">
-            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>
-            <span>Ctrl+V</span>
-          </div>
-          <div class="paste-preview" id="pprev-papeleta-cony-frontal">
-            <img alt="Papeleta votación cónyuge">
-            <button type="button" class="paste-btn-remove" data-tipo="papeleta-cony" data-lado="frontal">&times;</button>
-          </div>
-        </div>
-      </div>
-      <button type="button" class="paste-btn-procesar" id="pbtn-papeleta-cony">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        Procesar imagen
-      </button>
-      <div class="doc-status pending" id="status-papeleta-cony"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
-    </div>
-
   </div><!-- /docs-grid -->
 
   <!-- ── Validar todo en conjunto ─────────────────────────────── -->
@@ -3428,12 +3428,15 @@ function _setPasteImage(tipo, lado, dataUrl){
   datos[tipo] = null;
   var hasFront = !!pastedImages[tipo].frontal;
   var hasBack  = !!pastedImages[tipo].reverso;
-  var statusTxt = tipo==='notaria'
+  // Documentos de una sola cara: notaría y papeletas de votación
+  var unaCara = (tipo==='notaria' || tipo==='papeleta-prop' || tipo==='papeleta-cony');
+  var statusTxt = unaCara
                 ? 'Imagen lista'
                 : (hasFront && hasBack) ? 'Frontal + Reverso listos'
                 : hasFront ? 'Frontal listo — falta reverso'
                 : 'Reverso listo — falta frontal';
   if(tipo==='cedula-cony') statusTxt = 'Opcional — '+statusTxt;
+  if(tipo==='papeleta-cony') statusTxt = 'Solo si hay cónyuge — '+statusTxt;
   setStatus(tipo, 'pending', statusTxt);
   console.log('[Paste] Imagen asignada:', tipo, lado, '('+Math.round(dataUrl.length/1024)+'KB)');
   // Actualizar estado del botón "Procesar y validar" al pegar imagen
@@ -3901,7 +3904,7 @@ async function _procesarNotariaPaste(){
     }
   });
 
-  console.log('[Paste] Sistema de pegado inicializado — 6 zonas activas');
+  console.log('[Paste] Sistema de pegado inicializado — zonas activas (incluye papeletas)');
 })();
 
 function setStatus(tipo,estado,texto){
@@ -5943,6 +5946,8 @@ async function _procesarUnPendiente(tipo){
       await _procesarMatriculaPaste();
     } else if(tipo === 'notaria'){
       await _procesarNotariaPaste();
+    } else if(tipo === 'papeleta-prop' || tipo === 'papeleta-cony'){
+      await _procesarPapeletaPaste(tipo);
     }
     return { tipo: tipo, ok: !!datos[tipo] };
   }catch(err){
@@ -6482,6 +6487,8 @@ async function validarTodoEnConjunto(){
       cuv:          datos['cuv']          || null,
       matricula:    datos['matricula']    || null,
       notaria:      datos['notaria']      || null,
+      papeleta_prop: datos['papeleta-prop'] || null,
+      papeleta_cony: datos['papeleta-cony'] || null,
 
       // Datos vehiculares consolidados
       marca:     _pick('marca'),

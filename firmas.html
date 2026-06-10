@@ -465,57 +465,46 @@ function _renderArchivosDrive(drive){
     list.innerHTML = '<div class="archivos-vacio">Aún no hay archivos subidos en Drive para esta placa.</div>';
     return;
   }
-  // Priorizar los archivos relevantes para firmas
-  const prioridad = [
-    /encargo/i, /prestacion/i, /liquidacion/i, /saneamiento/i,
-    /cedula\s*titular/i, /cedula\s*conyuge/i,
-    /matricula/i, /cuv/i, /notaria/i,
-    /papeleta/i
-  ];
-  function _peso(nombre){
-    for(let i=0;i<prioridad.length;i++) if(prioridad[i].test(nombre)) return i;
-    return 99;
+  // Solo mostrar los documentos relevantes para la firma:
+  // encargo fiduciario, contrato de prestación, liquidación y cédulas.
+  const PERMITIDOS = [/encargo/i, /prestacion/i, /liquidacion/i, /cedula/i];
+  function _permitido(nombre){
+    return PERMITIDOS.some(function(re){ return re.test(nombre); });
   }
-  const ordenados = drive.archivos.slice().sort(function(a,b){
-    return _peso(a.nombre) - _peso(b.nombre);
-  });
+  // Construye URL de descarga DIRECTA (sin abrir preview de Drive).
+  function _downloadUrl(a){
+    if(a.downloadUrl) return a.downloadUrl;
+    if(a.fileId) return 'https://drive.google.com/uc?export=download&id=' + a.fileId;
+    return a.url || '';
+  }
+
+  const relevantes = drive.archivos.filter(function(a){ return _permitido(a.nombre); });
   grp.style.display = 'block';
-  ordenados.forEach(function(a){
-    if(!a.url) return;
-    const tipo = _peso(a.nombre) < 4 ? 'CONTRATO/LIQUIDACIÓN' : 'DOCUMENTO';
+
+  if(relevantes.length === 0){
+    list.innerHTML = '<div class="archivos-vacio">Aún no se han generado los contratos / liquidación para esta placa.</div>';
+    return;
+  }
+
+  relevantes.forEach(function(a){
+    const url = _downloadUrl(a);
+    if(!url) return;
     const link = document.createElement('a');
     link.className = 'archivo-card';
-    link.href = a.url;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.title = 'Abrir ' + a.nombre + ' en Google Drive';
+    link.href = url;
+    // Descarga directa: atributo download fuerza la descarga en vez de abrir preview
+    link.setAttribute('download', a.nombre);
+    link.title = 'Descargar ' + a.nombre;
     link.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-      +'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
-      +'<polyline points="14 2 14 8 20 8"></polyline></svg>'
+      +'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>'
+      +'<polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
       +'<div class="archivo-card-info">'
       +'<span class="archivo-card-nombre">'+a.nombre+'</span>'
-      +'<span class="archivo-card-meta">'+tipo+'</span>'
+      +'<span class="archivo-card-meta">DESCARGAR</span>'
       +'</div>';
     list.appendChild(link);
   });
-  if(drive.folderUrl){
-    const carpetaLink = document.createElement('a');
-    carpetaLink.className = 'archivo-card';
-    carpetaLink.href = drive.folderUrl;
-    carpetaLink.target = '_blank';
-    carpetaLink.rel = 'noopener';
-    carpetaLink.style.background = '#fef3c7';
-    carpetaLink.style.borderColor = '#fbbf24';
-    carpetaLink.innerHTML =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-      +'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'
-      +'<div class="archivo-card-info">'
-      +'<span class="archivo-card-nombre" style="color:#92400e">Abrir carpeta completa en Drive</span>'
-      +'<span class="archivo-card-meta" style="color:#92400e">CARPETA · '+drive.archivos.length+' archivo(s)</span>'
-      +'</div>';
-    list.appendChild(carpetaLink);
-  }
 }
 
 async function enviarAFirmar(){

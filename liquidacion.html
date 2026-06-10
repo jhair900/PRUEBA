@@ -2293,14 +2293,15 @@ async function guardar(){
         .catch(function(e){ console.warn('[Expediente] estado falló:', e); });
     }
   }catch(_){}
-  // Subir PDF de saneamiento + PDF de liquidación a Drive en background
+  // Subir PDF de saneamiento + PDF de liquidación a Drive.
+  // IMPORTANTE: hacerlo ANTES de limpiar() porque los PDFs se generan
+  // capturando el DOM del formulario, que limpiar() vacía.
+  setStatus('GUARDANDO PDFs EN DRIVE — ' + placa + '...', false, true);
   try {
     if(typeof _subirPdfsLiquidacionADrive === 'function'){
-      _subirPdfsLiquidacionADrive(placa).catch(function(e){
-        console.warn('[Drive] subida PDFs liquidación falló:', e);
-      });
+      await _subirPdfsLiquidacionADrive(placa);
     }
-  } catch(_){}
+  } catch(e){ console.warn('[Drive] subida PDFs liquidación falló:', e); }
   alert("Liquidación guardada/actualizada correctamente para: " + placa);
   limpiar();
   await renderReporte();
@@ -3259,8 +3260,11 @@ function previsualizarPrint(index){
   abrirModal('modalPrintPreview');
 }
 
-/* ── Generación PDF Saneamiento ── */
-async function generarPDFSaneamiento(placa){
+/* ── Generación PDF Saneamiento ──
+   opts.soloBase64 = true → no descarga al disco, solo expone base64
+   en window.__ultimoSaneamientoPdfBase64 (para subir a Drive). */
+async function generarPDFSaneamiento(placa, opts){
+  opts = opts || {};
   const jsPDFLib = window.jspdf;
   const h2c     = window.html2canvas;
   if(!jsPDFLib || !h2c){
@@ -3554,9 +3558,12 @@ async function generarPDFSaneamiento(placa){
       }
     }
 
-    doc.save(`SANEAMIENTO ${placa}.pdf`);
     // Exponer el último PDF generado para que se pueda subir a Drive
     try { window.__ultimoSaneamientoPdfBase64 = doc.output('datauristring'); } catch(_){}
+    // Descargar al disco solo si no es modo solo-base64
+    if(!opts.soloBase64){
+      doc.save(`SANEAMIENTO ${placa}.pdf`);
+    }
 
   }finally{
     try{ wrap.remove(); }catch(e){}
@@ -3604,7 +3611,8 @@ async function _subirPdfsLiquidacionADrive(placa){
   // 1) Saneamiento
   try {
     if(typeof generarPDFSaneamiento === 'function'){
-      await generarPDFSaneamiento(placa);
+      window.__ultimoSaneamientoPdfBase64 = null;
+      await generarPDFSaneamiento(placa, { soloBase64: true });
     }
     if(window.__ultimoSaneamientoPdfBase64){
       archivos.push({ nombre: 'SANEAMIENTO.pdf', contenidoBase64: window.__ultimoSaneamientoPdfBase64 });
