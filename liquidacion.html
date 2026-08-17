@@ -2101,15 +2101,6 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
       body.sessionToken = authToken;
     }
 
-    if (window.AutoCorApi && typeof window.AutoCorApi.postJson === 'function') {
-      const json = await window.AutoCorApi.postJson(API_URL, body, { context: action });
-      if (!json.ok) {
-        alert("Error: " + (json.message || "Error desconocido."));
-        throw new Error(json.message || "Error desconocido en la API.");
-      }
-      return json;
-    }
-
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
@@ -2119,14 +2110,7 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
     });
 
     const text = await res.text();
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch (err) {
-      const msg = (action ? action + ': ' : '') + 'El servidor devolvió una respuesta no válida (HTML/Error). Revisa la conexión o el despliegue.';
-      alert("Error: " + msg);
-      throw new Error(msg);
-    }
+    const json = JSON.parse(text);
 
     if (!json.ok) {
       alert("Error: " + (json.message || "Error desconocido."));

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -2159,30 +2159,271 @@ window.testAIConnection = async function(){
 // Test on page load (once DOM is ready, after auth check)
 setTimeout(function(){ window.testAIConnection(); }, 300);
 
-/* ── Helpers de campos vacíos / dudosos / faltantes ───────────── */
-function isFieldEmpty(v){
-  if(v === null || v === undefined) return true;
-  if(Array.isArray(v)) return v.length === 0;
-  return String(v).trim() === '';
+/* ── analizarConGemini ──────────────────────────────────────── */
+async function analizarConGemini(tipo, dataUrl){
+  const prompt = PROMPTS_IA[tipo];
+  if(!prompt) throw new Error('Tipo no soportado por IA: '+tipo);
+
+  spinnerMsg('Analizando con Gemini...');
+  setSpinnerBar(40);
+
+  // Gemini espera base64 SIN el prefijo "data:image/png;base64,"
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if(!m) throw new Error('Imagen inválida (no es data URL base64)');
+  const mimeType = m[1];
+  const b64Data  = m[2];
+
+  const body = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: mimeType, data: b64Data } }
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0,
+      maxOutputTokens: 2048
+    }
+  };
+
+  const resp = await geminiFetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  setSpinnerBar(85);
+
+  if(!resp.ok){
+    const errTxt = await resp.text();
+    console.error('[IA] Error Gemini:', resp.status, errTxt);
+    throw new Error('Gemini '+resp.status+': '+(errTxt.substring(0,160)));
+  }
+
+  const json = await resp.json();
+
+  // Validar bloqueos por safety
+  if(json.promptFeedback && json.promptFeedback.blockReason){
+    throw new Error('Gemini bloqueó la petición: '+json.promptFeedback.blockReason);
+  }
+
+  const cand    = json.candidates && json.candidates[0];
+  const content = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
+  if(!content) throw new Error('Respuesta vacía de Gemini');
+
+  let parsed;
+  try{ parsed = JSON.parse(content); }
+  catch(e){
+    // Si el modelo envolvió el JSON en markdown/texto, extraer las llaves
+    const j = content.match(/\{[\s\S]*\}/);
+    if(!j) throw new Error('Gemini no devolvió JSON válido');
+    parsed = JSON.parse(j[0]);
+  }
+  return parsed;
 }
 
-function isFieldDubious(v, f){
-  if(isFieldEmpty(v)) return true;
-  const s = String(v).trim().toUpperCase();
-  if(/^(?:SIN DATO|POR VERIFICAR|PENDIENTE|NO CONSTA|\?+)$/.test(s)) return true;
+/* ══════════════════════════════════════════════════════════════
+   ESTRATEGIA OCR-FIRST + IA SOLO PARA FALTANTES
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Descripciones de campos por tipo (para prompts dirigidos) ── */
+const FIELD_DESCRIPTIONS = {
+  cedula: {
+    apellidos:       'SOLO los APELLIDOS del titular, SIN incluir nombres de pila. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la PRIMERA línea corresponde a los apellidos. CÉDULA ANTIGUA: buscar debajo de la etiqueta "APELLIDOS". Devolver SOLO apellidos en MAYÚSCULAS. NO incluir etiquetas del documento (IDENTIDAD, REPÚBLICA, CÉDULA, etc.). Si no puedes diferenciar entre apellidos y nombres, devuelve cadena vacía.',
+    nombres:         'SOLO los NOMBRES de pila del titular, SIN incluir apellidos. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la SEGUNDA línea corresponde a los nombres. CÉDULA ANTIGUA: buscar debajo de la etiqueta "NOMBRES". Devolver SOLO nombres en MAYÚSCULAS. NO devolver el nombre completo (apellidos + nombres juntos). Si no puedes diferenciar, devuelve cadena vacía.',
+    numeroCedula:    'Número de cédula ecuatoriana (exactamente 10 dígitos). CÉDULA NUEVA: buscar en la parte superior derecha del frente, junto a "No.". CÉDULA ANTIGUA: buscar junto a "NUI" en la parte inferior izquierda. NO confundir con el código dactilar.',
+    codigoDactilar:  'Código dactilar del titular. Está SIEMPRE en el REVERSO de la cédula, cerca de la etiqueta "CÓDIGO DACTILAR" o junto a la huella. Puede ser alfanumérico según el print. Es DIFERENTE del número de cédula. NO confundir con fechas, MRZ, NUI, código de barras o tipo de sangre. Si no se ve claramente, devuelve cadena vacía.',
+    fechaExpiracion: 'Fecha de expiración en formato DD/MM/YYYY. CÉDULA NUEVA: buscar en el REVERSO, parte inferior izquierda, bajo "FECHA DE EXPIRACIÓN". CÉDULA ANTIGUA: buscar en el frente, lado derecho, bajo "FECHA DE VENCIMIENTO".',
+    estadoCivil:     'Estado civil: SOLTERO, CASADO, DIVORCIADO, VIUDO o UNIÓN LIBRE. CÉDULA NUEVA: buscar en el frente, junto a "ESTADO CIVIL". CÉDULA ANTIGUA: buscar en el REVERSO, lado izquierdo, bajo "ESTADO CIVIL". Solo devolver si se ve claramente.',
+    nacionalidad:    'Nacionalidad del titular: ECUATORIANA, COLOMBIANA, etc. Buscar junto a la etiqueta "NACIONALIDAD" en el frente de la cédula (ambos formatos). Solo devolver si se ve claramente.'
+  },
+  matricula: {
+    placa:       'Placa del vehiculo (formato AAA-1234)',
+    cedulaRuc:   'Numero de cedula del propietario (exactamente 10 digitos). Debe estar asociado a cedula, identificacion, CI, RUC, propietario o documento de identidad. NO aceptar telefonos ni numeros cercanos a telefono, celular, contacto, movil, tel. o convencional. Si no hay certeza, devuelve "".',
+    propietario: 'Nombre completo del propietario',
+    marca:       'Marca del vehículo',
+    modelo:      'Modelo del vehículo',
+    color:       'Color del vehículo',
+    chasis:      'Número de chasis o VIN',
+    motor:       'Número de motor',
+    anio:        'Año de fabricación del vehículo (4 dígitos)'
+  },
+  notaria: {
+    placa:                     'Placa del vehiculo (formato AAA-1234)',
+    anio:                      'Año del vehículo (4 dígitos)',
+    modelo:                    'Modelo del vehículo',
+    pais:                      'País del vehículo o país de origen',
+    serialChasis:              'Número de chasis o serial',
+    tipoIdPropietario:         'Tipo de identificación del propietario',
+    nombrePropietario:         'Nombre o razón social del propietario',
+    marca:                     'Marca del vehículo',
+    numeroMotor:               'Número de motor',
+    medidaCautelar:            'Medida cautelar',
+    identificacionPropietario: 'Identificación del propietario',
+    estadoTransferencia:       'Estado real de transferencia de dominio: no registra, registra, existe ultimo contrato, o texto equivalente visible',
+    valorContrato:             'Valor del contrato',
+    fechaContrato:             'Fecha del contrato',
+    tipoTransferencia:         'Tipo de transferencia',
+    compradores:               'Lista completa de compradores; cada fila debe tener tipoId, identificacion y nombre si son visibles',
+    vendedores:                'Lista completa de vendedores; cada fila debe tener tipoId, identificacion y nombre si son visibles'
+  }
+  /* CUV NO usa IA — se procesa exclusivamente con lógica parseCUV */
+};
+
+/* ── Validación de "campo faltante o dudoso" ────────────────── */
+function isFieldEmpty(val){
+  if(val===null||val===undefined) return true;
+  if(typeof val==='string' && val.trim()==='') return true;
+  if(Array.isArray(val) && val.length===0) return true;
+  return false;
+}
+function isFieldDubious(val, fieldDef){
+  if(isFieldEmpty(val)) return true;
+  if(fieldDef && typeof fieldDef.validate==='function'){
+    const r = fieldDef.validate(val);
+    if(r==='warn' || r===false) return true;
+  }
   return false;
 }
 
+/* ── Listar campos faltantes/dudosos ────────────────────────── */
 function getMissingFields(d, fields){
   const missing = [];
-  if(!fields || !Array.isArray(fields)) return missing;
   for(const f of fields){
-    if(!f || f.type === 'separator') continue;
-    if(isFieldDubious(d ? d[f.key] : null, f)) missing.push(f.key);
+    if(f.type==='separator') continue;
+    if(isFieldDubious(d[f.key], f)) missing.push(f.key);
   }
   return missing;
 }
 
+/* ── Llamar a Gemini SOLO con los campos faltantes ─────────── */
+async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
+  if(!missingKeys || missingKeys.length===0) return {};
+  const descs = FIELD_DESCRIPTIONS[tipo];
+  if(!descs) throw new Error('Tipo no soportado: '+tipo);
+  extraOpts = extraOpts || {};
+
+  // Detectar campos especiales (arreglos)
+  const isArrayField = function(k){ return tipo==='notaria' && (k==='compradores'||k==='vendedores'); };
+
+  // Construir lista descriptiva y esquema JSON esperado
+  const fieldList = missingKeys.map(function(k){ return '- '+k+': '+(descs[k]||k); }).join('\n');
+  const schemaBits = missingKeys.map(function(k){
+    if(isArrayField(k)) return '"'+k+'":[{"tipoId":"","identificacion":"","nombre":""}]';
+    return '"'+k+'":""';
+  }).join(',\n  ');
+
+  /* Agregar contexto de zona para cédulas */
+  var contextoCedula = '';
+  var contextoMatricula = '';
+  var contextoNotaria = '';
+  if(tipo==='cedula'){
+    contextoCedula =
+      '\nCONTEXTO DE CÉDULA ECUATORIANA:\n'+
+      'Existen dos formatos. Identifica cuál es:\n'+
+      '• CÉDULA NUEVA (azul): Frente tiene "No." (cédula arriba-derecha), "APELLIDOS Y NOMBRES" (zona central, primera línea=apellidos, segunda línea=nombres), "NACIONALIDAD", "ESTADO CIVIL". Reverso tiene "CÓDIGO DACTILAR" (arriba-derecha, junto a huella) y "FECHA DE EXPIRACIÓN" (abajo-izquierda).\n'+
+      '• CÉDULA ANTIGUA: Frente tiene "NUI" (cédula abajo-izquierda), "APELLIDOS" y "NOMBRES" como etiquetas separadas, "NACIONALIDAD", "FECHA DE VENCIMIENTO". Reverso tiene "CÓDIGO DACTILAR" (arriba-derecha) y "ESTADO CIVIL" (izquierda).\n'+
+      'IMPORTANTE: El código dactilar es DIFERENTE del número de cédula. NO confundir con las líneas MRZ (texto codificado en la parte inferior de la cédula con formato <<<).\n'+
+      'IMPORTANTE: Los apellidos y nombres son campos SEPARADOS. NO devolver el nombre completo en un solo campo.\n\n';
+    if(extraOpts.cedulaSide === 'front'){
+      contextoCedula +=
+        'ESTAS VIENDO SOLO EL FRONTAL DE LA CEDULA.\n'+
+        'Puedes devolver UNICAMENTE apellidos, nombres, numeroCedula, nacionalidad, estadoCivil y fechaExpiracion si realmente aparecen en el frontal.\n'+
+        'NO uses datos del padre ni de la madre.\n'+
+        'NO devuelvas codigoDactilar desde el frontal.\n\n';
+    } else if(extraOpts.cedulaSide === 'back'){
+      contextoCedula +=
+        'ESTAS VIENDO SOLO EL REVERSO DE LA CEDULA.\n'+
+        'Puedes devolver UNICAMENTE codigoDactilar y, solo si aparecen claramente, fechaExpiracion o estadoCivil.\n'+
+        'El codigo dactilar puede NO tener etiqueta visible. Debes ubicarlo por estructura: valor alfanumerico corto o medio, aislado, cerca de la huella y en la parte superior derecha.\n'+
+        'Ejemplo valido de patron: V2333V1112.\n'+
+        'NO devuelvas apellidos ni nombres del titular.\n'+
+        'NO uses nombres del padre ni de la madre.\n'+
+        'NO inventes el codigoDactilar si no se ve claramente.\n\n';
+    }
+  } else if(tipo==='matricula'){
+    contextoMatricula =
+      '\nCONTEXTO DE MATRICULA VEHICULAR ECUATORIANA:\n'+
+      'La cedulaRuc debe ser la cedula del propietario: exactamente 10 digitos y vinculada a etiquetas como CEDULA, IDENTIFICACION, CI, RUC, PROPIETARIO o DOCUMENTO DE IDENTIDAD.\n'+
+      'No uses numeros cercanos a TELEFONO, CELULAR, CONTACTO, MOVIL, TEL. o CONVENCIONAL.\n'+
+      'Si solo ves un numero de 10 digitos sin etiqueta clara de identidad, devuelve "".\n'+
+      'Chasis y motor deben copiarse completos; si falta un caracter, devuelve lo visible y no lo corrijas.\n\n';
+  } else if(tipo==='notaria'){
+    contextoNotaria =
+      '\nCONTEXTO DE PRINT NOTARIA / FICHA VEHICULO:\n'+
+      'Debes analizar una ficha vehicular notarial ecuatoriana.\n'+
+      'Extrae los campos del vehiculo, del propietario y, si existe, de la seccion ULTIMO CONTRATO.\n'+
+      'Busca datos en tablas y bloques: FICHA VEHICULO, PROPIETARIO, ULTIMO CONTRATO, COMPRADORES y VENDEDORES.\n'+
+      'Si existe ULTIMO CONTRATO, extrae valorContrato, fechaContrato, tipoTransferencia y el estado real de transferencia.\n'+
+      'NO mezcles datos del propietario con compradores o vendedores.\n'+
+      'Para compradores y vendedores devuelve arreglos con todos los registros visibles, usando objetos {tipoId, identificacion, nombre}.\n'+
+      'Si no existe una seccion o el dato no se ve, deja "" o [] segun corresponda.\n\n';
+  }
+
+  const prompt =
+    'Analiza la imagen del documento y completa SOLAMENTE estos campos faltantes:\n\n'+
+    fieldList+'\n'+
+    contextoCedula+
+    contextoMatricula+
+    contextoNotaria+
+    'Reglas estrictas:\n'+
+    '- Si NO ves el dato con claridad en la imagen, devuelve cadena vacía "" (o [] para arreglos).\n'+
+    '- NO inventes datos, NO completes por suposición.\n'+
+    '- NO devuelvas etiquetas del documento (IDENTIDAD, REPÚBLICA, CÉDULA, etc.) como valores.\n'+
+    '- Para fechas usa formato DD/MM/YYYY.\n'+
+    '- Para apellidos: devuelve SOLO los apellidos, SIN los nombres de pila.\n'+
+    '- Para nombres: devuelve SOLO los nombres de pila, SIN los apellidos.\n'+
+    '- Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta (sin explicaciones, sin markdown):\n\n'+
+    '{\n  '+schemaBits+'\n}';
+
+  spinnerMsg('IA completando '+missingKeys.length+' campo(s) faltante(s)...');
+  setSpinnerBar(70);
+
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if(!m) throw new Error('Imagen inválida');
+  const mimeType = m[1], b64Data = m[2];
+
+  const body = {
+    contents: [{ parts: [
+      { text: prompt },
+      { inline_data: { mime_type: mimeType, data: b64Data } }
+    ]}],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0,
+      maxOutputTokens: 1500
+    }
+  };
+
+  const resp = await geminiFetch(geminiUrl(GEMINI_MODEL_ACTIVE), {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  setSpinnerBar(90);
+
+  if(!resp.ok){
+    const errTxt = await resp.text();
+    throw new Error('Gemini '+resp.status+': '+errTxt.substring(0,160));
+  }
+  const json = await resp.json();
+  if(json.promptFeedback && json.promptFeedback.blockReason){
+    throw new Error('Gemini bloqueó la petición: '+json.promptFeedback.blockReason);
+  }
+  const cand = json.candidates && json.candidates[0];
+  const content = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
+  if(!content) throw new Error('Respuesta vacía de Gemini');
+
+  let parsed;
+  try{ parsed = JSON.parse(content); }
+  catch(e){
+    const j = content.match(/\{[\s\S]*\}/);
+    if(!j) throw new Error('Gemini no devolvió JSON válido');
+    parsed = JSON.parse(j[0]);
+  }
+  return parsed;
+}
 
 /* ── Mergear datos OCR con respuesta de IA, marcando origen ── */
 function mergearDatosConIA(d, origins, aiData, missingKeys, esArrayField, originResolver){
