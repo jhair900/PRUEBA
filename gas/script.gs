@@ -96,14 +96,35 @@ function geminiProxy_(params, rawBody) {
   }
 }
 
+function ensureActionResources_(action) {
+  if (action === 'save' || action === 'getByPlaca' || action === 'list' || action === 'delete') {
+    ensureSheet_();
+    return;
+  }
+  if (action === 'savePago' || action === 'getPagoByPlaca' || action === 'listPagos' || action === 'deletePago') {
+    ensurePaymentsSheet_();
+    return;
+  }
+  if (action === 'saveVenta' || action === 'getVentaByPlaca' || action === 'listVentas' || action === 'deleteVenta') {
+    ensureVentasSheet_();
+    return;
+  }
+  if (action === 'saveContrato' || action === 'getContratoByPlaca' || action === 'setEstadoProceso' ||
+      action === 'listContratos' || action === 'deleteContrato' || action === 'subirExpedienteDrive') {
+    ensureContratosSheet_();
+    return;
+  }
+  if (action === 'estadoPorPlaca') {
+    ensureContratosSheet_();
+    ensureSheet_();
+    ensurePaymentsSheet_();
+    ensureVentasSheet_();
+    return;
+  }
+}
+
 function handleAction_(action, payload) {
-  ensureSheet_();
-  ensureUsersSheet_();
-  ensureGlossarySheet_();
-  ensurePaymentsSheet_();
-  ensureVentasSheet_();
-  ensureContratosSheet_();
-  ensureFirmasSPSheet_();
+  ensureActionResources_(action);
 
   if (action === 'ping') return { ok: true, message: 'API funcionando' };
   if (action === 'setupUsers') return setupInitialUsers_();
@@ -187,6 +208,12 @@ function handleAction_(action, payload) {
     const session = validateSession_(payload.sessionToken);
     if (!session.ok) return session;
     return getVentaByPlaca_(payload.placa, session);
+  }
+
+  if (action === 'estadoPorPlaca') {
+    const session = validateSession_(payload.sessionToken);
+    if (!session.ok) return session;
+    return estadoPorPlaca_(payload.placa, session);
   }
 
   if (action === 'listVentas') {
@@ -1455,18 +1482,54 @@ function getContratoByPlaca_(placa, session) {
   }
 }
 
+function estadoPorPlaca_(placa, session) {
+  const p = normalizePlaca_(placa);
+  if (!p) {
+    return {
+      placa: '',
+      contratos: false,
+      liquidacion: false,
+      pagos: false,
+      ventas: false,
+      _contratos: null,
+      _liquidacion: null,
+      _pagos: null,
+      _ventas: null
+    };
+  }
+
+  const c = getContratoByPlaca_(p, session);
+  const l = getByPlaca_(p, session);
+  const pa = getPagoByPlaca_(p, session);
+  const v = getVentaByPlaca_(p, session);
+
+  return {
+    placa: p,
+    contratos: !!c.ok,
+    liquidacion: !!l.ok,
+    pagos: !!pa.ok,
+    ventas: !!v.ok,
+    _contratos: c.data || null,
+    _liquidacion: l.data || null,
+    _pagos: pa.data || null,
+    _ventas: v.data || null
+  };
+}
+
 function listContratos_(mode, session) {
   try {
     const sheet = getContratosSheet_();
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { ok: true, rows: [] };
 
-    const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    const colCount = Math.max(8, Math.min(sheet.getLastColumn(), 9));
+    const values = sheet.getRange(2, 1, lastRow - 1, colCount).getValues();
 
     let rows = values.map(function(r) {
       let data = {};
       try { data = JSON.parse(r[7] || '{}'); } catch(e) {}
       const history = buildHistory_(data, {}, null);
+      const estadoProceso = String(r[8] || data.estadoProceso || 'VALIDADO').toUpperCase();
       return {
         placa:           r[0] || '',
         propietario:     r[1] || '',
@@ -1477,7 +1540,8 @@ function listContratos_(mode, session) {
         asesorEditor:    lastEditor_(history),
         historialUsuarios: history,
         riesgoValidacion: r[5] || '',
-        updatedAt:       r[6] || ''
+        updatedAt:       r[6] || '',
+        estadoProceso:   estadoProceso
       };
     });
 

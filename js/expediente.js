@@ -50,6 +50,13 @@
       return { placa:'', contratos:false, liquidacion:false, pagos:false, ventas:false,
                _contratos:null, _liquidacion:null, _pagos:null, _ventas:null };
     }
+    try {
+      const rapido = await _post('estadoPorPlaca', { placa: p });
+      if(rapido && Object.prototype.hasOwnProperty.call(rapido, 'placa')){
+        return rapido;
+      }
+    } catch(_){}
+
     const [c, l, pa, v] = await Promise.all([
       _post('getContratoByPlaca', { placa: p }).catch(function(){ return vacio; }),
       _post('getByPlaca',         { placa: p }).catch(function(){ return vacio; }),

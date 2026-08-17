@@ -25,6 +25,13 @@
       throw new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
     }
 
+    if(json && json.ok === false){
+      const where = context ? (context + ': ') : '';
+      const apiError = new Error(where + (json.message || 'Error en API'));
+      apiError.isApiError = true;
+      throw apiError;
+    }
+
     return json;
   }
 
@@ -43,6 +50,7 @@
         return await parseJsonResponse(resp, options.context);
       } catch (err) {
         lastError = err;
+        if (err && err.isApiError) break;
         if (attempt >= retries) break;
         await new Promise(function(resolve){ setTimeout(resolve, 700); });
       }
