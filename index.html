@@ -1001,12 +1001,23 @@
 
     async function apiCall(action, payload){
       const body = Object.assign({ action: action }, payload);
+      if (global.AutoCorApi && typeof global.AutoCorApi.postJson === 'function') {
+        const json = await global.AutoCorApi.postJson(API_URL, body, { context: action });
+        if(!json.ok) throw new Error(json.message || 'Error en API');
+        return json;
+      }
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(body)
       });
-      const json = JSON.parse(await res.text());
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (err) {
+        throw new Error((action ? action + ': ' : '') + 'El servidor devolvió una respuesta no válida (HTML/Error). Revisa la conexión o despliegue.');
+      }
       if(!json.ok) throw new Error(json.message || 'Error en API');
       return json;
     }
@@ -1138,6 +1149,7 @@
       if(!auth.token){
         // sin sesión → abrir modal de login en modo "solo búsqueda" para
         // que tras autenticar reintente la búsqueda sin navegar a contratos
+        try{ sessionStorage.setItem('autocor_pending_search', placa); }catch(_){}
         abrirLogin('contratos', { soloBusqueda: true });
         return;
       }

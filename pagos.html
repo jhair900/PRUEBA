@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -964,13 +964,25 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
   if(opts.auth !== false && authToken){
     body.sessionToken = authToken;
   }
+  if(window.AutoCorApi && typeof window.AutoCorApi.postJson === 'function'){
+    const json = await window.AutoCorApi.postJson(API_URL, body, { context: action });
+    if(!json.ok){
+      throw new Error(json.message || 'Error en API');
+    }
+    return json;
+  }
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {"Content-Type":"text/plain;charset=utf-8"},
     body: JSON.stringify(body)
   });
   const text = await res.text();
-  const json = JSON.parse(text);
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch(err) {
+    throw new Error((action ? action + ': ' : '') + 'El servidor devolvió una respuesta no válida (HTML/Error). Revisa la conexión o despliegue.');
+  }
   if(!json.ok){
     throw new Error(json.message || 'Error en API');
   }
