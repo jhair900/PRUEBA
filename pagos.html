@@ -1023,15 +1023,22 @@ async function buscarPorPlaca(placa){
   const placaNormalizada = normalizeValue(placa);
   if(!placaNormalizada) return;
   setStatus('BUSCANDO CUADRO POR PLACA...');
+  const searchId = (window.__pagosPlateSearchId || 0) + 1;
+  window.__pagosPlateSearchId = searchId;
   let resp;
   try { resp = await apiCall('getPagoByPlaca', { placa: placaNormalizada }); }
-  catch(e){ resp = { data: {} }; }
+  catch(e){
+    if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
+    resp = { data: {} };
+  }
   cargarFormularioPago(resp.data || {});
-  await _autollenarPagoDesdeExpediente(placaNormalizada);
   setStatus('CUADRO CARGADO');
+  _autollenarPagoDesdeExpediente(placaNormalizada, searchId).catch(function(e){
+    console.warn('[Pagos] autollenado complementario:', e.message);
+  });
 }
 
-async function _autollenarPagoDesdeExpediente(placa){
+async function _autollenarPagoDesdeExpediente(placa, searchId){
   if(typeof Expediente === 'undefined') return false;
   try {
     // 1) Traer expediente (Contratos) + liquidación en paralelo
@@ -1039,6 +1046,7 @@ async function _autollenarPagoDesdeExpediente(placa){
       Expediente.cargarPorPlaca(placa),
       apiCall('getByPlaca', { placa: placa }).catch(function(){ return { data: null }; })
     ]);
+    if(searchId && searchId !== window.__pagosPlateSearchId) return false;
     const d   = (expR && expR.ok) ? expR.data : null;
     const liq = (liqR && liqR.data) ? liqR.data : null;
     if(!d){

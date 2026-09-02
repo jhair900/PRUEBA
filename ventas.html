@@ -1226,20 +1226,28 @@ async function buscarPorPlaca(placa){
   const placaNorm = normalizeValue(placa);
   if(!placaNorm) return;
   setStatus('BUSCANDO CUADRO POR PLACA...');
+  const searchId = (window.__ventasPlateSearchId || 0) + 1;
+  window.__ventasPlateSearchId = searchId;
   let resp;
   try { resp = await apiCall('getVentaByPlaca', { placa: placaNorm }); }
-  catch(e){ resp = { data: {} }; }
+  catch(e){
+    if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
+    resp = { data: {} };
+  }
   cargarFormularioVenta(resp.data || {});
-  await _autollenarVentaDesdeExpediente(placaNorm);
   setStatus('CUADRO CARGADO', false, true);
+  _autollenarVentaDesdeExpediente(placaNorm, searchId).catch(function(e){
+    console.warn('[Ventas] autollenado complementario:', e.message);
+  });
 }
 
 /* Solo datos del vehículo desde el expediente. Datos comerciales de
    la venta (comprador, etc.) son externos al saneamiento. */
-async function _autollenarVentaDesdeExpediente(placa){
+async function _autollenarVentaDesdeExpediente(placa, searchId){
   if(typeof Expediente === 'undefined') return;
   try {
     const r = await Expediente.cargarPorPlaca(placa);
+    if(searchId && searchId !== window.__ventasPlateSearchId) return;
     if(!r || !r.ok || !r.data) return;
     const d = r.data;
     const map = { placaValue: 'placa' };

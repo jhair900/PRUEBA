@@ -97,28 +97,21 @@ function geminiProxy_(params, rawBody) {
 }
 
 function ensureActionResources_(action) {
-  if (action === 'save' || action === 'getByPlaca' || action === 'list' || action === 'delete') {
+  if (action === 'save' || action === 'list' || action === 'delete') {
     ensureSheet_();
     return;
   }
-  if (action === 'savePago' || action === 'getPagoByPlaca' || action === 'listPagos' || action === 'deletePago') {
+  if (action === 'savePago' || action === 'listPagos' || action === 'deletePago') {
     ensurePaymentsSheet_();
     return;
   }
-  if (action === 'saveVenta' || action === 'getVentaByPlaca' || action === 'listVentas' || action === 'deleteVenta') {
+  if (action === 'saveVenta' || action === 'listVentas' || action === 'deleteVenta') {
     ensureVentasSheet_();
     return;
   }
-  if (action === 'saveContrato' || action === 'getContratoByPlaca' || action === 'setEstadoProceso' ||
+  if (action === 'saveContrato' || action === 'setEstadoProceso' ||
       action === 'listContratos' || action === 'deleteContrato' || action === 'subirExpedienteDrive') {
     ensureContratosSheet_();
-    return;
-  }
-  if (action === 'estadoPorPlaca') {
-    ensureContratosSheet_();
-    ensureSheet_();
-    ensurePaymentsSheet_();
-    ensureVentasSheet_();
     return;
   }
 }
@@ -452,11 +445,23 @@ function findUserRow_(sheet, username) {
 }
 
 function findRowByPlaca_(sheet, placa) {
+  if (!sheet) return 0;
   const placaNorm = normalizePlaca_(placa);
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 0;
+  if (!placaNorm || lastRow < 2) return 0;
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const range = sheet.getRange(2, 1, lastRow - 1, 1);
+  try {
+    const match = range.createTextFinder(placaNorm)
+      .matchCase(false)
+      .matchEntireCell(true)
+      .useRegularExpression(false)
+      .findNext();
+    if (match) return match.getRow();
+  } catch (_) {}
+
+  // Compatibilidad con registros antiguos que tengan espacios en la placa.
+  const values = range.getValues();
   for (let i = 0; i < values.length; i++) {
     if (normalizePlaca_(values[i][0]) === placaNorm) return i + 2;
   }
@@ -572,44 +577,44 @@ function validateSession_(token) {
   try {
     if (!token) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
 
-    const sh = ensureUsersSheet_();
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(USERS_SHEET);
+    if (!sh) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
     const lastRow = sh.getLastRow();
     if (lastRow < 2) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
 
-    const values = sh.getRange(2, 1, lastRow - 1, 8).getValues();
+    const tokenCell = sh.getRange(2, 7, lastRow - 1, 1)
+      .createTextFinder(String(token))
+      .matchCase(true)
+      .matchEntireCell(true)
+      .useRegularExpression(false)
+      .findNext();
+    if (!tokenCell) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
 
-    for (let i = 0; i < values.length; i++) {
-      const row = values[i];
-      const sessionToken = row[6];
-      const expiresAt = row[7];
-      const isActive = row[4] === true || String(row[4]).toUpperCase() === 'TRUE';
-
-      if (sessionToken === token && isActive) {
-        if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
-          return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión expirada.' };
-        }
-        // Expiración deslizante: cada uso válido renueva la sesión otros
-        // SESSION_TTL_MINUTES. Así un usuario activo nunca se desloguea.
-        // Para no escribir en cada request, solo renueva si quedan menos
-        // de la mitad del TTL.
-        try {
-          const ms = SESSION_TTL_MINUTES * 60 * 1000;
-          const restante = new Date(expiresAt).getTime() - Date.now();
-          if (restante < ms / 2) {
-            sh.getRange(i + 2, 8).setValue(new Date(Date.now() + ms));
-          }
-        } catch (eRenew) { /* no bloquear la sesión por fallo de renovación */ }
-        return {
-          ok: true,
-          user: normalizeUser_(row[0]),
-          displayName: row[1] || normalizeUser_(row[0]),
-          isAdmin: row[3] === true || String(row[3]).toUpperCase() === 'TRUE',
-          rowIndex: i + 2
-        };
-      }
+    const rowIndex = tokenCell.getRow();
+    const row = sh.getRange(rowIndex, 1, 1, 8).getValues()[0];
+    const expiresAt = row[7];
+    const isActive = row[4] === true || String(row[4]).toUpperCase() === 'TRUE';
+    if (!isActive) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
+    if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
+      return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión expirada.' };
     }
 
-    return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
+    // Mantener la expiración deslizante sin escribir en cada consulta.
+    try {
+      const ms = SESSION_TTL_MINUTES * 60 * 1000;
+      const restante = new Date(expiresAt).getTime() - Date.now();
+      if (restante < ms / 2) {
+        sh.getRange(rowIndex, 8).setValue(new Date(Date.now() + ms));
+      }
+    } catch (eRenew) { /* no bloquear la sesión por fallo de renovación */ }
+    return {
+      ok: true,
+      user: normalizeUser_(row[0]),
+      displayName: row[1] || normalizeUser_(row[0]),
+      isAdmin: row[3] === true || String(row[3]).toUpperCase() === 'TRUE',
+      rowIndex: rowIndex
+    };
+
   } catch (err) {
     return { ok: false, code: 'AUTH_REQUIRED', message: 'Error validando sesión: ' + err.message };
   }
@@ -821,9 +826,9 @@ function saveLiquidacion_(data, session) {
   }
 }
 
-function getByPlaca_(placa, session) {
+function getByPlaca_(placa, session, sheetOverride) {
   try {
-    const sheet = getSheet_();
+    const sheet = arguments.length >= 3 ? sheetOverride : getSheet_();
     const row = findRowByPlaca_(sheet, placa);
     if (!row) return { ok: false, message: 'No existe registro para esa placa.' };
 
@@ -957,9 +962,9 @@ function savePago_(data, session) {
   }
 }
 
-function getPagoByPlaca_(placa, session) {
+function getPagoByPlaca_(placa, session, sheetOverride) {
   try {
-    const sheet = getPaymentsSheet_();
+    const sheet = arguments.length >= 3 ? sheetOverride : getPaymentsSheet_();
     const row = findRowByPlaca_(sheet, placa);
     if (!row) return { ok: false, message: 'No existe registro de pago para esa placa.' };
 
@@ -1106,9 +1111,9 @@ function saveVenta_(data, session) {
   }
 }
 
-function getVentaByPlaca_(placa, session) {
+function getVentaByPlaca_(placa, session, sheetOverride) {
   try {
-    const sheet = getVentasSheet_();
+    const sheet = arguments.length >= 3 ? sheetOverride : getVentasSheet_();
     const row = findRowByPlaca_(sheet, placa);
     if (!row) return { ok: false, message: 'No existe registro de venta para esa placa.' };
 
@@ -1455,9 +1460,9 @@ function setEstadoProceso_(placa, estado, observacion, session) {
   }
 }
 
-function getContratoByPlaca_(placa, session) {
+function getContratoByPlaca_(placa, session, sheetOverride) {
   try {
-    const sheet = getContratosSheet_();
+    const sheet = arguments.length >= 3 ? sheetOverride : getContratosSheet_();
     const row = findRowByPlaca_(sheet, placa);
     if (!row) return { ok: false, message: 'No existe registro de contrato para esa placa.' };
 
@@ -1498,10 +1503,11 @@ function estadoPorPlaca_(placa, session) {
     };
   }
 
-  const c = getContratoByPlaca_(p, session);
-  const l = getByPlaca_(p, session);
-  const pa = getPagoByPlaca_(p, session);
-  const v = getVentaByPlaca_(p, session);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const c = getContratoByPlaca_(p, session, ss.getSheetByName(CONTRATOS_SHEET));
+  const l = getByPlaca_(p, session, ss.getSheetByName(SHEET_NAME));
+  const pa = getPagoByPlaca_(p, session, ss.getSheetByName(PAYMENTS_SHEET));
+  const v = getVentaByPlaca_(p, session, ss.getSheetByName(VENTAS_SHEET));
 
   return {
     placa: p,

@@ -2108,7 +2108,7 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
     });
 
     if (!json.ok) {
-      alert("Error: " + (json.message || "Error desconocido."));
+      if (!opts.silent) alert("Error: " + (json.message || "Error desconocido."));
       throw new Error(json.message || "Error desconocido en la API.");
     }
 
@@ -2320,26 +2320,30 @@ async function buscarPlaca(placaRaw){
   }
 
   setStatus('BUSCANDO PLACA ' + placa + '...');
+  const searchId = (window.__liquidacionPlateSearchId || 0) + 1;
+  window.__liquidacionPlateSearchId = searchId;
   let resp;
   try {
-    resp = await apiCall("getByPlaca", { placa });
+    resp = await apiCall("getByPlaca", { placa }, { auth:true, silent:true });
   } catch(e){
-    // Si no hay registro en Liquidaciones, igual intentamos cargar
-    // los datos base desde el Expediente (Contratos) para autollenar.
+    if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
     resp = { data: null };
   }
   window.__loadedRecord = resp.data || null;
   cargarFormularioDesdeData(resp.data, placa);
-  await _autollenarDesdeExpediente(placa);
   setStatus('CARGADO — ' + placa, false, true);
+  _autollenarDesdeExpediente(placa, searchId).catch(function(e){
+    console.warn('[Expediente] autollenado complementario:', e.message);
+  });
 }
 
 /* Autollena campos vacíos con datos del expediente de Contratos.
    No sobrescribe lo que ya tenga la liquidación existente. */
-async function _autollenarDesdeExpediente(placa){
+async function _autollenarDesdeExpediente(placa, searchId){
   if(typeof Expediente === 'undefined') return 0;
   try {
     const r = await Expediente.cargarPorPlaca(placa);
+    if(searchId && searchId !== window.__liquidacionPlateSearchId) return 0;
     if(!r || !r.ok || !r.data) return 0;
     const d = r.data;
     // Mapeo input → campo del expediente
