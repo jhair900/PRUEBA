@@ -386,6 +386,7 @@
   @media print{.cbtn{display:none!important;}}
 
 </style>
+<script src="js/api-client.js"></script>
 <script src="js/expediente.js"></script>
 </head>
 <body>
@@ -964,17 +965,7 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
   if(opts.auth !== false && authToken){
     body.sessionToken = authToken;
   }
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {"Content-Type":"text/plain;charset=utf-8"},
-    body: JSON.stringify(body)
-  });
-  const text = await res.text();
-  const json = JSON.parse(text);
-  if(!json.ok){
-    throw new Error(json.message || 'Error en API');
-  }
-  return json;
+  return AutoCorApi.postJson(API_URL, body, { context: action });
 }
 
 async function guardarCuadroEnLinea(){

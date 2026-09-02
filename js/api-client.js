@@ -9,7 +9,8 @@
     return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 180);
   }
 
-  async function parseJsonResponse(resp, context){
+  async function parseJsonResponse(resp, context, options){
+    options = options || {};
     const text = await resp.text();
     let json;
 
@@ -18,14 +19,18 @@
     } catch (err) {
       const status = resp && resp.status ? ('HTTP ' + resp.status + ' ') : '';
       const where = context ? (context + ': ') : '';
-      const detail = looksLikeHtml(text)
-        ? 'El servidor devolvio una pagina HTML en lugar de JSON. Suele pasar si Google Apps Script responde con una pagina temporal, error de permisos, cuota o despliegue.'
-        : 'El servidor devolvio una respuesta que no es JSON.';
+      const detail = resp && resp.status === 404
+        ? 'No se encontro el servicio de Google Apps Script. Verifica que la URL /exec corresponda a un despliegue activo y accesible.'
+        : looksLikeHtml(text)
+          ? 'El servidor devolvio una pagina HTML en lugar de JSON. Suele pasar si Google Apps Script responde con una pagina temporal, error de permisos, cuota o despliegue.'
+          : 'El servidor devolvio una respuesta que no es JSON.';
       const preview = shortPreview(text);
-      throw new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
+      const responseError = new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
+      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500);
+      throw responseError;
     }
 
-    if(json && json.ok === false){
+    if(options.throwOnApiError !== false && json && json.ok === false){
       const where = context ? (context + ': ') : '';
       const apiError = new Error(where + (json.message || 'Error en API'));
       apiError.isApiError = true;
@@ -47,10 +52,10 @@
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(body)
         });
-        return await parseJsonResponse(resp, options.context);
+        return await parseJsonResponse(resp, options.context, options);
       } catch (err) {
         lastError = err;
-        if (err && err.isApiError) break;
+        if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
         await new Promise(function(resolve){ setTimeout(resolve, 700); });
       }

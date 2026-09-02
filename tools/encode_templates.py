@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Base64-encode all 3 template files and write js/contrato-templates.js
+"""Base64-encode the four active Dilileg templates.
 
 Uso (desde la raíz del proyecto):
     python tools/encode_templates.py
@@ -15,7 +15,8 @@ output_path   = os.path.join(ROOT, "js", "contrato-templates.js")
 template_files = {
     "encargo-soltero":  os.path.join(templates_dir, "encargo-soltero.docx"),
     "encargo-casado":   os.path.join(templates_dir, "encargo-casado.docx"),
-    "prestacion-quito": os.path.join(templates_dir, "prestacion-quito.docx"),
+    "prestacion-soltero": os.path.join(templates_dir, "prestacion-soltero.docx"),
+    "prestacion-casado":  os.path.join(templates_dir, "prestacion-casado.docx"),
 }
 
 encoded = {}

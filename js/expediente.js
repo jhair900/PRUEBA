@@ -19,6 +19,12 @@
   /* POST al Apps Script con text/plain para evitar preflight CORS. */
   async function _post(action, payload){
     const body = Object.assign({ action: action, sessionToken: _getToken() }, payload||{});
+    if(global.AutoCorApi){
+      return global.AutoCorApi.postJson(GAS_URL, body, {
+        context: action,
+        throwOnApiError: false
+      });
+    }
     const resp = await fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },

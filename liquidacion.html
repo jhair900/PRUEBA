@@ -629,6 +629,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 .empty-support{border:1px dashed #cbd5e1;border-radius:12px;padding:24px;color:var(--muted);font-size:13px;text-align:center;}
 
 </style>
+<script src="js/api-client.js"></script>
 <script src="js/expediente.js"></script>
 </head>
 <body>
@@ -2101,16 +2102,10 @@ async function apiCall(action, payload = {}, opts = {auth:true}) {
       body.sessionToken = authToken;
     }
 
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(body)
+    const json = await AutoCorApi.postJson(API_URL, body, {
+      context: action,
+      throwOnApiError: false
     });
-
-    const text = await res.text();
-    const json = JSON.parse(text);
 
     if (!json.ok) {
       alert("Error: " + (json.message || "Error desconocido."));
@@ -3615,17 +3610,15 @@ async function _subirPdfsLiquidacionADrive(placa){
   }
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
   try {
-    const r = await fetch(GAS_URL, {
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'subirExpedienteDrive',
-        sessionToken: auth.token,
-        placa: placa,
-        archivos: archivos
-      })
+    const json = await AutoCorApi.postJson(GAS_URL, {
+      action: 'subirExpedienteDrive',
+      sessionToken: auth.token,
+      placa: placa,
+      archivos: archivos
+    }, {
+      context: 'subirExpedienteDrive',
+      throwOnApiError: false
     });
-    const json = await r.json();
     console.log('[Drive] PDFs liquidación subidos:', json);
   } catch(err){
     console.warn('[Drive] error red:', err);

@@ -380,6 +380,7 @@
   .cbtn:hover,.cbtn.on{border-color:#fff;transform:scale(1.3);}
   @media print{.cbtn{display:none!important;}}
 </style>
+<script src="js/api-client.js"></script>
 <script src="js/expediente.js"></script>
 </head>
 <body>
@@ -703,12 +704,10 @@ function setStatus(msg, isError=false, isOk=false){
 async function apiCall(action, payload={}, opts={}){
   const body = { action, ...payload };
   if(opts.auth !== false && authToken) body.sessionToken = authToken;
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify(body)
+  const json = await AutoCorApi.postJson(API_URL, body, {
+    context: action,
+    throwOnApiError: false
   });
-  const json = JSON.parse(await res.text());
   if(!json.ok) throw new Error(json.message || 'Error en API');
   return json;
 }

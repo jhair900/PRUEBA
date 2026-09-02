@@ -784,6 +784,7 @@
     .validate-toast.visible{transform:translate(0,0)}
   }
 </style>
+<script src="js/api-client.js"></script>
 <script src="js/expediente.js"></script>
 </head>
 <body>
@@ -1334,8 +1335,8 @@
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
-<script src="js/contrato-templates.js" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js"></script>
+<script src="js/contrato-templates.js?v=20260902-2" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20260902-2"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -2017,7 +2018,7 @@ const PROMPTS_IA = {
     '"fechaNacimiento":"DD/MM/YYYY",'+
     '"nacionalidad":"<ej. ECUATORIANA>",'+
     '"sexo":"<MASCULINO|FEMENINO>",'+
-    '"estadoCivil":"<SOLTERO|CASADO|DIVORCIADO|VIUDO|UNION LIBRE>",'+
+    '"estadoCivil":"<SOLTERO|CASADO|DIVORCIADO|VIUDO|UNION DE HECHO>",'+
     '"fechaExpedicion":"DD/MM/YYYY",'+
     '"fechaExpiracion":"DD/MM/YYYY"'+
     '}',
@@ -2235,7 +2236,7 @@ const FIELD_DESCRIPTIONS = {
     numeroCedula:    'Número de cédula ecuatoriana (exactamente 10 dígitos). CÉDULA NUEVA: buscar en la parte superior derecha del frente, junto a "No.". CÉDULA ANTIGUA: buscar junto a "NUI" en la parte inferior izquierda. NO confundir con el código dactilar.',
     codigoDactilar:  'Código dactilar del titular. Está SIEMPRE en el REVERSO de la cédula, cerca de la etiqueta "CÓDIGO DACTILAR" o junto a la huella. Puede ser alfanumérico según el print. Es DIFERENTE del número de cédula. NO confundir con fechas, MRZ, NUI, código de barras o tipo de sangre. Si no se ve claramente, devuelve cadena vacía.',
     fechaExpiracion: 'Fecha de expiración en formato DD/MM/YYYY. CÉDULA NUEVA: buscar en el REVERSO, parte inferior izquierda, bajo "FECHA DE EXPIRACIÓN". CÉDULA ANTIGUA: buscar en el frente, lado derecho, bajo "FECHA DE VENCIMIENTO".',
-    estadoCivil:     'Estado civil: SOLTERO, CASADO, DIVORCIADO, VIUDO o UNIÓN LIBRE. CÉDULA NUEVA: buscar en el frente, junto a "ESTADO CIVIL". CÉDULA ANTIGUA: buscar en el REVERSO, lado izquierdo, bajo "ESTADO CIVIL". Solo devolver si se ve claramente.',
+    estadoCivil:     'Estado civil: SOLTERO, CASADO, DIVORCIADO, VIUDO o UNIÓN DE HECHO. CÉDULA NUEVA: buscar en el frente, junto a "ESTADO CIVIL". CÉDULA ANTIGUA: buscar en el REVERSO, lado izquierdo, bajo "ESTADO CIVIL". Solo devolver si se ve claramente.',
     nacionalidad:    'Nacionalidad del titular: ECUATORIANA, COLOMBIANA, etc. Buscar junto a la etiqueta "NACIONALIDAD" en el frente de la cédula (ambos formatos). Solo devolver si se ve claramente.'
   },
   matricula: {
@@ -5136,7 +5137,7 @@ const ESTADOS_CIVILES_VALIDOS = {
   'CASADO':'CASADO','CASADA':'CASADO',
   'DIVORCIADO':'DIVORCIADO','DIVORCIADA':'DIVORCIADO',
   'VIUDO':'VIUDO','VIUDA':'VIUDO',
-  'UNION LIBRE':'UNION LIBRE','UNION DE HECHO':'UNION LIBRE'
+  'UNION LIBRE':'UNION DE HECHO','UNION DE HECHO':'UNION DE HECHO'
 };
 const NACIONALIDADES_VALIDAS = {
   'ECUATORIANA':'ECUATORIANA','ECUATORIANO':'ECUATORIANA',
@@ -6167,7 +6168,8 @@ async function validarTodoEnConjunto(){
     // Llenar campos readonly con datos detectados
     var nombreProp = _leerNombreProp();
     var ciProp     = _leerValorConsolidado('numeroCedula') || _leerValorConsolidado('cedulaRuc') || (datos['cuv']||{}).cedula || '';
-    var estadoCivil= ((datos['cedula-prop']||{}).estadoCivil || '').toUpperCase();
+    var estadoCivilRaw = (datos['cedula-prop']||{}).estadoCivil || '';
+    var estadoCivil = normalizeEstadoCivil(estadoCivilRaw) || String(estadoCivilRaw).toUpperCase();
     var placa      = _leerValorConsolidado('placa');
     var marca      = _leerValorConsolidado('marca');
     var modelo     = _leerValorConsolidado('modelo');
@@ -6448,7 +6450,8 @@ async function validarTodoEnConjunto(){
   }
 
   function _estadoCivil(){
-    return ((datos['cedula-prop']||{}).estadoCivil || '').toUpperCase();
+    var valor = (datos['cedula-prop']||{}).estadoCivil || '';
+    return normalizeEstadoCivil(valor) || String(valor).toUpperCase();
   }
 
   /* ── Recopilar resultado de validación cruzada ─────────────── */
@@ -6649,16 +6652,14 @@ async function validarTodoEnConjunto(){
     btn.innerHTML = '⏳ Guardando...';
 
     try{
-      var resp = await fetch(GAS_URL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({
-          action: 'saveContrato',
-          sessionToken: auth.token,
-          data: payload
-        })
+      var json = await AutoCorApi.postJson(GAS_URL, {
+        action: 'saveContrato',
+        sessionToken: auth.token,
+        data: payload
+      }, {
+        context: 'saveContrato',
+        throwOnApiError: false
       });
-      var json = await resp.json();
 
       if(json.ok){
         var msg = json.updated
@@ -6715,16 +6716,14 @@ async function validarTodoEnConjunto(){
     var payload = _construirPayload(extra);
 
     try{
-      var resp = await fetch(GAS_URL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({
-          action: 'saveContrato',
-          sessionToken: auth.token,
-          data: payload
-        })
+      var json = await AutoCorApi.postJson(GAS_URL, {
+        action: 'saveContrato',
+        sessionToken: auth.token,
+        data: payload
+      }, {
+        context: 'saveContrato',
+        throwOnApiError: false
       });
-      var json = await resp.json();
       if(json.ok){
         var badge = document.getElementById('guardarBadgeOk');
         if(badge) badge.style.display = 'inline-flex';
@@ -6901,17 +6900,15 @@ async function validarTodoEnConjunto(){
 
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
     try {
-      var r = await fetch(GAS_URL, {
-        method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'subirExpedienteDrive',
-          sessionToken: auth.token,
-          placa: placa,
-          archivos: archivos
-        })
+      var json = await AutoCorApi.postJson(GAS_URL, {
+        action: 'subirExpedienteDrive',
+        sessionToken: auth.token,
+        placa: placa,
+        archivos: archivos
+      }, {
+        context: 'subirExpedienteDrive',
+        throwOnApiError: false
       });
-      var json = await r.json();
       console.log('[Drive] resultado subida:', json);
       return json;
     } catch(err){

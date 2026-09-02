@@ -64,6 +64,14 @@
     return String(nombre||'').toUpperCase().trim();
   }
 
+  function normalizarEstadoCivil(estadoCivil){
+    var valor = normalizarNombre(estadoCivil);
+    var clave = valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return clave === 'UNION LIBRE' || clave === 'UNION DE HECHO'
+      ? 'UNION DE HECHO'
+      : valor;
+  }
+
   /* ── Recopilar datos validados ───────────────────────────────── */
 
   function recopilarDatos(extra){
@@ -104,7 +112,7 @@
     var chasis  = pick('chasis', 'serialChasis', 'vin');
     var motor   = pick('motor', 'numeroMotor');
 
-    var estadoCivil = normalizarNombre(
+    var estadoCivil = normalizarEstadoCivil(
       ced.estadoCivil || cuv.estadoCivil || matr.estadoCivil || ''
     );
     var nacionalidad = normalizarNombre(
@@ -133,10 +141,7 @@
     var valorText = valorNum ? valorATexto(parseFloat(valorNum)||0) : '';
     var valorDisp = (extra.valorNum  || '').replace('.',','); // mostrar con coma decimal
 
-    // Trailing space en NOMBRE_PROP para evitar que en encargos el
-    // texto "LA PARTE CONSTITUYENTE" quede pegado al nombre cuando el
-    // template usa el placeholder inmediatamente seguido del texto.
-    var nombrePropFmt = nombreProp ? (nombreProp + ' ') : '___________________';
+    var nombrePropFmt = nombreProp || '___________________';
     return {
       NOMBRE_PROP:          nombrePropFmt,
       CI_PROP:              ciProp     || '___________',
@@ -153,6 +158,7 @@
       EMAIL_CONY:           extra.emailCony    || '___________',
 
       PLACA:                placa   || '___________',
+      PLACA_SIN_GUION:      placa ? placa.replace(/[^A-Za-z0-9]/g, '') : '_________',
       MARCA:                marca   || '___________',
       MODELO:               modelo  || '___________',
       COLOR:                color   || '___________',
@@ -164,12 +170,17 @@
       VALOR_TEXT:           valorText       || '___________',
       CODIGO_ENCARGO:       'AC - '+(placa||'_________'),
 
+      DOMICILIO_GENERADOR:  'AV. 6 DE DICIEMBRE Y SANTA LUCIA, QUITO',
+      EMAIL_GENERADOR:      'vllugcha@autocor.com.ec',
+      EMAIL_FIDUCIARIA:     'infouio@anefi.com.ec',
+
       FECHA_DIA:            extra.fechaDia  || fecha.dia,
       FECHA_MES:            extra.fechaMes  || fecha.mes,
       FECHA_ANIO:           extra.fechaAnio || fecha.anio,
       FECHA_CONTRATO_DIA:   extra.fechaDia  || fecha.dia,
       FECHA_CONTRATO_MES:   extra.fechaMes  || fecha.mes,
       FECHA_CONTRATO_ANIO:  extra.fechaAnio || fecha.anio,
+      ESTADO_CIVIL_PROP_MINUSCULA: (estadoCivil || '___________').toLowerCase(),
     };
   }
 
@@ -237,6 +248,10 @@
     var vars   = recopilarDatos(extra);
     var casado = esPlantillaCasados(vars.ESTADO_CIVIL_PROP);
     var encKey = casado ? 'encargo-casado' : 'encargo-soltero';
+    var preKey = casado ? 'prestacion-casado' : 'prestacion-soltero';
+    if(!templates[encKey] || !templates[preKey]){
+      throw new Error('No se encontraron las plantillas Dilileg para el estado civil seleccionado.');
+    }
     var fecha  = vars.FECHA_DIA+'-'+vars.FECHA_MES.substring(0,3).toUpperCase()+'-'+vars.FECHA_ANIO;
     var placa  = vars.PLACA.replace(/[^A-Z0-9]/gi,'') || 'CONTRATO';
 
@@ -251,7 +266,7 @@
     generados.push({ tipo:'encargo', nombre: nomEnc, buffer: bufEnc, casado: casado });
 
     // 2. Contrato Prestación de Servicios
-    var bufPre = generarDocx(templates['prestacion-quito'], vars);
+    var bufPre = generarDocx(templates[preKey], vars);
     var nomPre = 'Prestacion_Servicios_'+placa+'_'+fecha+'.docx';
     descargarDocx(bufPre, nomPre);
     generados.push({ tipo:'prestacion', nombre: nomPre, buffer: bufPre });

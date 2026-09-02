@@ -31,13 +31,13 @@ PRUEBAS AUTOCOR/
 ├── templates/                  ← Plantillas Word fuente (.docx)
 │   ├── encargo-soltero.docx
 │   ├── encargo-casado.docx
-│   └── prestacion-quito.docx
+│   ├── prestacion-soltero.docx
+│   └── prestacion-casado.docx
 │
 └── tools/                      ← Scripts auxiliares (uso ocasional)
-    ├── encode_templates.py     ← Regenera js/contrato-templates.js desde templates/*.docx
-    ├── replace_soltero.py      ← Prepara placeholders en encargo-soltero.docx
-    ├── replace_casado.py       ← Prepara placeholders en encargo-casado.docx
-    └── replace_quito.py        ← Prepara placeholders en prestacion-quito.docx
+    ├── prepare_dilileg_templates.py ← Prepara los cuatro formatos Dilileg
+    ├── use_qa_samples_as_templates.py ← Usa las muestras aprobadas como base visual
+    └── encode_templates.py     ← Regenera js/contrato-templates.js desde templates/*.docx
 ```
 
 ---
@@ -79,14 +79,15 @@ Todo el backend está en `gas/script.gs`. Despliegue:
 
 ## 🛠️ Mantenimiento de plantillas Word
 
-Si necesitas modificar una plantilla:
+Si necesitas actualizar los formatos visuales aprobados:
 
-1. Editar el `.docx` en `templates/` con los placeholders `{NOMBRE_PROP}`, `{PLACA}`, etc.
+1. Reemplazar los cuatro archivos `MUESTRA_*.docx` dentro de `.qa-contracts/`, conservando sus nombres.
 2. Ejecutar desde la raíz del proyecto:
    ```
+   python tools/use_qa_samples_as_templates.py
    python tools/encode_templates.py
    ```
-3. Eso regenera `js/contrato-templates.js` automáticamente.
+3. Eso conserva el formato de las muestras, prepara los campos automáticos y regenera `js/contrato-templates.js`.
 
 ---
 
