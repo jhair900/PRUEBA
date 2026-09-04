@@ -36,8 +36,10 @@
       const includePreview = !looksLikeHtml(text) && (!resp || resp.status !== 404);
       const preview = includePreview ? shortPreview(text) : '';
       const responseError = new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
-      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500);
       responseError.isServiceUnavailable = !!(looksLikeHtml(text) || (resp && resp.status === 404));
+      responseError.isNonRetryable = !!(
+        resp && resp.status >= 400 && resp.status < 500 && !responseError.isServiceUnavailable
+      );
       throw responseError;
     }
 
@@ -56,7 +58,7 @@
     if(Date.now() < serviceBlockedUntil && lastServiceError){
       throw lastServiceError;
     }
-    const retries = Number.isFinite(options.retries) ? options.retries : 1;
+    const retries = Number.isFinite(options.retries) ? options.retries : 2;
     let lastError;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -72,14 +74,15 @@
         return await parseJsonResponse(resp, options.context, options);
       } catch (err) {
         lastError = err;
-        if(err && err.isServiceUnavailable){
-          serviceBlockedUntil = Date.now() + SERVICE_ERROR_COOLDOWN_MS;
-          lastServiceError = err;
-        }
         if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
         await new Promise(function(resolve){ setTimeout(resolve, 700); });
       }
+    }
+
+    if(lastError && lastError.isServiceUnavailable){
+      serviceBlockedUntil = Date.now() + SERVICE_ERROR_COOLDOWN_MS;
+      lastServiceError = lastError;
     }
 
     throw lastError;
