@@ -3673,8 +3673,8 @@ async function _subirPdfsLiquidacionADrive(placa){
   renderAuthUI();
   renderSupportPrints();
 
-  // La placa precargada consulta solo Liquidaciones; los datos enviados
-  // por Contratos se aplican localmente después, sin consultar otra hoja.
+  // Desde Contratos se crea un formulario nuevo con datos temporales.
+  // Las demás precargas conservan la búsqueda normal en Liquidaciones.
   try{
     const pre = sessionStorage.getItem('autocor_placa_preload');
     const contratoPreRaw = sessionStorage.getItem('autocor_liquidacion_preload');
@@ -3686,16 +3686,19 @@ async function _subirPdfsLiquidacionADrive(placa){
       setTimeout(async function(){
         const inp = document.getElementById('placa');
         if(inp){ inp.value = pre; }
+        if(contratoPre && upperTrim(contratoPre.placa) === upperTrim(pre)){
+          cargarFormularioDesdeData({ placa:pre, items:[] }, pre);
+          cargarBase();
+          _aplicarDatosDeContratos(contratoPre);
+          setStatus('NUEVA LIQUIDACIÓN CON DATOS PRECARGADOS — ' + pre, false, true);
+          return;
+        }
         setStatus('BUSCANDO LIQUIDACIÓN — ' + pre + '...');
         try {
           await buscarPlaca(pre);
         } catch(e){
           console.error('[Preload] error buscando liquidación:', e);
           setStatus('NO SE PUDO BUSCAR EN LIQUIDACIONES', true);
-        }
-        if(contratoPre && upperTrim(contratoPre.placa) === upperTrim(pre)){
-          const n = _aplicarDatosDeContratos(contratoPre);
-          if(n > 0) setStatus('DATOS DE CONTRATOS PRECARGADOS — ' + pre, false, true);
         }
       }, 400);
     }
