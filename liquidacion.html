@@ -629,8 +629,9 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 .empty-support{border:1px dashed #cbd5e1;border-radius:12px;padding:24px;color:var(--muted);font-size:13px;text-align:center;}
 
 </style>
-<script src="js/api-client.js"></script>
-<script src="js/expediente.js"></script>
+<script src="js/api-config.js?v=20260904-1"></script>
+<script src="js/api-client.js?v=20260904-1"></script>
+<script src="js/expediente.js?v=20260904-1"></script>
 </head>
 <body>
 
@@ -659,7 +660,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
   </select>
 </label>
 
-    <button type="button" class="green" onclick="preparePrint()">💾 Guardar e Imprimir</button>
+    <button type="button" class="green" id="btnGuardarImprimir" onclick="preparePrint()">💾 Guardar e Imprimir</button>
     <button type="button" class="secondary" onclick="buscarPlacaPrompt()">🔍 Buscar Placa</button>
     <button type="button" class="secondary" onclick="agregarFila()">+ Descuento</button>
     <button type="button" class="secondary" onclick="document.getElementById('printInput').click()">🖼 Agregar Prints</button>
@@ -1118,7 +1119,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec";
+const API_URL = AutoCorConfig.apiUrl;
 
 /* ===== Tipo de documento (Cartilla / Liquidación) ===== */
 const __docTitles = {
@@ -2320,8 +2321,6 @@ async function buscarPlaca(placaRaw){
   }
 
   setStatus('BUSCANDO PLACA ' + placa + '...');
-  const searchId = (window.__liquidacionPlateSearchId || 0) + 1;
-  window.__liquidacionPlateSearchId = searchId;
   let resp;
   try {
     resp = await apiCall("getByPlaca", { placa }, { auth:true, silent:true });
@@ -2330,11 +2329,16 @@ async function buscarPlaca(placaRaw){
     resp = { data: null };
   }
   window.__loadedRecord = resp.data || null;
-  cargarFormularioDesdeData(resp.data, placa);
-  setStatus('CARGADO — ' + placa, false, true);
-  _autollenarDesdeExpediente(placa, searchId).catch(function(e){
-    console.warn('[Expediente] autollenado complementario:', e.message);
-  });
+  if(resp.data){
+    cargarFormularioDesdeData(resp.data, placa);
+    setStatus('CARGADO — ' + placa, false, true);
+    return true;
+  }
+  cargarFormularioDesdeData({ placa: placa, items: [] }, placa);
+  cargarBase();
+  calcular();
+  setStatus('NO EXISTE LIQUIDACIÓN PARA ' + placa + '. FORMATO NUEVO LISTO.');
+  return false;
 }
 
 /* Autollena campos vacíos con datos del expediente de Contratos.
@@ -2414,7 +2418,10 @@ async function buscarPlacaAuto(placaRaw){
 function buscarPlacaPrompt(){
   const p=prompt("Ingrese la PLACA");
   if(!p) return;
-  buscarPlacaAuto(p);
+  buscarPlacaAuto(p).catch(function(err){
+    console.error(err);
+    setStatus(err.message || 'NO SE PUDO BUSCAR LA PLACA', true);
+  });
 }
 
 /* Placas (usuario actual) */
@@ -3084,6 +3091,11 @@ function forceQrForPdf(callback){
 }
 
 async function preparePrint(){
+  if(preparePrint.enCurso) return;
+  preparePrint.enCurso = true;
+  const btnGuardar = document.getElementById('btnGuardarImprimir');
+  if(btnGuardar) btnGuardar.disabled = true;
+  let registroGuardado = false;
   try{
     if(!requireUser()) return;
 
@@ -3100,6 +3112,7 @@ async function preparePrint(){
     data.tipoDocumento = document.getElementById("tipoDocumento")?.value || "cartilla";
 
     const resp = await apiCall("save", { data });
+    registroGuardado = true;
 
     if(resp && resp.data){
       window.__loadedRecord = resp.data;
@@ -3142,8 +3155,16 @@ async function preparePrint(){
   }catch(e){
     __clearAfterPrint = false;
     console.error(e);
-    setStatus('ERROR AL PROCESAR — VERIFIQUE LOS DATOS', true);
-    alert("No se pudo guardar antes de imprimir.");
+    if(registroGuardado){
+      setStatus('LIQUIDACIÓN GUARDADA, PERO NO SE PUDO GENERAR EL PDF', true);
+      alert("La liquidación se guardó correctamente, pero no se pudo generar el PDF.\n\n" + (e.message || "Error desconocido."));
+    } else {
+      setStatus('NO SE PUDO GUARDAR LA LIQUIDACIÓN', true);
+      alert("No se pudo guardar antes de imprimir.\n\n" + (e.message || "Error desconocido."));
+    }
+  }finally{
+    preparePrint.enCurso = false;
+    if(btnGuardar) btnGuardar.disabled = false;
   }
 }
 
@@ -3612,7 +3633,7 @@ async function _subirPdfsLiquidacionADrive(placa){
     console.warn('[Drive] No se generaron PDFs para subir.');
     return;
   }
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+  const GAS_URL = AutoCorConfig.apiUrl;
   try {
     const json = await AutoCorApi.postJson(GAS_URL, {
       action: 'subirExpedienteDrive',
@@ -3641,10 +3662,7 @@ async function _subirPdfsLiquidacionADrive(placa){
   renderAuthUI();
   renderSupportPrints();
 
-  // Si veníamos del dashboard con una placa precargada, autollenamos
-  // SOLO desde la hoja Contratos (expediente). NO buscamos en
-  // Liquidaciones — el botón "🔍 Buscar Placa" queda reservado para
-  // eso. Así contratos y liquidaciones quedan independientes.
+  // La placa precargada desde el dashboard consulta solo Liquidaciones.
   try{
     const pre = sessionStorage.getItem('autocor_placa_preload');
     if(pre){
@@ -3652,17 +3670,12 @@ async function _subirPdfsLiquidacionADrive(placa){
       setTimeout(async function(){
         const inp = document.getElementById('placa');
         if(inp){ inp.value = pre; }
-        setStatus('CARGANDO DATOS DESDE CONTRATOS — ' + pre + '...');
+        setStatus('BUSCANDO LIQUIDACIÓN — ' + pre + '...');
         try {
-          const n = await _autollenarDesdeExpediente(pre);
-          if(n > 0){
-            setStatus('DATOS DEL EXPEDIENTE CARGADOS — ' + pre, false, true);
-          } else {
-            setStatus('SIN EXPEDIENTE DE CONTRATOS PARA ' + pre + '. Llena los campos manualmente.', false, false);
-          }
+          await buscarPlaca(pre);
         } catch(e){
-          console.error('[Preload] error autollenando:', e);
-          setStatus('NO SE PUDO CARGAR DESDE CONTRATOS', true);
+          console.error('[Preload] error buscando liquidación:', e);
+          setStatus('NO SE PUDO BUSCAR EN LIQUIDACIONES', true);
         }
       }, 400);
     }

@@ -386,8 +386,9 @@
   @media print{.cbtn{display:none!important;}}
 
 </style>
-<script src="js/api-client.js"></script>
-<script src="js/expediente.js"></script>
+<script src="js/api-config.js?v=20260904-1"></script>
+<script src="js/api-client.js?v=20260904-1"></script>
+<script src="js/expediente.js?v=20260904-1"></script>
 </head>
 <body>
 
@@ -550,7 +551,7 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec";
+const API_URL = AutoCorConfig.apiUrl;
 const STATUS_OPTIONS = ['', 'CORRECTO', 'INCORRECTO', 'SIN INFO', 'PENDIENTE', 'FIDEVAL', 'NO APLICA'];
 
 const docsBase = [
@@ -1023,19 +1024,25 @@ async function buscarPorPlaca(placa){
   const placaNormalizada = normalizeValue(placa);
   if(!placaNormalizada) return;
   setStatus('BUSCANDO CUADRO POR PLACA...');
-  const searchId = (window.__pagosPlateSearchId || 0) + 1;
-  window.__pagosPlateSearchId = searchId;
   let resp;
   try { resp = await apiCall('getPagoByPlaca', { placa: placaNormalizada }); }
   catch(e){
     if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
-    resp = { data: {} };
+    resp = { data: null };
   }
-  cargarFormularioPago(resp.data || {});
-  setStatus('CUADRO CARGADO');
-  _autollenarPagoDesdeExpediente(placaNormalizada, searchId).catch(function(e){
-    console.warn('[Pagos] autollenado complementario:', e.message);
+  if(resp.data){
+    cargarFormularioPago(resp.data);
+    setStatus('CUADRO CARGADO', false, true);
+    return true;
+  }
+  cargarFormularioPago({
+    placaValue: placaNormalizada,
+    docs: docsBase.map(x => ({ a:x[0], b:x[1], c:x[2] })),
+    sri: sriBase.map(x => ({ a:x[0], b:x[1], c:x[2] })),
+    matricula: matriculaBase.map(x => ({ a:x[0], b:x[1], c:x[2] }))
   });
+  setStatus('NO EXISTE PAGO PARA ' + placaNormalizada + '. FORMATO NUEVO LISTO.');
+  return false;
 }
 
 async function _autollenarPagoDesdeExpediente(placa, searchId){
@@ -1204,7 +1211,6 @@ function buscarPorPlacaPrompt(){
   buscarPorPlaca(placa).catch(err=>{
     console.error(err);
     setStatus(err.message || 'NO SE PUDO BUSCAR LA PLACA', true);
-    alert(err.message || 'No se pudo buscar la placa.');
   });
 }
 
@@ -1508,12 +1514,7 @@ renderAuthUI();
 if(!currentUser) setStatus('DEBES INICIAR SESIÓN PARA GUARDAR Y BUSCAR');
 else setStatus('SESIÓN RECUPERADA');
 
-/* Placa precargada desde el dashboard.
-   Solo consulta la hoja Contratos (expediente) para autollenar.
-   NO toca el pago guardado: eso queda reservado para el botón
-   🔍 Buscar Placa. Así el operario que viene del dashboard ve los
-   datos del expediente sin que se le rellene un responsable o un
-   dictamen viejos de un pago anterior. */
+/* Placa precargada desde el dashboard: consulta únicamente Pagos. */
 try{
   const pre = sessionStorage.getItem('autocor_placa_preload');
   if(pre){
@@ -1521,14 +1522,12 @@ try{
     setTimeout(async function(){
       const inp = document.getElementById('placaValue');
       if(inp){ inp.value = pre; }
-      setStatus('CARGANDO DATOS DESDE CONTRATOS — ' + pre + '...');
+      setStatus('BUSCANDO PAGO — ' + pre + '...');
       try {
-        const autollenadoOk = await _autollenarPagoDesdeExpediente(normalizeValue(pre));
-        setStatus('DATOS DEL EXPEDIENTE CARGADOS — ' + pre, false, true);
-        if(autollenadoOk) abrirModal('modalAvisoAutollenado');
+        await buscarPorPlaca(pre);
       } catch(e){
-        console.error('[Preload pagos] error autollenando:', e);
-        setStatus('NO SE PUDO CARGAR DESDE CONTRATOS', true);
+        console.error('[Preload pagos] error buscando:', e);
+        setStatus('NO SE PUDO BUSCAR EN PAGOS', true);
       }
     }, 400);
   }

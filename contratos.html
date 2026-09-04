@@ -784,8 +784,9 @@
     .validate-toast.visible{transform:translate(0,0)}
   }
 </style>
-<script src="js/api-client.js"></script>
-<script src="js/expediente.js"></script>
+<script src="js/api-config.js?v=20260904-1"></script>
+<script src="js/api-client.js?v=20260904-1"></script>
+<script src="js/expediente.js?v=20260904-1"></script>
 </head>
 <body>
 
@@ -1945,7 +1946,7 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
-const GEMINI_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+const GEMINI_PROXY_URL = AutoCorConfig.apiUrl;
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
 }
@@ -6411,7 +6412,7 @@ async function validarTodoEnConjunto(){
 (function(){
 
   /* ── URL del API (mismo que index.html / liquidacion.html) ──── */
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+  var GAS_URL = AutoCorConfig.apiUrl;
 
   /* ── Helpers de lectura de datos (reutiliza los de GenContratos) */
   function _pick(campo){
@@ -6898,7 +6899,7 @@ async function validarTodoEnConjunto(){
 
     if(archivos.length === 0) return { ok:false, message:'sin archivos para subir' };
 
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbh1cLzulwNeFHJj2c6_k6Yk4PyHhzTlFlcfW7M0SMz4NrAxKUagOweQobl4AJTcmQ/exec';
+    var GAS_URL = AutoCorConfig.apiUrl;
     try {
       var json = await AutoCorApi.postJson(GAS_URL, {
         action: 'subirExpedienteDrive',
