@@ -861,8 +861,9 @@
       <div class="doc-status pending" id="status-cedula-prop"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
     </div>
 
-    <!-- 2. CÉDULA CÓNYUGE -->
+    <!-- PAPELETA VOTACIÓN TITULAR (opcional) -->
     <div class="doc-card" data-type="papeleta-prop">
+      <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-cuv">
         <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
       </div>
@@ -892,10 +893,10 @@
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
         Procesar imagen
       </button>
-      <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+      <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
     </div>
 
-    <!-- 7. PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
+    <!-- CÉDULA CÓNYUGE (opcional) -->
     <div class="doc-card" data-type="cedula-cony">
       <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-cedula-c">
@@ -933,8 +934,9 @@
       <div class="doc-status pending" id="status-cedula-cony"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
     </div>
 
-    <!-- 3. CUV -->
+    <!-- PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
     <div class="doc-card" data-type="papeleta-cony">
+      <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-cuv">
         <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
       </div>
@@ -964,7 +966,7 @@
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
         Procesar imagen
       </button>
-      <div class="doc-status pending" id="status-papeleta-cony"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+      <div class="doc-status pending" id="status-papeleta-cony"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
     </div>
 
     <div class="doc-card" data-type="matricula">
@@ -1058,7 +1060,6 @@
       <div class="doc-status pending" id="status-notaria"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
     </div>
 
-    <!-- 6. PAPELETA VOTACIÓN TITULAR -->
   </div><!-- /docs-grid -->
 
   <!-- ── Validar todo en conjunto ─────────────────────────────── -->
@@ -5870,23 +5871,12 @@ function _refreshValidateAllBar(){
   var sub = document.getElementById('validateAllSub');
   if(!btn || !sub) return;
 
-  // Documentos obligatorios para habilitar el botón
-  // CUV y Notaría son OPCIONALES.
-  // Papeleta de votación titular es obligatoria; cónyuge solo si
-  // existe cédula del cónyuge cargada.
-  var OBLIGATORIOS = ['cedula-prop', 'matricula', 'papeleta-prop'];
-  // CUV y Notaría son OPCIONALES. La papeleta de votación se sumará
-  // como obligatoria cuando se implemente su flujo IA + UI.
+  // Las papeletas, CUV y Notaría son opcionales.
   var OBLIGATORIOS = ['cedula-prop', 'matricula'];
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
     return !!(datos[t] || _hayImagenPegadaPendiente(t));
-  }
-
-  // Si hay cédula del cónyuge, también se exige papeleta del cónyuge
-  if(datos['cedula-cony'] || _hayImagenPegadaPendiente('cedula-cony')){
-    OBLIGATORIOS.push('papeleta-cony');
   }
 
   var faltantes = OBLIGATORIOS.filter(function(t){ return !docCubierto(t); });
@@ -5897,7 +5887,6 @@ function _refreshValidateAllBar(){
     btn.disabled = true;
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
-      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular, Matrícula y Papeleta de Votación Titular.';
       sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.';
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
