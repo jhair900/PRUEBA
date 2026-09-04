@@ -36,7 +36,7 @@ for i, (key, b64) in enumerate(items):
 js_lines.append("};")
 js_content = "\n".join(js_lines) + "\n"
 
-with open(output_path, "w", encoding="utf-8") as f:
+with open(output_path, "w", encoding="utf-8", newline="\n") as f:
     f.write(js_content)
 
 print(f"\nWrote {output_path}")
