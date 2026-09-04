@@ -2349,21 +2349,7 @@ async function _autollenarDesdeExpediente(placa, searchId){
     const r = await Expediente.cargarPorPlaca(placa);
     if(searchId && searchId !== window.__liquidacionPlateSearchId) return 0;
     if(!r || !r.ok || !r.data) return 0;
-    const d = r.data;
-    // Mapeo input → campo del expediente
-    const map = {
-      placa:        'placa',
-      cedula:       'cedulaPropietario',
-      cliente:      'propietario',
-      marca:        'marca',
-      modelo:       'modelo',
-      anio:         'anio',
-      color:        'color',
-      motor:        'motor',
-      chasis:       'chasis',
-      valorToma:    'valorToma'
-    };
-    const n = Expediente.autollenar(map, d, { sobrescribir:false });
+    const n = _aplicarDatosDeContratos(r.data);
     if(n > 0){
       // Badge solo en consola — antes se mostraba en pantalla y se
       // colaba en la impresión continuada del saneamiento.
@@ -2371,6 +2357,31 @@ async function _autollenarDesdeExpediente(placa, searchId){
     }
     return n;
   } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); return 0; }
+}
+
+function _aplicarDatosDeContratos(data){
+  if(typeof Expediente === 'undefined' || !data) return 0;
+  const map = {
+    placa:        'placa',
+    cedula:       'cedulaPropietario',
+    cliente:      'propietario',
+    marca:        'marca',
+    modelo:       'modelo',
+    anio:         'anio',
+    color:        'color',
+    motor:        'motor',
+    chasis:       'chasis',
+    valorToma:    'valorToma'
+  };
+  const n = Expediente.autollenar(map, data, { sobrescribir:false });
+  if(n > 0){
+    actualizarTituloPorPlaca();
+    calcular();
+    syncPrintValues();
+    syncAutoBox();
+    renderQr();
+  }
+  return n;
 }
 
 function _escapeRegExp(s){return String(s||"").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");}
@@ -3662,11 +3673,16 @@ async function _subirPdfsLiquidacionADrive(placa){
   renderAuthUI();
   renderSupportPrints();
 
-  // La placa precargada desde el dashboard consulta solo Liquidaciones.
+  // La placa precargada consulta solo Liquidaciones; los datos enviados
+  // por Contratos se aplican localmente después, sin consultar otra hoja.
   try{
     const pre = sessionStorage.getItem('autocor_placa_preload');
+    const contratoPreRaw = sessionStorage.getItem('autocor_liquidacion_preload');
+    let contratoPre = null;
+    try{ contratoPre = contratoPreRaw ? JSON.parse(contratoPreRaw) : null; }catch(_){}
     if(pre){
       sessionStorage.removeItem('autocor_placa_preload');
+      sessionStorage.removeItem('autocor_liquidacion_preload');
       setTimeout(async function(){
         const inp = document.getElementById('placa');
         if(inp){ inp.value = pre; }
@@ -3676,6 +3692,10 @@ async function _subirPdfsLiquidacionADrive(placa){
         } catch(e){
           console.error('[Preload] error buscando liquidación:', e);
           setStatus('NO SE PUDO BUSCAR EN LIQUIDACIONES', true);
+        }
+        if(contratoPre && upperTrim(contratoPre.placa) === upperTrim(pre)){
+          const n = _aplicarDatosDeContratos(contratoPre);
+          if(n > 0) setStatus('DATOS DE CONTRATOS PRECARGADOS — ' + pre, false, true);
         }
       }, 400);
     }

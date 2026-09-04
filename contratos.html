@@ -780,6 +780,8 @@
   @media(max-width:600px){
     .validate-all-bar{flex-direction:column;align-items:stretch;text-align:center;padding:14px 16px}
     .btn-validate-all{justify-content:center}
+    .generar-contratos-bar,.guardar-proceso-bar{flex-direction:column;align-items:stretch;text-align:center;padding:14px 16px}
+    .btn-generar-contratos,.btn-guardar-proceso{justify-content:center;width:100%}
     .validate-toast{left:12px;right:12px;transform:translate(0,-20px);max-width:none}
     .validate-toast.visible{transform:translate(0,0)}
   }
@@ -1099,6 +1101,19 @@
     <!-- ── Validación cruzada entre documentos ──────────────── -->
     <div id="validacionCruzada" class="validacion-cruzada" style="display:none">
       <!-- contenido inyectado por JS -->
+    </div>
+
+    <div class="guardar-proceso-bar" id="continuarLiquidacionBar" style="display:none">
+      <div class="guardar-proceso-info">
+        <div class="guardar-proceso-title">Validación terminada</div>
+        <div class="guardar-proceso-sub">Continúa a Liquidación con los datos validados ya precargados.</div>
+      </div>
+      <button type="button" class="btn-guardar-proceso" id="btnContinuarLiquidacionValidacion" onclick="continuarALiquidacion()">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
+        </svg>
+        Continuar a Liquidación
+      </button>
     </div>
 
     <!-- ── Barra: Generar Contratos ───────────────────────────── -->
@@ -6017,6 +6032,9 @@ async function validarTodoEnConjunto(){
 
   _mostrarValidateToast(nivel, titulo, sub);
 
+  var continuarBar = document.getElementById('continuarLiquidacionBar');
+  if(continuarBar) continuarBar.style.display = 'flex';
+
   // Hacer scroll y resaltar el panel de validación
   var vc = document.getElementById('validacionCruzada');
   if(vc && vc.style.display !== 'none'){
@@ -6347,6 +6365,10 @@ async function validarTodoEnConjunto(){
         // Cablear los botones
         var btnCont = document.getElementById('btnContinuarLiquidacion');
         if(btnCont) btnCont.onclick = function(){
+          if(typeof window.continuarALiquidacion === 'function'){
+            window.continuarALiquidacion(extra);
+            return;
+          }
           try { sessionStorage.setItem('autocor_placa_preload', saveResult.placa); } catch(_){}
           window.location.href = 'liquidacion.html';
         };
@@ -6511,6 +6533,24 @@ async function validarTodoEnConjunto(){
       fechaRegistro:  new Date().toISOString().substring(0,10)
     };
   }
+
+  function continuarALiquidacion(extra){
+    var payload = _construirPayload(extra || {});
+    if(!payload.placa){
+      _mostrarValidateToast('warn', 'Placa no detectada',
+        'Completa la placa antes de continuar a Liquidación.');
+      return;
+    }
+    try{
+      sessionStorage.setItem('autocor_placa_preload', payload.placa);
+      sessionStorage.setItem('autocor_liquidacion_preload', JSON.stringify(payload));
+    }catch(e){
+      console.warn('[Contratos] no se pudo preparar la precarga:', e);
+    }
+    window.location.href = 'liquidacion.html';
+  }
+
+  window.continuarALiquidacion = continuarALiquidacion;
 
   /* ── Mostrar / ocultar barra ────────────────────────────────── */
   function _refreshGuardarBar(){
