@@ -1558,12 +1558,19 @@ let cuvDatosCompleto = null; // full CUV object for detail modal
 window._contratosData = datos;
 window._contratosValidacionCompletada = false;
 
-function _invalidarValidacion(){
-  window._contratosValidacionCompletada = false;
+function _actualizarAccionesPostValidacion(){
+  var mostrar = window._contratosValidacionCompletada === true;
+  var resultados = document.getElementById('resultsSection');
   var generar = document.getElementById('generarContratosBar');
   var continuar = document.getElementById('continuarLiquidacionBar');
-  if(generar) generar.style.display = 'none';
-  if(continuar) continuar.style.display = 'none';
+  if(mostrar && resultados) resultados.style.display = 'block';
+  if(generar) generar.style.display = mostrar ? 'flex' : 'none';
+  if(continuar) continuar.style.display = mostrar ? 'flex' : 'none';
+}
+
+function _invalidarValidacion(){
+  window._contratosValidacionCompletada = false;
+  _actualizarAccionesPostValidacion();
 }
 
 const flujoContrato = { operacion:'', tipoPersona:'', estadoCivil:'' };
@@ -6602,9 +6609,7 @@ async function validarTodoEnConjunto(){
 
   window._contratosValidacionCompletada = true;
   window.dispatchEvent(new Event('contratos-validacion-completa'));
-
-  var continuarBar = document.getElementById('continuarLiquidacionBar');
-  if(continuarBar) continuarBar.style.display = 'flex';
+  _actualizarAccionesPostValidacion();
 
   // Hacer scroll y resaltar el panel de validación
   var vc = document.getElementById('validacionCruzada');
@@ -6634,6 +6639,7 @@ async function validarTodoEnConjunto(){
     }finally{
       if(spanBtn) spanBtn.textContent = prevTxt || 'Procesar y validar';
       try{ _refreshValidateAllBar(); }catch(_){}
+      try{ _actualizarAccionesPostValidacion(); }catch(_){}
     }
   });
 
@@ -6668,7 +6674,7 @@ async function validarTodoEnConjunto(){
   function _refreshGenerarContratosBar(){
     var bar = document.getElementById('generarContratosBar');
     if(!bar) return;
-    bar.style.display = window._contratosValidacionCompletada ? 'block' : 'none';
+    _actualizarAccionesPostValidacion();
 
     var sub = document.getElementById('generarContratosSub');
     if(!sub) return;
@@ -6686,6 +6692,7 @@ async function validarTodoEnConjunto(){
     renderResultsSection = function(){
       _origRenderGen.apply(this, arguments);
       try{ _refreshGenerarContratosBar(); }catch(e){}
+      try{ _actualizarAccionesPostValidacion(); }catch(e){}
     };
   }
   _refreshGenerarContratosBar();
