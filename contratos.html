@@ -49,6 +49,84 @@
   .section-title{font-size:22px;font-weight:800;color:var(--dark);letter-spacing:.2px;margin-bottom:6px}
   .section-sub{font-size:14px;color:#6b7280;margin-bottom:28px;line-height:1.45}
 
+  .flow-setup{
+    margin:0 0 28px;padding:22px 24px 20px;background:#fff;
+    border:1px solid #dbe2ea;border-left:4px solid var(--red);border-radius:8px;
+    box-shadow:0 8px 24px rgba(15,36,64,.07);overflow:hidden;
+  }
+  .flow-setup-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+  .flow-setup-heading{display:flex;align-items:center;gap:12px;min-width:0}
+  .flow-setup-icon{
+    width:40px;height:40px;border-radius:8px;background:var(--dark);color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    box-shadow:0 5px 12px rgba(23,24,27,.18);
+  }
+  .flow-setup-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .flow-setup-title{font-size:15px;font-weight:800;color:#111827;text-transform:uppercase;line-height:1.2;letter-spacing:0}
+  .flow-setup-sub{font-size:12px;color:#6b7280;margin-top:4px;line-height:1.35}
+  .flow-progress-label{
+    min-width:112px;padding:7px 10px;border-radius:6px;background:#f3f4f6;color:#64748b;
+    font-size:10px;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:0;
+    transition:background .18s,color .18s;
+  }
+  .flow-progress-label.ready{background:#dcfce7;color:#047857}
+  .flow-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .flow-field{
+    min-width:0;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;
+    transition:border-color .18s,background .18s,box-shadow .18s,transform .18s;
+  }
+  .flow-field:hover{border-color:#cbd5e1;background:#fff;box-shadow:0 4px 12px rgba(15,36,64,.06);transform:translateY(-1px)}
+  .flow-field.completed{border-color:#9fb3ca;background:#f7faff}
+  .flow-field-wide{grid-column:1/-1;animation:flowReveal .2s ease-out}
+  @keyframes flowReveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  .flow-label{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:10px;letter-spacing:0}
+  .flow-step{
+    width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+    background:#e2e8f0;color:#475569;font-size:10px;flex-shrink:0;transition:background .18s,color .18s;
+  }
+  .flow-field.completed .flow-step{background:var(--navy);color:#fff}
+  .flow-segments{display:flex;flex-wrap:wrap;gap:7px}
+  .flow-segment{
+    position:relative;min-height:40px;padding:0 15px;border:1px solid #cbd5e1;border-radius:6px;
+    background:#fff;color:#334155;font:700 12px inherit;cursor:pointer;letter-spacing:0;
+    transition:border-color .16s,color .16s,background .16s,box-shadow .16s,transform .16s;
+  }
+  .flow-segment:first-child,.flow-segment:last-child{border-radius:6px}
+  .flow-segment:hover{border-color:var(--navy);color:var(--navy);transform:translateY(-1px)}
+  .flow-segment:focus-visible{outline:3px solid rgba(30,58,95,.18);outline-offset:2px}
+  .flow-segment.active{padding-right:36px;background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 5px 12px rgba(15,36,64,.18)}
+  .flow-segment.active::after{
+    content:'✓';position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:#fff;color:var(--navy);font-size:10px;font-weight:900;
+  }
+  .flow-actions{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
+    padding-top:16px;border-top:1px solid #e5e7eb;
+  }
+  .flow-draft{font-size:12px;color:#64748b;font-weight:600;line-height:1.35}
+  .flow-draft strong{color:var(--navy);font-weight:800}
+  .flow-start{
+    height:42px;padding:0 18px;border:0;border-radius:6px;background:var(--red);color:#fff;
+    font:800 12px inherit;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:9px;
+    box-shadow:0 6px 14px rgba(229,63,46,.24);transition:transform .16s,box-shadow .16s,background .16s;
+  }
+  .flow-start svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .flow-start:not(:disabled):hover{background:#c92f23;transform:translateY(-1px);box-shadow:0 8px 18px rgba(229,63,46,.32)}
+  .flow-start:disabled{background:#cbd5e1;color:#f8fafc;box-shadow:none;cursor:not-allowed}
+  .flow-start.ready{background:var(--red);color:#fff;box-shadow:0 6px 14px rgba(229,63,46,.24);cursor:pointer}
+  .flow-start.ready:hover{background:#c92f23;transform:translateY(-1px);box-shadow:0 8px 18px rgba(229,63,46,.32)}
+  .flow-summary{display:none;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 2px;border-top:1px solid #e5e7eb}
+  .flow-summary-main{display:flex;align-items:center;gap:10px;min-width:0}
+  .flow-summary-check{width:26px;height:26px;border-radius:50%;background:#dcfce7;color:#047857;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0}
+  .flow-summary-text{font-size:13px;font-weight:800;color:var(--navy)}
+  .flow-change{height:34px;padding:0 12px;border:1px solid #fecaca;border-radius:6px;background:#fff;color:#b91c1c;font:800 10px inherit;text-transform:uppercase;cursor:pointer;transition:background .15s,border-color .15s}
+  .flow-change:hover{background:#fef2f2;border-color:#f87171}
+  .flow-setup.configured .flow-setup-head{margin-bottom:4px}
+  .flow-setup.configured .flow-fields,.flow-setup.configured .flow-actions{display:none}
+  .flow-setup.configured .flow-summary{display:flex}
+  .doc-card.flow-hidden{display:none}
+
   /* ─── Cards grid ─────────────────────────────────────────────── */
   .docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px}
 
@@ -431,8 +509,18 @@
   @media(max-width:420px){
     .docs-grid{grid-template-columns:1fr}
     .fields-grid{grid-template-columns:1fr}
-    .header{padding:0 14px}
+    .header{padding:0 10px}
+    .header-brand{gap:8px}
+    .header-brand img{height:25px}
+    .header-sep{display:none}
+    .header-title{font-size:14px}
+    .header-user{gap:7px}
     .header-name{display:none}
+    .btn-back,.btn-logout{width:36px;padding:0;justify-content:center}
+    .btn-back .btn-label,.btn-logout .btn-label{display:none}
+    .flow-setup-icon{width:36px;height:36px}
+    .flow-setup-title{font-size:13px}
+    .flow-setup-sub{font-size:11px}
   }
 
   /* ─── Paste zones for cédula (Ctrl+V) ────────────────────────── */
@@ -778,6 +866,17 @@
   .validacion-cruzada.pulse{animation:vc-pulse-highlight 1.2s ease-out 1}
 
   @media(max-width:600px){
+    .flow-fields{grid-template-columns:1fr}
+    .flow-field-wide{grid-column:auto}
+    .flow-setup{padding:18px 16px 16px}
+    .flow-setup-head{align-items:center;margin-bottom:16px}
+    .flow-progress-label{min-width:82px}
+    .flow-segments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .flow-segment,.flow-segment:first-child,.flow-segment:last-child{border-radius:5px}
+    .flow-actions{align-items:stretch;flex-direction:column}
+    .flow-start{width:100%;justify-content:center}
+    .flow-summary{align-items:stretch;flex-direction:column}
+    .flow-change{width:100%}
     .validate-all-bar{flex-direction:column;align-items:stretch;text-align:center;padding:14px 16px}
     .btn-validate-all{justify-content:center}
     .generar-contratos-bar,.guardar-proceso-bar{flex-direction:column;align-items:stretch;text-align:center;padding:14px 16px}
@@ -801,13 +900,13 @@
   </div>
   <div class="header-user">
     <span id="headerName" class="header-name"></span>
-    <button type="button" class="btn-back" onclick="window.location.href='index.html'">
+    <button type="button" class="btn-back" onclick="window.location.href='index.html'" aria-label="Inicio" title="Inicio">
       <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      Inicio
+      <span class="btn-label">Inicio</span>
     </button>
-    <button type="button" class="btn-logout" onclick="cerrarSesion()">
+    <button type="button" class="btn-logout" onclick="cerrarSesion()" aria-label="Salir" title="Salir">
       <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-      Salir
+      <span class="btn-label">Salir</span>
     </button>
   </div>
 </header>
@@ -816,6 +915,63 @@
 <main class="main">
   <div class="section-title">Documentos del Contrato</div>
   <div class="section-sub">Carga los documentos requeridos. Los datos se extraen automáticamente y se muestran debajo para revisión y corrección.</div>
+
+  <section class="flow-setup" id="flowSetup" aria-label="Configuración del contrato">
+    <div class="flow-setup-head">
+      <div class="flow-setup-heading">
+        <div class="flow-setup-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"></path><path d="M8 9h8M8 13h5"></path><path d="m15 16 1.5 1.5L20 14"></path></svg>
+        </div>
+        <div>
+          <div class="flow-setup-title">Configura el contrato</div>
+          <div class="flow-setup-sub">Operación, persona y estado civil</div>
+        </div>
+      </div>
+      <div class="flow-progress-label" id="flowProgressLabel">0 de 2</div>
+    </div>
+    <div class="flow-fields">
+      <div class="flow-field" data-flow-group="operacion">
+        <div class="flow-label"><span class="flow-step">1</span><span>Tipo de operación</span></div>
+        <div class="flow-segments" role="group" aria-label="Tipo de operación">
+          <button type="button" class="flow-segment" data-flow-field="operacion" data-flow-value="compra_directa">Compra directa</button>
+          <button type="button" class="flow-segment" data-flow-field="operacion" data-flow-value="comision">Comisión</button>
+        </div>
+      </div>
+      <div class="flow-field" data-flow-group="tipoPersona">
+        <div class="flow-label"><span class="flow-step">2</span><span>Tipo de persona</span></div>
+        <div class="flow-segments" role="group" aria-label="Tipo de persona">
+          <button type="button" class="flow-segment" data-flow-field="tipoPersona" data-flow-value="natural">Persona natural</button>
+          <button type="button" class="flow-segment" data-flow-field="tipoPersona" data-flow-value="juridica">Persona jurídica</button>
+        </div>
+      </div>
+      <div class="flow-field flow-field-wide" id="flowEstadoCivil" data-flow-group="estadoCivil" style="display:none">
+        <div class="flow-label"><span class="flow-step">3</span><span>Estado civil</span></div>
+        <div class="flow-segments" role="group" aria-label="Estado civil">
+          <button type="button" class="flow-segment" data-flow-field="estadoCivil" data-flow-value="SOLTERO">Soltero</button>
+          <button type="button" class="flow-segment" data-flow-field="estadoCivil" data-flow-value="CASADO">Casado</button>
+          <button type="button" class="flow-segment" data-flow-field="estadoCivil" data-flow-value="DIVORCIADO">Divorciado</button>
+          <button type="button" class="flow-segment" data-flow-field="estadoCivil" data-flow-value="UNION DE HECHO">Unión de hecho</button>
+          <button type="button" class="flow-segment" data-flow-field="estadoCivil" data-flow-value="VIUDO">Viudo</button>
+        </div>
+      </div>
+    </div>
+    <div class="flow-actions">
+      <div class="flow-draft" id="flowDraft">Selecciona una operación y un tipo de persona</div>
+      <button type="button" class="flow-start" id="flowStart" disabled>
+        <span>Empezar validación</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+      </button>
+    </div>
+    <div class="flow-summary">
+      <div class="flow-summary-main">
+        <div class="flow-summary-check" aria-hidden="true">✓</div>
+        <div class="flow-summary-text" id="flowSummaryText"></div>
+      </div>
+      <button type="button" class="flow-change" id="flowChange">Cambiar selección</button>
+    </div>
+  </section>
+
+  <div id="validationWorkspace" style="display:none">
 
   <!-- ── AI Status Banner ─────────────────────────────────────── -->
   <div id="aiStatusBanner" class="ai-banner checking">
@@ -826,12 +982,35 @@
 
   <div class="docs-grid">
 
+    <div class="doc-card flow-hidden" data-type="ruc">
+      <div class="doc-icon icon-cuv">
+        <svg viewBox="0 0 64 64"><rect x="10" y="12" width="44" height="40" rx="4"></rect><line x1="18" y1="23" x2="46" y2="23"></line><line x1="18" y1="31" x2="46" y2="31"></line><line x1="18" y1="39" x2="36" y2="39"></line></svg>
+      </div>
+      <div class="doc-name">RUC<br>Empresa</div>
+      <div class="upload-zone" id="zone-ruc" ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'ruc')">
+        <label class="upload-label" for="file-ruc">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Subir PDF o imagen</span>
+        </label>
+        <input type="file" id="file-ruc" accept=".pdf,.jpg,.jpeg,.png" onchange="onFileChange(event,'ruc')">
+      </div>
+      <div class="paste-container" style="margin-top:8px">
+        <div class="paste-side" id="paste-ruc-frontal" data-tipo="ruc" data-lado="frontal" tabindex="0">
+          <div class="paste-label">Documento</div>
+          <div class="paste-drop" id="pdrop-ruc-frontal"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg><span>Ctrl+V</span></div>
+          <div class="paste-preview" id="pprev-ruc-frontal"><img alt="RUC de la empresa"><button type="button" class="paste-btn-remove" data-tipo="ruc" data-lado="frontal">&times;</button></div>
+        </div>
+      </div>
+      <button type="button" class="paste-btn-procesar" id="pbtn-ruc"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>Procesar imagen</button>
+      <div class="doc-status pending" id="status-ruc"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+    </div>
+
     <!-- 1. CÉDULA PROPIETARIO -->
     <div class="doc-card" data-type="cedula-prop">
       <div class="doc-icon icon-cedula">
         <svg viewBox="0 0 64 64"><rect x="10" y="16" width="44" height="32" rx="5"></rect><circle cx="24" cy="28" r="6"></circle><line x1="34" y1="24" x2="48" y2="24"></line><line x1="34" y1="30" x2="48" y2="30"></line><path d="M14 44c0-5.5 4.5-8 10-8s10 2.5 10 8" fill="none" stroke-linecap="round"></path></svg>
       </div>
-      <div class="doc-name">Cédula<br>Propietario</div>
+      <div class="doc-name" id="label-cedula-prop">Cédula<br>Propietario</div>
       <div class="paste-container">
         <div class="paste-side" id="paste-cedula-prop-frontal" data-tipo="cedula-prop" data-lado="frontal" tabindex="0">
           <div class="paste-label">Frontal</div>
@@ -865,20 +1044,12 @@
 
     <!-- PAPELETA VOTACIÓN TITULAR (opcional) -->
     <div class="doc-card" data-type="papeleta-prop">
-      <div class="badge-optional">Opcional</div>
+      <div class="badge-optional" id="badge-papeleta-prop">Opcional</div>
       <div class="doc-icon icon-cuv">
         <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
       </div>
-      <div class="doc-name">Papeleta<br>Votación Titular</div>
-      <div class="upload-zone" id="zone-papeleta-prop"
-           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-prop')">
-        <label class="upload-label" for="file-papeleta-prop">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Subir imagen</span>
-        </label>
-        <input type="file" id="file-papeleta-prop" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-prop')">
-      </div>
-      <div class="paste-container" style="margin-top:8px">
+      <div class="doc-name" id="label-papeleta-prop">Papeleta<br>Votación Titular</div>
+      <div class="paste-container">
         <div class="paste-side" id="paste-papeleta-prop-frontal" data-tipo="papeleta-prop" data-lado="frontal" tabindex="0">
           <div class="paste-label">Papeleta</div>
           <div class="paste-drop" id="pdrop-papeleta-prop-frontal">
@@ -898,9 +1069,8 @@
       <div class="doc-status pending" id="status-papeleta-prop"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
     </div>
 
-    <!-- CÉDULA CÓNYUGE (opcional) -->
+    <!-- CÉDULA CÓNYUGE (obligatoria en casado y unión de hecho) -->
     <div class="doc-card" data-type="cedula-cony">
-      <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-cedula-c">
         <svg viewBox="0 0 64 64"><rect x="10" y="16" width="44" height="32" rx="5"></rect><circle cx="24" cy="28" r="6"></circle><line x1="34" y1="24" x2="48" y2="24"></line><line x1="34" y1="30" x2="48" y2="30"></line><path d="M14 44c0-5.5 4.5-8 10-8s10 2.5 10 8" fill="none" stroke-linecap="round"></path></svg>
       </div>
@@ -933,7 +1103,7 @@
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
         Procesar
       </button>
-      <div class="doc-status pending" id="status-cedula-cony"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
+      <div class="doc-status pending" id="status-cedula-cony"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
     </div>
 
     <!-- PAPELETA VOTACIÓN CÓNYUGE (opcional) -->
@@ -943,15 +1113,7 @@
         <svg viewBox="0 0 64 64"><rect x="10" y="10" width="36" height="44" rx="3"></rect><line x1="16" y1="20" x2="40" y2="20"></line><line x1="16" y1="28" x2="40" y2="28"></line><polyline points="16,38 22,44 32,32"></polyline><circle cx="48" cy="22" r="6"></circle><line x1="44" y1="22" x2="52" y2="22"></line><line x1="48" y1="18" x2="48" y2="26"></line></svg>
       </div>
       <div class="doc-name">Papeleta<br>Votación Cónyuge</div>
-      <div class="upload-zone" id="zone-papeleta-cony"
-           ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,'papeleta-cony')">
-        <label class="upload-label" for="file-papeleta-cony">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Subir imagen</span>
-        </label>
-        <input type="file" id="file-papeleta-cony" accept=".jpg,.jpeg,.png,.pdf" onchange="onFileChange(event,'papeleta-cony')">
-      </div>
-      <div class="paste-container" style="margin-top:8px">
+      <div class="paste-container">
         <div class="paste-side" id="paste-papeleta-cony-frontal" data-tipo="papeleta-cony" data-lado="frontal" tabindex="0">
           <div class="paste-label">Papeleta</div>
           <div class="paste-drop" id="pdrop-papeleta-cony-frontal">
@@ -1009,6 +1171,7 @@
 
     <!-- 5. PRINT NOTARÍA -->
     <div class="doc-card" data-type="cuv">
+      <div class="badge-optional" id="badge-cuv">Opcional</div>
       <div class="doc-icon icon-cuv">
         <svg viewBox="0 0 64 64"><rect x="14" y="8" width="30" height="40" rx="5"></rect><line x1="20" y1="20" x2="38" y2="20"></line><line x1="20" y1="27" x2="38" y2="27"></line><line x1="20" y1="34" x2="30" y2="34"></line><circle cx="44" cy="44" r="12" fill="rgba(255,255,255,.18)"></circle><path d="M40 44l3 3 5-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       </div>
@@ -1021,7 +1184,7 @@
         </label>
         <input type="file" id="file-cuv" accept=".pdf" onchange="onFileChange(event,'cuv')">
       </div>
-      <div class="doc-status pending" id="status-cuv"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+      <div class="doc-status pending" id="status-cuv"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
       <button type="button" class="btn-doc-action navy" id="btn-ver-cuv" onclick="abrirModalCUV()">
         <svg viewBox="0 0 24 24" width="13" height="13" stroke="#fff" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
         Ver detalles CUV
@@ -1030,6 +1193,7 @@
 
     <!-- 4. MATRÍCULA -->
     <div class="doc-card" data-type="notaria">
+      <div class="badge-optional">Opcional</div>
       <div class="doc-icon icon-notaria">
         <svg viewBox="0 0 64 64"><rect x="12" y="8" width="32" height="42" rx="5"></rect><line x1="19" y1="20" x2="37" y2="20"></line><line x1="19" y1="27" x2="37" y2="27"></line><line x1="19" y1="34" x2="37" y2="34"></line><line x1="19" y1="41" x2="29" y2="41"></line><path d="M40 38l3-3 8 8-3 3-8-8z"></path><path d="M40 50l3-8" stroke-linecap="round"></path></svg>
       </div>
@@ -1059,7 +1223,7 @@
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
         Procesar imagen
       </button>
-      <div class="doc-status pending" id="status-notaria"><div class="status-dot"></div><span class="status-text">Sin documento</span></div>
+      <div class="doc-status pending" id="status-notaria"><div class="status-dot"></div><span class="status-text">Opcional — sin documento</span></div>
     </div>
 
   </div><!-- /docs-grid -->
@@ -1075,6 +1239,7 @@
       <span>Procesar y validar</span>
     </button>
   </div>
+  </div><!-- /validationWorkspace -->
 
   <!-- Toast flotante con resultado -->
   <div id="validateToast" class="validate-toast" role="alert">
@@ -1352,8 +1517,8 @@
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
-<script src="js/contrato-templates.js?v=20260904-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20260902-2"></script>
+<script src="js/contrato-templates.js?v=20260909-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20260909-1"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1379,6 +1544,7 @@ window.cerrarSesion = function(){
 /* ── State ────────────────────────────────────────────────────── */
 // datos[tipo] = object with extracted fields  (null = not loaded yet)
 const datos = {
+  'ruc':          null,
   'cedula-prop':  null,
   'cedula-cony':  null,
   'cuv':          null,
@@ -1390,6 +1556,129 @@ const datos = {
 let cuvDatosCompleto = null; // full CUV object for detail modal
 // Exponer datos en window para que generador-contratos.js pueda accederlos
 window._contratosData = datos;
+window._contratosValidacionCompletada = false;
+
+function _invalidarValidacion(){
+  window._contratosValidacionCompletada = false;
+  var generar = document.getElementById('generarContratosBar');
+  var continuar = document.getElementById('continuarLiquidacionBar');
+  if(generar) generar.style.display = 'none';
+  if(continuar) continuar.style.display = 'none';
+}
+
+const flujoContrato = { operacion:'', tipoPersona:'', estadoCivil:'' };
+window._contratosFlujo = flujoContrato;
+
+function _flujoEsConyugal(){
+  return flujoContrato.tipoPersona === 'natural' &&
+    (flujoContrato.estadoCivil === 'CASADO' || flujoContrato.estadoCivil === 'UNION DE HECHO');
+}
+
+function _actualizarInicioFlujo(){
+  const estadoWrap = document.getElementById('flowEstadoCivil');
+  if(estadoWrap) estadoWrap.style.display = flujoContrato.tipoPersona === 'natural' ? 'block' : 'none';
+  const listo = !!flujoContrato.operacion && !!flujoContrato.tipoPersona &&
+    (flujoContrato.tipoPersona === 'juridica' || !!flujoContrato.estadoCivil);
+  const btn = document.getElementById('flowStart');
+  if(btn){
+    btn.disabled = !listo;
+    btn.classList.toggle('ready', listo);
+  }
+
+  const requiereEstado = flujoContrato.tipoPersona === 'natural';
+  const total = requiereEstado ? 3 : 2;
+  const completados = (flujoContrato.operacion ? 1 : 0) +
+    (flujoContrato.tipoPersona ? 1 : 0) +
+    (requiereEstado && flujoContrato.estadoCivil ? 1 : 0);
+  const progress = document.getElementById('flowProgressLabel');
+  if(progress){
+    progress.textContent = listo ? 'Listo para validar' : completados+' de '+total;
+    progress.classList.toggle('ready', listo);
+  }
+
+  document.querySelectorAll('[data-flow-group]').forEach(function(group){
+    const field = group.getAttribute('data-flow-group');
+    group.classList.toggle('completed', !!flujoContrato[field]);
+  });
+
+  const draft = document.getElementById('flowDraft');
+  if(draft){
+    const parts = [];
+    if(flujoContrato.operacion) parts.push(flujoContrato.operacion === 'comision' ? 'Comisión' : 'Compra directa');
+    if(flujoContrato.tipoPersona) parts.push(flujoContrato.tipoPersona === 'juridica' ? 'Persona jurídica' : 'Persona natural');
+    if(requiereEstado && flujoContrato.estadoCivil) parts.push(flujoContrato.estadoCivil);
+    if(parts.length){
+      draft.innerHTML = 'Selección actual: <strong>'+parts.join(' · ')+'</strong>';
+    }else{
+      draft.textContent = 'Selecciona una operación y un tipo de persona';
+    }
+  }
+}
+
+function _aplicarFlujoDocumental(){
+  const juridica = flujoContrato.tipoPersona === 'juridica';
+  const conyugal = _flujoEsConyugal();
+  const rucCard = document.querySelector('.doc-card[data-type="ruc"]');
+  const cedConyCard = document.querySelector('.doc-card[data-type="cedula-cony"]');
+  const papConyCard = document.querySelector('.doc-card[data-type="papeleta-cony"]');
+  if(rucCard) rucCard.classList.toggle('flow-hidden', !juridica);
+  if(cedConyCard) cedConyCard.classList.toggle('flow-hidden', !conyugal);
+  if(papConyCard) papConyCard.classList.toggle('flow-hidden', !conyugal);
+  const cedLabel = document.getElementById('label-cedula-prop');
+  const papLabel = document.getElementById('label-papeleta-prop');
+  const papBadge = document.getElementById('badge-papeleta-prop');
+  const cuvBadge = document.getElementById('badge-cuv');
+  const papStatus = document.querySelector('#status-papeleta-prop .status-text');
+  const cuvStatus = document.querySelector('#status-cuv .status-text');
+  if(cedLabel) cedLabel.innerHTML = juridica ? 'Cédula<br>Representante Legal' : 'Cédula<br>Propietario';
+  if(papLabel) papLabel.innerHTML = juridica ? 'Papeleta<br>Representante Legal' : 'Papeleta<br>Votación Titular';
+  if(papBadge) papBadge.style.display = juridica ? 'none' : '';
+  if(cuvBadge) cuvBadge.style.display = '';
+  if(papStatus && !datos['papeleta-prop']) papStatus.textContent = juridica ? 'Sin documento' : 'Opcional — sin documento';
+  if(cuvStatus && !datos.cuv) cuvStatus.textContent = 'Opcional — sin documento';
+  try{ _refreshValidateAllBar(); }catch(_){}
+  try{ renderResultsSection(); }catch(_){}
+}
+
+document.querySelectorAll('[data-flow-field]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    const field = btn.getAttribute('data-flow-field');
+    const value = btn.getAttribute('data-flow-value');
+    flujoContrato[field] = value;
+    if(field === 'tipoPersona' && value === 'juridica') flujoContrato.estadoCivil = '';
+    document.querySelectorAll('[data-flow-field="'+field+'"]').forEach(function(other){
+      other.classList.toggle('active', other === btn);
+      other.setAttribute('aria-pressed', other === btn ? 'true' : 'false');
+    });
+    _actualizarInicioFlujo();
+  });
+});
+
+document.getElementById('flowStart').addEventListener('click', function(){
+  const setup = document.getElementById('flowSetup');
+  const workspace = document.getElementById('validationWorkspace');
+  const op = flujoContrato.operacion === 'comision' ? 'Comisión' : 'Compra directa';
+  const persona = flujoContrato.tipoPersona === 'juridica' ? 'Persona jurídica' : 'Persona natural';
+  const estado = flujoContrato.tipoPersona === 'natural' ? ' · '+flujoContrato.estadoCivil : '';
+  document.getElementById('flowSummaryText').textContent = op+' · '+persona+estado;
+  const progress = document.getElementById('flowProgressLabel');
+  if(progress){
+    progress.textContent = 'Flujo configurado';
+    progress.classList.add('ready');
+  }
+  setup.classList.add('configured');
+  workspace.style.display = 'block';
+  _aplicarFlujoDocumental();
+});
+
+document.getElementById('flowChange').addEventListener('click', function(){
+  if(Object.values(datos).some(function(v){ return v!==null; })){
+    if(!confirm('Cambiar el flujo reiniciará los documentos cargados. ¿Deseas continuar?')) return;
+  }
+  window.location.reload();
+});
+
+_actualizarInicioFlujo();
 
 /* ── OCR worker (lazy) ────────────────────────────────────────── */
 let tesseractWorker = null;
@@ -1444,6 +1733,7 @@ async function extractPdfText(file){
 const OCR_MIN_WIDTH = 2800;   // ↑ más resolución mínima → mejor para texto pequeño
 const OCR_MAX_WIDTH = 4200;   // ↑ techo más alto para fotos de alta resolución
 const OCR_MAX_PDF_PAGES = {
+  'ruc':          2,
   'cedula-prop': 1,
   'cedula-cony': 1,
   'matricula':  1,
@@ -1458,6 +1748,7 @@ const OCR_MAX_PDF_PAGES = {
  *   12 = Texto disperso con OSD (para imágenes con orientación variable)
  */
 const OCR_PROFILES = {
+  'ruc':          { psms:['6','4','11'],   whitelist:'' },
   'cedula-prop': { psms:['6','11','4'],  whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ0123456789/.-: ' },
   'cedula-cony': { psms:['6','11','4'],  whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ0123456789/.-: ' },
   'matricula':  { psms:['6','4','11'],   whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ0123456789/.-: ' },
@@ -1651,7 +1942,7 @@ function buildOcrCanvases(canvas, tipo){
     { name:'otsu',      canvas:applyOtsuBinarization(base) }
   ];
   // Variantes adicionales para documentos con texto pequeño / fondo ruidoso
-  if(tipo==='cedula-prop' || tipo==='cedula-cony' || tipo==='matricula'){
+  if(tipo==='ruc' || tipo==='cedula-prop' || tipo==='cedula-cony' || tipo==='matricula'){
     variants.push({ name:'nitido',  canvas:sharpenCanvas(applyImageFilter(base,{contrast:1.35, brightness:8})) });
     variants.push({ name:'unsharp', canvas:unsharpMaskCanvas(applyImageFilter(base,{contrast:1.30, brightness:4}), 0.7, 1.4) });
     variants.push({ name:'pipeline-pro', canvas:pipelineAvanzado(base) });
@@ -1729,6 +2020,8 @@ function scoreOcrText(text, tipo, confidence){
   if(/\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4}\b/.test(t)) score += 8;
   if(tipo==='cedula-prop' || tipo==='cedula-cony'){
     ['CEDULA','IDENTIDAD','APELLIDOS','NOMBRES','REGISTRO','CIVIL'].forEach(function(k){ if(t.includes(k)) score += 8; });
+  }else if(tipo==='ruc'){
+    ['RUC','RAZON SOCIAL','CONTRIBUYENTE','ACTIVIDAD ECONOMICA','DOMICILIO'].forEach(function(k){ if(t.includes(k)) score += 8; });
   }else if(tipo==='matricula'){
     ['MATRICULA','PLACA','PROPIETARIO','MARCA','MODELO','CHASIS','MOTOR'].forEach(function(k){ if(t.includes(k)) score += 7; });
   }else if(tipo==='notaria'){
@@ -1962,6 +2255,9 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
+const GEMINI_FETCH_TIMEOUT_MS = 10000;
+const GEMINI_SESSION_KEY = 'autocor_gemini_model';
+const GEMINI_SESSION_TTL_MS = 5 * 60 * 1000;
 const GEMINI_PROXY_URL = AutoCorConfig.apiUrl;
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
@@ -1979,7 +2275,20 @@ async function geminiFetch(url, init){
   if(init && (init.method||'GET').toUpperCase() !== 'GET'){
     init = Object.assign({}, init, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
   }
-  const resp = await fetch(url, init);
+  init = init ? Object.assign({}, init) : {};
+  var controller = null;
+  var timeoutId = null;
+  if(!init.signal && typeof AbortController !== 'undefined'){
+    controller = new AbortController();
+    init.signal = controller.signal;
+    timeoutId = setTimeout(function(){ controller.abort(); }, GEMINI_FETCH_TIMEOUT_MS);
+  }
+  var resp;
+  try{
+    resp = await fetch(url, init);
+  }finally{
+    if(timeoutId) clearTimeout(timeoutId);
+  }
   let env = null;
   try { env = await resp.json(); } catch(_){ env = null; }
   const hasProxy = env && env._proxy && typeof env._proxy === 'object';
@@ -2023,6 +2332,26 @@ async function refreshGeminiModelAvailability(){
 
 /* ── Prompts por tipo de documento ──────────────────────────── */
 const PROMPTS_IA = {
+  'ruc':
+    'Eres un extractor de datos de documentos RUC emitidos por el SRI de Ecuador. '+
+    'Devuelve EXCLUSIVAMENTE un JSON válido, sin explicaciones ni markdown. '+
+    'No inventes información y usa cadena vacía cuando un dato no sea visible. '+
+    'En el certificado del SRI, "Razón Social Número RUC" es un encabezado de dos columnas: en la línea siguiente separa el nombre de la empresa del número de 13 dígitos. '+
+    'Después de "Representante legal" extrae únicamente el nombre de la persona y elimina viñetas o símbolos. '+
+    'Cuando aparezca "Estado Régimen", separa el estado (por ejemplo ACTIVO) del régimen (por ejemplo REGIMEN MICROEMPRESARIAL). '+
+    '"Domicilio tributario", "Ubicación geográfica" y "Dirección" son títulos de sección, no valores; direccionMatriz debe contener la dirección postal completa visible. '+
+    '\n\n{'+
+    '"numeroRuc":"<13 dígitos>",'+
+    '"razonSocial":"<razón social completa>",'+
+    '"nombreComercial":"<nombre comercial>",'+
+    '"estadoContribuyente":"<estado visible>",'+
+    '"regimen":"<régimen visible>",'+
+    '"direccionMatriz":"<dirección completa>",'+
+    '"actividadEconomica":"<actividad económica principal>",'+
+    '"representanteLegal":"<nombre del representante si aparece>",'+
+    '"cedulaRepresentante":"<10 dígitos si aparece>"'+
+    '}',
+
   'cedula':
     'Eres un extractor de datos de cédulas de identidad ecuatorianas. '+
     'Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido (sin explicaciones, sin markdown) '+
@@ -2113,6 +2442,8 @@ const PROMPTS_IA = {
 
 /* ── AI Status (window-exposed for retry button) ────────────── */
 let aiAvailable = false;
+let aiAvailabilityChecked = false;
+let aiCheckPromise = null;
 function setAIBanner(state, msg){
   const b = document.getElementById('aiStatusBanner');
   const t = document.getElementById('aiStatusText');
@@ -2174,8 +2505,8 @@ window.testAIConnection = async function(){
     console.error('[IA] Todos los modelos fallaron:', intentos);
   }
 };
-// Test on page load (once DOM is ready, after auth check)
-setTimeout(function(){ window.testAIConnection(); }, 300);
+// Comprobar disponibilidad real una vez por sesión, sin repetirla al cambiar de flujo.
+setTimeout(function(){ window.initializeAIState(); }, 300);
 
 /* ── analizarConGemini ──────────────────────────────────────── */
 async function analizarConGemini(tipo, dataUrl){
@@ -2247,6 +2578,17 @@ async function analizarConGemini(tipo, dataUrl){
 
 /* ── Descripciones de campos por tipo (para prompts dirigidos) ── */
 const FIELD_DESCRIPTIONS = {
+  ruc: {
+    numeroRuc:           'Número de RUC de exactamente 13 dígitos. Si el documento muestra el encabezado "Razón Social Número RUC", el RUC está al final de la línea siguiente.',
+    razonSocial:         'Razón social completa de la empresa. En el formato SRI puede estar en la línea siguiente al encabezado doble "Razón Social Número RUC", antes del número de 13 dígitos. No devolver el encabezado.',
+    nombreComercial:     'Nombre comercial indicado expresamente; no usar la razón social si el documento no muestra un nombre comercial.',
+    estadoContribuyente: 'Solo el estado del contribuyente, por ejemplo ACTIVO. Si aparece "Estado Régimen", separar el primer estado del régimen que sigue.',
+    regimen:             'Régimen tributario visible, por ejemplo REGIMEN MICROEMPRESARIAL. No incluir el estado ACTIVO.',
+    direccionMatriz:     'Dirección postal completa del domicilio tributario: provincia, cantón, parroquia, barrio, calle, número, intersección, edificio, oficina, piso y referencia cuando sean visibles. No devolver títulos como "Domicilio tributario", "Ubicación geográfica" o "Dirección".',
+    actividadEconomica:  'Actividad económica principal indicada expresamente en el certificado.',
+    representanteLegal:  'Nombre completo de la persona que aparece inmediatamente después de "Representante legal". Eliminar viñetas como » y no devolver la etiqueta.',
+    cedulaRepresentante: 'Cédula del representante legal, exactamente 10 dígitos, solo si aparece expresamente.'
+  },
   cedula: {
     apellidos:       'SOLO los APELLIDOS del titular, SIN incluir nombres de pila. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la PRIMERA línea corresponde a los apellidos. CÉDULA ANTIGUA: buscar debajo de la etiqueta "APELLIDOS". Devolver SOLO apellidos en MAYÚSCULAS. NO incluir etiquetas del documento (IDENTIDAD, REPÚBLICA, CÉDULA, etc.). Si no puedes diferenciar entre apellidos y nombres, devuelve cadena vacía.',
     nombres:         'SOLO los NOMBRES de pila del titular, SIN incluir apellidos. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la SEGUNDA línea corresponde a los nombres. CÉDULA ANTIGUA: buscar debajo de la etiqueta "NOMBRES". Devolver SOLO nombres en MAYÚSCULAS. NO devolver el nombre completo (apellidos + nombres juntos). Si no puedes diferenciar, devuelve cadena vacía.',
@@ -2333,10 +2675,19 @@ async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
   }).join(',\n  ');
 
   /* Agregar contexto de zona para cédulas */
+  var contextoRuc = '';
   var contextoCedula = '';
   var contextoMatricula = '';
   var contextoNotaria = '';
-  if(tipo==='cedula'){
+  if(tipo==='ruc'){
+    contextoRuc =
+      '\nCONTEXTO DE CERTIFICADO RUC DEL SRI ECUADOR:\n'+
+      'El texto "RAZON SOCIAL NUMERO RUC" es un encabezado de dos columnas. En la siguiente linea, todo lo anterior al numero de 13 digitos es la razon social y ese numero es el RUC.\n'+
+      'El valor de representanteLegal aparece despues de "REPRESENTANTE LEGAL"; elimina viñetas o simbolos iniciales.\n'+
+      'El texto "ESTADO REGIMEN" tambien es un encabezado doble. Separa el estado (por ejemplo ACTIVO) del regimen restante (por ejemplo REGIMEN MICROEMPRESARIAL).\n'+
+      'DOMICILIO TRIBUTARIO, UBICACION GEOGRAFICA y DIRECCION son titulos. direccionMatriz debe reunir los valores visibles de provincia, canton, parroquia, barrio, calle, numero, interseccion, edificio, bloque, oficina, piso y referencia.\n'+
+      'Nunca devuelvas un titulo o etiqueta como valor de un campo.\n\n';
+  } else if(tipo==='cedula'){
     contextoCedula =
       '\nCONTEXTO DE CÉDULA ECUATORIANA:\n'+
       'Existen dos formatos. Identifica cuál es:\n'+
@@ -2382,6 +2733,7 @@ async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
   const prompt =
     'Analiza la imagen del documento y completa SOLAMENTE estos campos faltantes:\n\n'+
     fieldList+'\n'+
+    contextoRuc+
     contextoCedula+
     contextoMatricula+
     contextoNotaria+
@@ -2571,6 +2923,75 @@ function personasArrayATexto(arr){
 /* ══════════════════════════════════════════════════════════════
    PARSERS
    ══════════════════════════════════════════════════════════════ */
+
+/* ── parseCedula ─────────────────────────────────────────────── */
+function parseRuc(texto){
+  const raw = normalizeForParsing(texto);
+  const lines = raw.split('\n').map(function(v){ return v.trim(); }).filter(Boolean);
+  const flat = lines.join(' ');
+  function cleanValue(value){
+    return String(value||'').replace(/^[»›•*\-–—:;.\s]+/,'').replace(/\s+/g,' ').trim();
+  }
+  function lineAfter(label, reject){
+    const re = new RegExp(label, 'i');
+    for(let i=0; i<lines.length; i++){
+      if(!re.test(lines[i])) continue;
+      const inline = cleanValue(lines[i].replace(re, ''));
+      if(inline && !(reject && reject.test(inline))) return inline;
+      for(let j=i+1; j<Math.min(lines.length, i+4); j++){
+        const candidate = cleanValue(lines[j]);
+        if(candidate && !(reject && reject.test(candidate))) return candidate;
+      }
+    }
+    return '';
+  }
+  const rucLabel = raw.match(/(?:NUMERO\s+DE\s+)?RUC\s*[:.-]?\s*(\d[\d\s-]{11,18})/i);
+  const anyRuc = flat.match(/\b\d{13}\b/);
+  const cedRep = raw.match(/(?:CEDULA|IDENTIFICACION)(?:\s+DEL)?\s+REPRESENTANTE[^\d]{0,30}(\d{10})/i);
+  const ruc = normalizeRuc13(rucLabel ? rucLabel[1] : (anyRuc ? anyRuc[0] : ''));
+
+  let razonSocial = lineAfter('RAZ[OÓ]N\\s+SOCIAL(?:\\s+N[ÚU]MERO\\s+RUC)?', /^(?:N[ÚU]MERO\s+RUC|RUC)$/i);
+  if(razonSocial && ruc) razonSocial = cleanValue(razonSocial.replace(new RegExp('\\b'+ruc+'\\b.*$'), ''));
+
+  const estadoRegimen = lineAfter('ESTADO\\s+R[ÉE]GIMEN', /^(?:INICIO|REINICIO|CESE)\b/i);
+  let estado = '';
+  let regimen = '';
+  if(estadoRegimen){
+    const estadoMatch = estadoRegimen.match(/^(ACTIVO|SUSPENDIDO|PASIVO|CANCELADO|CERRADO|NO\s+UBICADO)\b/i);
+    if(estadoMatch){
+      estado = estadoMatch[1];
+      regimen = cleanValue(estadoRegimen.substring(estadoMatch[0].length));
+    }
+  }
+  if(!estado) estado = lineAfter('ESTADO(?:\\s+DEL)?\\s+CONTRIBUYENTE', /^(?:R[ÉE]GIMEN|INICIO)\b/i);
+  if(!regimen) regimen = lineAfter('R[ÉE]GIMEN(?:\\s+TRIBUTARIO)?', /^(?:ESTADO|INICIO)\b/i);
+
+  let direccion = '';
+  const dirIndex = lines.findIndex(function(line){ return /^DIRECCI[OÓ]N\s*$/i.test(line); });
+  if(dirIndex >= 0){
+    const parts = [];
+    for(let i=dirIndex+1; i<lines.length; i++){
+      if(/^(?:ACTIVIDAD(?:ES)?\s+ECON[OÓ]MICA|OBLIGACIONES|ESTABLECIMIENTOS|C[ÓO]DIGO\s+QR)\b/i.test(lines[i])) break;
+      parts.push(cleanValue(lines[i]));
+    }
+    direccion = parts.filter(Boolean).join(' ');
+  }
+  if(!direccion){
+    direccion = lineAfter('DIRECCI[OÓ]N(?:\\s+DE)?\\s+MATRIZ', /^(?:DOMICILIO|UBICACI[OÓ]N|DIRECCI[OÓ]N)$/i);
+  }
+
+  return {
+    numeroRuc: ruc,
+    razonSocial: razonSocial,
+    nombreComercial: lineAfter('NOMBRE\\s+COMERCIAL', /^(?:ESTADO|REPRESENTANTE)\b/i),
+    estadoContribuyente: estado,
+    regimen: regimen,
+    direccionMatriz: direccion,
+    actividadEconomica: lineAfter('ACTIVIDAD\\s+ECON[OÓ]MICA(?:\\s+PRINCIPAL)?', /^(?:OBLIGACIONES|ESTABLECIMIENTOS)\b/i),
+    representanteLegal: lineAfter('REPRESENTANTE\\s+LEGAL', /^(?:ESTADO|R[ÉE]GIMEN)\b/i),
+    cedulaRepresentante: cedRep ? cedRep[1] : ''
+  };
+}
 
 /* ── parseCedula ─────────────────────────────────────────────── */
 function parseCedula(texto){
@@ -3408,6 +3829,7 @@ window.onFileChange = function(e,tipo){
    PEGADO DE IMÁGENES (Ctrl+V) PARA DOCUMENTOS CON FRONTAL/REVERSO
    ══════════════════════════════════════════════════════════════ */
 var pastedImages = {
+  'ruc':          { frontal: null, reverso: null },
   'cedula-prop':  { frontal: null, reverso: null },
   'cedula-cony':  { frontal: null, reverso: null },
   'matricula':    { frontal: null, reverso: null },
@@ -3431,6 +3853,7 @@ function _activarPasteZone(el){
 }
 
 function _setPasteImage(tipo, lado, dataUrl){
+  _invalidarValidacion();
   pastedImages[tipo][lado] = dataUrl;
   var zone = document.getElementById('paste-'+tipo+'-'+lado);
   var drop = document.getElementById('pdrop-'+tipo+'-'+lado);
@@ -3447,13 +3870,12 @@ function _setPasteImage(tipo, lado, dataUrl){
   var hasFront = !!pastedImages[tipo].frontal;
   var hasBack  = !!pastedImages[tipo].reverso;
   // Documentos de una sola cara: notaría y papeletas de votación
-  var unaCara = (tipo==='notaria' || tipo==='papeleta-prop' || tipo==='papeleta-cony');
+  var unaCara = (tipo==='ruc' || tipo==='notaria' || tipo==='papeleta-prop' || tipo==='papeleta-cony');
   var statusTxt = unaCara
                 ? 'Imagen lista'
                 : (hasFront && hasBack) ? 'Frontal + Reverso listos'
                 : hasFront ? 'Frontal listo — falta reverso'
                 : 'Reverso listo — falta frontal';
-  if(tipo==='cedula-cony') statusTxt = 'Opcional — '+statusTxt;
   if(tipo==='papeleta-cony') statusTxt = 'Solo si hay cónyuge — '+statusTxt;
   setStatus(tipo, 'pending', statusTxt);
   console.log('[Paste] Imagen asignada:', tipo, lado, '('+Math.round(dataUrl.length/1024)+'KB)');
@@ -3462,6 +3884,7 @@ function _setPasteImage(tipo, lado, dataUrl){
 }
 
 function _removePaste(tipo, lado){
+  _invalidarValidacion();
   pastedImages[tipo][lado] = null;
   var zone = document.getElementById('paste-'+tipo+'-'+lado);
   var drop = document.getElementById('pdrop-'+tipo+'-'+lado);
@@ -3479,14 +3902,15 @@ function _removePaste(tipo, lado){
   var hasBack = !!pastedImages[tipo].reverso;
   var hasAny = !!(hasFront || hasBack);
   if(!hasAny){
-    setStatus(tipo, 'pending', tipo==='cedula-cony' ? 'Opcional — sin documento' : 'Sin documento');
+    var esPapeletaOpcional = tipo==='papeleta-cony' ||
+      (tipo==='papeleta-prop' && flujoContrato.tipoPersona!=='juridica');
+    setStatus(tipo, 'pending', esPapeletaOpcional ? 'Opcional — sin documento' : 'Sin documento');
   } else {
-    var statusTxt = tipo==='notaria'
+    var statusTxt = (tipo==='ruc' || tipo==='notaria' || tipo==='papeleta-prop' || tipo==='papeleta-cony')
                   ? 'Imagen lista'
                   : (hasFront && hasBack) ? 'Frontal + Reverso listos'
                   : hasFront ? 'Frontal listo — falta reverso'
                   : 'Reverso listo — falta frontal';
-    if(tipo==='cedula-cony') statusTxt = 'Opcional — '+statusTxt;
     setStatus(tipo, 'pending', statusTxt);
   }
   // Actualizar estado del botón al quitar imagen
@@ -3870,12 +4294,14 @@ async function _procesarNotariaPaste(){
   });
 
   /* 3) Botones "Procesar" */
+  var btnRuc  = document.getElementById('pbtn-ruc');
   var btnProp = document.getElementById('pbtn-cedula-prop');
   var btnCony = document.getElementById('pbtn-cedula-cony');
   var btnMat  = document.getElementById('pbtn-matricula');
   var btnNot  = document.getElementById('pbtn-notaria');
   var btnPapP = document.getElementById('pbtn-papeleta-prop');
   var btnPapC = document.getElementById('pbtn-papeleta-cony');
+  if(btnRuc)  btnRuc.addEventListener('click', _procesarRucPaste);
   if(btnProp) btnProp.addEventListener('click', function(){ _procesarCedulaPaste('cedula-prop'); });
   if(btnCony) btnCony.addEventListener('click', function(){ _procesarCedulaPaste('cedula-cony'); });
   if(btnMat)  btnMat.addEventListener('click', function(){ _procesarMatriculaPaste(); });
@@ -3934,10 +4360,13 @@ function setStatus(tipo,estado,texto){
 
 /* ── Main dispatcher ─────────────────────────────────────────── */
 async function procesarArchivo(file, tipo){
+  _invalidarValidacion();
   const nombre = file.name.length>26 ? file.name.substring(0,24)+'…' : file.name;
   showSpinner('Procesando '+tipoLabel(tipo)+'...');
   try{
-    if(tipo==='cuv'){
+    if(tipo==='ruc'){
+      await procesarRuc(file, nombre);
+    } else if(tipo==='cuv'){
       await procesarCUV(file, nombre);
     } else if(tipo==='cedula-prop'||tipo==='cedula-cony'){
       await procesarCedula(file, tipo, nombre);
@@ -4112,6 +4541,13 @@ async function procesarIaFirst(opts){
   let ocrText = '';
   let ocrAplicados = [];
 
+  if(!aiAvailable){
+    try{
+      if(aiCheckPromise) await aiCheckPromise;
+      else if(!aiAvailabilityChecked && typeof window.testAIConnection === 'function') await window.testAIConnection();
+    }catch(_){ }
+  }
+
   if(aiAvailable){
     try{
       spinnerMsg('Analizando '+tipoLabel(tipo)+' con IA...');
@@ -4129,8 +4565,21 @@ async function procesarIaFirst(opts){
   }
 
   let missing = getMissingFields(d, fields);
+  const aiPrimaryValid = tipo === 'ruc'
+    ? !!(normalizeRuc13(d.numeroRuc) && normalizeCompanyName(d.razonSocial))
+    : aiAplicados.length > 0;
+  if(opts.ocrOnlyIfAiFails && !aiPrimaryValid){
+    fields.forEach(function(f){
+      if(f.type==='separator' || origins[f.key] === 'manual') return;
+      d[f.key] = '';
+      origins[f.key] = 'none';
+    });
+    aiAplicados = [];
+    missing = fields.filter(function(f){ return f.type!=='separator'; }).map(function(f){ return f.key; });
+  }
   const needsOcrValidation = tipo === 'matricula' && !!(d.cedulaRuc || d.chasis || d.motor);
-  if(missing.length>0 || needsOcrValidation){
+  const shouldUseOcr = opts.ocrOnlyIfAiFails ? !aiPrimaryValid : (missing.length>0 || needsOcrValidation);
+  if(shouldUseOcr){
     try{
       spinnerMsg(needsOcrValidation ? 'Validando matrícula con OCR...' : 'Completando faltantes con OCR...');
       setSpinnerBar(58);
@@ -4166,6 +4615,30 @@ async function procesarIaFirst(opts){
   d._missing = missingFinal;
   console.log('['+tipo+'] FINAL datos:', JSON.parse(JSON.stringify(d)));
   return d;
+}
+
+/* ── Cédula ──────────────────────────────────────────────────── */
+async function procesarRuc(file, nombre){
+  const d = await procesarIaFirst({
+    file, tipo:'ruc', parserLocal:parseRuc, fieldsFn:camposRuc, tipoIA:'ruc', ocrOnlyIfAiFails:true
+  });
+  datos.ruc = d;
+  setStatus('ruc','loaded',(d.numeroRuc || d.razonSocial || nombre));
+}
+
+async function _procesarRucPaste(){
+  const imgs = pastedImages.ruc;
+  if(!imgs || !imgs.frontal){ alert('Pega primero una imagen del RUC.'); return; }
+  showSpinner('Procesando RUC...');
+  try{
+    const blob = _dataUrlToBlob(imgs.frontal);
+    await procesarRuc(new File([blob], 'ruc.png', {type:blob.type || 'image/png'}), 'imagen pegada');
+    renderResultsSection();
+  }catch(err){
+    console.error('[RUC] procesamiento falló:', err);
+    setStatus('ruc','error',err.message || 'Error procesando RUC');
+    alert('Error procesando RUC: '+err.message);
+  }finally{ hideSpinner(); }
 }
 
 /* ── Cédula ──────────────────────────────────────────────────── */
@@ -4352,6 +4825,7 @@ function _dataUrlToBlob(dataUrl){
    ══════════════════════════════════════════════════════════════ */
 function tipoLabel(tipo){
   return {
+    'ruc':'RUC Empresa',
     'cedula-prop':'Cédula Propietario',
     'cedula-cony':'Cédula Cónyuge',
     'cuv':'CUV',
@@ -4373,14 +4847,16 @@ function renderResultsSection(){
   grid.innerHTML = '';
 
   const configs = [
-    { tipo:'cedula-prop', iconClass:'cedula',   label:'Cédula Propietario', optional:false, fields:camposCedula() },
-    { tipo:'cedula-cony', iconClass:'cedula-c',  label:'Cédula Cónyuge',     optional:true,  fields:camposCedula() },
-    { tipo:'cuv',         iconClass:'cuv',        label:'Certificado Único Vehicular', optional:false, fields:camposCuv() },
+    { tipo:'ruc',         iconClass:'cuv',        label:'RUC Empresa', optional:false, fields:camposRuc(), visible:flujoContrato.tipoPersona==='juridica' },
+    { tipo:'cedula-prop', iconClass:'cedula',   label:flujoContrato.tipoPersona==='juridica'?'Cédula Representante Legal':'Cédula Propietario', optional:false, fields:camposCedula() },
+    { tipo:'cedula-cony', iconClass:'cedula-c',  label:'Cédula Cónyuge',     optional:false, fields:camposCedula(), visible:_flujoEsConyugal() },
+    { tipo:'cuv',         iconClass:'cuv',        label:'Certificado Único Vehicular', optional:true, fields:camposCuv() },
     { tipo:'matricula',   iconClass:'matricula',  label:'Matrícula Vehicular',optional:false, fields:camposMatricula() },
-    { tipo:'notaria',     iconClass:'notaria',    label:'Print Notaría',      optional:false, fields:camposNotaria() }
+    { tipo:'notaria',     iconClass:'notaria',    label:'Print Notaría',      optional:true, fields:camposNotaria() }
   ];
 
   for(const cfg of configs){
+    if(cfg.visible === false) continue;
     const d = datos[cfg.tipo];
     grid.appendChild(buildBlock(cfg, d));
   }
@@ -4450,44 +4926,68 @@ function valoresIguales(a, b){
 
 /* Definición de las validaciones cruzadas */
 function getValidacionesCruzadas(){
+  const juridica = flujoContrato.tipoPersona === 'juridica';
   // Cada validación: campo, label, modo (estricto|nombre), y los "sources" (doc tipo + cómo extraer el valor)
   return [
     {
-      campo: 'propietario', label: 'Propietario', modo: 'nombre',
-      sources: [
+      campo: 'propietario', label: juridica ? 'Razón social propietaria' : 'Propietario', modo: 'nombre',
+      sources: (juridica ? [
+        { tipo:'ruc',           getValue:function(d){ return d.razonSocial||''; } },
+        { tipo:'cuv',           getValue:function(d){ return d.propietario||''; } },
+        { tipo:'matricula',     getValue:function(d){ return d.propietario||''; } },
+        { tipo:'notaria',       getValue:function(d){ return d.nombrePropietario||''; } }
+      ] : [
         { tipo:'cedula-prop',   getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } },
         { tipo:'cuv',           getValue:function(d){ return d.propietario||''; } },
         { tipo:'matricula',     getValue:function(d){ return d.propietario||''; } },
         { tipo:'notaria',       getValue:function(d){ return d.nombrePropietario||''; } },
         { tipo:'papeleta-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
-      ]
+      ])
     },
     {
-      campo: 'cedulaPropietario', label: 'Cédula del propietario', modo: 'estricto',
-      sources: [
+      campo: 'identificacionPropietario', label: juridica ? 'RUC del propietario' : 'Cédula del propietario', modo: 'estricto',
+      sources: (juridica ? [
+        { tipo:'ruc',           getValue:function(d){ return d.numeroRuc||''; } },
+        { tipo:'matricula',     getValue:function(d){ return d.cedulaRuc||''; } },
+        { tipo:'notaria',       getValue:function(d){ return d.identificacionPropietario||''; } }
+      ] : [
         { tipo:'cedula-prop',   getValue:function(d){ return d.numeroCedula||''; } },
         { tipo:'matricula',     getValue:function(d){ return d.cedulaRuc||''; } },
         { tipo:'notaria',       getValue:function(d){ return d.identificacionPropietario||''; } },
         { tipo:'papeleta-prop', getValue:function(d){ return d.numeroCedula||''; } }
-      ]
+      ])
     },
-    {
+    ...(juridica ? [{
+      campo:'representanteLegal', label:'Representante legal', modo:'nombre',
+      sources:[
+        { tipo:'ruc', getValue:function(d){ return d.representanteLegal||''; } },
+        { tipo:'cedula-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } },
+        { tipo:'papeleta-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
+      ]
+    },{
+      campo:'cedulaRepresentante', label:'Cédula del representante legal', modo:'estricto',
+      sources:[
+        { tipo:'ruc', getValue:function(d){ return d.cedulaRepresentante||''; } },
+        { tipo:'cedula-prop', getValue:function(d){ return d.numeroCedula||''; } },
+        { tipo:'papeleta-prop', getValue:function(d){ return d.numeroCedula||''; } }
+      ]
+    }] : []),
+    ...(_flujoEsConyugal() ? [{
       campo: 'cedulaConyuge', label: 'Cédula del cónyuge', modo: 'estricto',
       sources: [
         { tipo:'cedula-cony',   getValue:function(d){ return d.numeroCedula||''; } },
         { tipo:'papeleta-cony', getValue:function(d){ return d.numeroCedula||''; } }
       ]
-    },
-    {
-      campo: 'fechaSufragioProp', label: 'Fecha sufragio titular', modo: 'estricto',
-      sources: [
-        { tipo:'papeleta-prop', getValue:function(d){ return d.fechaSufragio||''; } }
-      ]
-    },
-    {
+    },{
       campo: 'fechaSufragioCony', label: 'Fecha sufragio cónyuge', modo: 'estricto',
       sources: [
         { tipo:'papeleta-cony', getValue:function(d){ return d.fechaSufragio||''; } }
+      ]
+    }] : []),
+    {
+      campo: 'fechaSufragioProp', label: juridica ? 'Fecha sufragio representante' : 'Fecha sufragio titular', modo: 'estricto',
+      sources: [
+        { tipo:'papeleta-prop', getValue:function(d){ return d.fechaSufragio||''; } }
       ]
     },
     {
@@ -5110,6 +5610,7 @@ function renderOriginBadge(origin){
 }
 
 window.onFieldEdit = function(input){
+  _invalidarValidacion();
   const tipo = input.dataset.tipo;
   const key  = input.dataset.key;
   if(datos[tipo]){
@@ -5131,6 +5632,7 @@ window.onFieldEdit = function(input){
   // Validar campo según sus reglas
   const val = input.value.trim();
   const fieldDefs = (
+    tipo==='ruc' ? camposRuc() :
     tipo==='cedula-prop' || tipo==='cedula-cony' ? camposCedula() :
     tipo==='cuv' ? camposCuv() :
     tipo==='matricula' ? camposMatricula() :
@@ -5194,6 +5696,17 @@ function normalizeHumanName(v, maxWords){
 function normalizeCedula10(v){
   const n = String(v||'').replace(/\D/g,'');
   return /^\d{10}$/.test(n) && validarCedulaEc(n) ? n : '';
+}
+function normalizeRuc13(v){
+  const n = String(v||'').replace(/\D/g,'');
+  return /^\d{13}$/.test(n) && n.slice(-3)==='001' ? n : '';
+}
+function normalizeIdentificacion(v){
+  return normalizeCedula10(v) || normalizeRuc13(v);
+}
+function normalizeCompanyName(v){
+  const t = trimUpper(v).replace(/[^A-Z0-9ÁÉÍÓÚÜÑ.&\-\s]/g,' ').replace(/\s+/g,' ').trim();
+  return t.length>=3 && t.length<=160 ? t : '';
 }
 function normalizeDactilar(v, cedula){
   const raw = trimUpper(v)
@@ -5282,6 +5795,11 @@ function normalizeFieldValue(key, value, allData){
       }
       return nm;
     case 'numeroCedula': return normalizeCedula10(v);
+    case 'numeroRuc': return normalizeRuc13(v);
+    case 'cedulaRepresentante': return normalizeCedula10(v);
+    case 'razonSocial':
+    case 'nombreComercial': return normalizeCompanyName(v);
+    case 'representanteLegal': return normalizeHumanName(v, 8);
     case 'codigoDactilar': return normalizeDactilar(v, allData && allData.numeroCedula);
     case 'fechaExpiracion': return normalizeDate(v);
     case 'estadoCivil': return normalizeEstadoCivil(v);
@@ -5298,7 +5816,7 @@ function normalizeFieldValue(key, value, allData){
     case 'propietario':
     case 'nombrePropietario': return normalizeHumanName(v, 8);
     case 'cedulaRuc':
-    case 'identificacionPropietario': return normalizeCedula10(v);
+    case 'identificacionPropietario': return normalizeIdentificacion(v);
     default: return v;
   }
 }
@@ -5502,11 +6020,14 @@ function setGeminiReadyModel(model){
   GEMINI_MODEL_ACTIVE = model;
   GEMINI_LAST_OK_MODEL = model;
   aiAvailable = true;
-  setAIBanner('ok', renderAIBannerModel(model));
+  setAIBanner('ok', 'IA lista: procesará los documentos con '+renderAIBannerModel(model));
+  try{
+    sessionStorage.setItem(GEMINI_SESSION_KEY, JSON.stringify({ model:model, savedAt:Date.now() }));
+  }catch(_){ }
 }
 function setGeminiUnavailable(){
   aiAvailable = false;
-  setAIBanner('err', 'IA no disponible');
+  setAIBanner('err', 'IA no disponible. Reintenta antes de procesar documentos.');
 }
 async function geminiGenerateWithFallback(body, opts){
   opts = opts || {};
@@ -5540,20 +6061,44 @@ async function geminiGenerateWithFallback(body, opts){
   throw new Error(lastErr || 'No se encontró un modelo Gemini disponible');
 }
 
-window.testAIConnection = async function(){
-  setAIBanner('checking','Verificando IA...');
-  try{
-    await refreshGeminiModelAvailability();
-    var result = await geminiGenerateWithFallback({
-      contents:[{ parts:[{ text:'Responde solo con: pong' }] }],
-      generationConfig:{ temperature:0, maxOutputTokens:10 }
-    }, { silent:true });
-    setGeminiReadyModel(result.model);
-    console.log('[IA] Modelo activo:', result.model);
-  }catch(err){
-    setGeminiUnavailable();
-    console.error('[IA] Todos los modelos fallaron:', err);
+window.testAIConnection = function(){
+  if(aiCheckPromise) return aiCheckPromise;
+  setAIBanner('checking','Verificando disponibilidad real de IA...');
+  aiCheckPromise = (async function(){
+    try{
+      var availableCount = await refreshGeminiModelAvailability();
+      if(!availableCount) throw new Error('El proxy no confirmó modelos disponibles');
+      var model = GEMINI_MODELS_FALLBACK.find(function(candidate){
+        var methods = GEMINI_AVAILABLE_METHODS[candidate] || [];
+        return GEMINI_AVAILABLE_MODELS.has(candidate) && methods.indexOf('generateContent') >= 0;
+      });
+      if(!model) throw new Error('No hay un modelo de documentos compatible con generateContent');
+      setGeminiReadyModel(model);
+      console.log('[IA] Disponibilidad confirmada. Modelo activo:', model);
+    }catch(err){
+      setGeminiUnavailable();
+      console.error('[IA] No se pudo confirmar disponibilidad:', err);
+    }finally{
+      aiAvailabilityChecked = true;
+    }
+  })().finally(function(){ aiCheckPromise = null; });
+  return aiCheckPromise;
+};
+
+window.initializeAIState = function(){
+  var cached = null;
+  try{ cached = JSON.parse(sessionStorage.getItem(GEMINI_SESSION_KEY) || 'null'); }catch(_){ }
+  if(cached && GEMINI_MODELS_FALLBACK.indexOf(cached.model) >= 0 &&
+     Date.now() - Number(cached.savedAt || 0) <= GEMINI_SESSION_TTL_MS){
+    GEMINI_MODEL_ACTIVE = cached.model;
+    GEMINI_LAST_OK_MODEL = cached.model;
+    aiAvailable = true;
+    aiAvailabilityChecked = true;
+    setAIBanner('ok', 'IA lista: procesará los documentos con '+renderAIBannerModel(cached.model));
+    return;
   }
+  aiAvailable = false;
+  return window.testAIConnection();
 };
 
 async function analizarConGemini(tipo, dataUrl){
@@ -5749,10 +6294,24 @@ function camposCedula(){
   ];
 }
 
+function camposRuc(){
+  return [
+    { key:'numeroRuc',             label:'Número de RUC',          validate:function(v){ return normalizeRuc13(v)?'ok':'warn'; }},
+    { key:'razonSocial',           label:'Razón social',           validate:function(v){ return normalizeCompanyName(v)?'ok':'warn'; }},
+    { key:'nombreComercial',       label:'Nombre comercial',       validate:function(v){ return String(v||'').trim()?'ok':'warn'; }},
+    { key:'estadoContribuyente',   label:'Estado contribuyente',   validate:function(v){ return String(v||'').trim()?'ok':'warn'; }},
+    { key:'regimen',               label:'Régimen tributario',      validate:function(v){ return String(v||'').trim()?'ok':'warn'; }},
+    { key:'direccionMatriz',       label:'Dirección matriz',       wide:true, validate:function(v){ return String(v||'').trim()?'ok':'warn'; }},
+    { key:'actividadEconomica',    label:'Actividad económica',    wide:true, validate:function(v){ return String(v||'').trim()?'ok':'warn'; }},
+    { key:'representanteLegal',    label:'Representante legal',    validate:function(v){ return !v || normalizeHumanName(v,8)?'ok':'warn'; }},
+    { key:'cedulaRepresentante',   label:'Cédula representante',   validate:function(v){ return !v || normalizeCedula10(v)?'ok':'warn'; }}
+  ];
+}
+
 function camposCuv(){
   return [
     { key:'placa',       label:'Placa',       validate:function(v){ return normalizePlaca(v)?'ok':'warn'; }},
-    { key:'cedula',      label:'Cédula de propietario', validate:function(v){ return validCed10(v)?'ok':'warn'; }},
+    { key:'cedula',      label:'Identificación de propietario', validate:function(v){ return normalizeIdentificacion(v)?'ok':'warn'; }},
     { key:'marca',       label:'Marca',       validate:function(v){ return normalizeMarca(v)?'ok':'warn'; }},
     { key:'modelo',      label:'Modelo',      validate:function(v){ return normalizeModelo(v)?'ok':'warn'; }},
     { key:'anio',        label:'Año',         validate:function(v){ return normalizeAnio(v)?'ok':'warn'; }},
@@ -5767,7 +6326,7 @@ function camposMatricula(){
   return [
     { key:'placa',       label:'Placa',                        validate:function(v){ return normalizePlaca(v)?'ok':'warn'; }},
     { key:'propietario', label:'Propietario',                  validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }},
-    { key:'cedulaRuc',   label:'Número de cédula propietario', validate:function(v){ return validCed10(v)?'ok':'warn'; }},
+    { key:'cedulaRuc',   label:'Identificación propietario', validate:function(v){ return normalizeIdentificacion(v)?'ok':'warn'; }},
     { key:'marca',       label:'Marca',                        validate:function(v){ return normalizeMarca(v)?'ok':'warn'; }},
     { key:'modelo',      label:'Modelo',                       validate:function(v){ return normalizeModelo(v)?'ok':'warn'; }},
     { key:'color',       label:'Color',                        validate:function(v){ return normalizeColor(v)?'ok':'warn'; }},
@@ -5858,6 +6417,7 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
    ══════════════════════════════════════════════════════════════ */
 function _docsCargadosCount(){
   var n = 0;
+  if(datos['ruc'])           n++;
   if(datos['cedula-prop'])   n++;
   if(datos['cedula-cony'])   n++;
   if(datos['cuv'])           n++;
@@ -5875,7 +6435,7 @@ function _hayImagenPegadaPendiente(tipo){
 }
 function _pendientesDeProcesar(){
   var pendientes = [];
-  ['cedula-prop','cedula-cony','matricula','notaria','papeleta-prop','papeleta-cony'].forEach(function(t){
+  ['ruc','cedula-prop','cedula-cony','matricula','notaria','papeleta-prop','papeleta-cony'].forEach(function(t){
     if(_hayImagenPegadaPendiente(t)) pendientes.push(t);
   });
   return pendientes;
@@ -5886,8 +6446,10 @@ function _refreshValidateAllBar(){
   var sub = document.getElementById('validateAllSub');
   if(!btn || !sub) return;
 
-  // Las papeletas, CUV y Notaría son opcionales.
-  var OBLIGATORIOS = ['cedula-prop', 'matricula'];
+  // En persona jurídica, CUV y Print de Notaría son opcionales.
+  var OBLIGATORIOS = flujoContrato.tipoPersona === 'juridica'
+    ? ['ruc', 'cedula-prop', 'papeleta-prop', 'matricula']
+    : (_flujoEsConyugal() ? ['cedula-prop', 'cedula-cony', 'matricula'] : ['cedula-prop', 'matricula']);
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
   function docCubierto(t){
@@ -5902,7 +6464,11 @@ function _refreshValidateAllBar(){
     btn.disabled = true;
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
-      sub.textContent = 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.';
+      sub.textContent = flujoContrato.tipoPersona === 'juridica'
+        ? 'Carga o pega los documentos obligatorios: RUC, Cédula del representante, Papeleta y Matrícula. CUV y Print de Notaría son opcionales.'
+        : (_flujoEsConyugal()
+          ? 'Carga o pega los documentos obligatorios: Cédula titular, Cédula del cónyuge y Matrícula.'
+          : 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.');
     } else {
       sub.textContent = 'Falta'+(faltantes.length>1?'n':'')+': '+labels.join(', ')+'.';
     }
@@ -5946,7 +6512,9 @@ function _mostrarValidateToast(nivel, titulo, sub){
 async function _procesarUnPendiente(tipo){
   setStatus(tipo, 'processing', 'Procesando...');
   try{
-    if(tipo === 'cedula-prop' || tipo === 'cedula-cony'){
+    if(tipo === 'ruc'){
+      await _procesarRucPaste();
+    } else if(tipo === 'cedula-prop' || tipo === 'cedula-cony'){
       await _procesarCedulaPaste(tipo);
     } else if(tipo === 'matricula'){
       await _procesarMatriculaPaste();
@@ -6032,6 +6600,9 @@ async function validarTodoEnConjunto(){
 
   _mostrarValidateToast(nivel, titulo, sub);
 
+  window._contratosValidacionCompletada = true;
+  window.dispatchEvent(new Event('contratos-validacion-completa'));
+
   var continuarBar = document.getElementById('continuarLiquidacionBar');
   if(continuarBar) continuarBar.style.display = 'flex';
 
@@ -6097,11 +6668,7 @@ async function validarTodoEnConjunto(){
   function _refreshGenerarContratosBar(){
     var bar = document.getElementById('generarContratosBar');
     if(!bar) return;
-    // Mostrar cuando haya al menos cédula propietario o matrícula procesados
-    // (CUV es opcional por ahora)
-    var d = datos;
-    var tieneMinimo = !!(d['cedula-prop'] || d['matricula']);
-    bar.style.display = tieneMinimo ? 'block' : 'none';
+    bar.style.display = window._contratosValidacionCompletada ? 'block' : 'none';
 
     var sub = document.getElementById('generarContratosSub');
     if(!sub) return;
@@ -6122,6 +6689,7 @@ async function validarTodoEnConjunto(){
     };
   }
   _refreshGenerarContratosBar();
+  window.addEventListener('contratos-validacion-completa', _refreshGenerarContratosBar);
 
   /* ── Modal ─────────────────────────────────────────────────── */
 
@@ -6174,9 +6742,13 @@ async function validarTodoEnConjunto(){
     if(!modal) return;
 
     // Llenar campos readonly con datos detectados
+    var juridica = flujoContrato.tipoPersona === 'juridica';
+    var rucData = datos.ruc || {};
     var nombreProp = _leerNombreProp();
     var ciProp     = _leerValorConsolidado('numeroCedula') || _leerValorConsolidado('cedulaRuc') || (datos['cuv']||{}).cedula || '';
-    var estadoCivilRaw = (datos['cedula-prop']||{}).estadoCivil || '';
+    var estadoCivilRaw = juridica
+      ? ((datos['cedula-prop']||{}).estadoCivil || '')
+      : (flujoContrato.estadoCivil || (datos['cedula-prop']||{}).estadoCivil || '');
     var estadoCivil = normalizeEstadoCivil(estadoCivilRaw) || String(estadoCivilRaw).toUpperCase();
     var placa      = _leerValorConsolidado('placa');
     var marca      = _leerValorConsolidado('marca');
@@ -6188,22 +6760,30 @@ async function validarTodoEnConjunto(){
     var nombreCony = _leerNombreCony();
     var ciCony     = ((datos['cedula-cony']||{}).numeroCedula) || '';
 
-    var esCasado = estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
-                || estadoCivil === 'UNION LIBRE' || estadoCivil === 'UNIÓN LIBRE'
-                || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO';
+    var esCasado = !juridica && (estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
+                 || estadoCivil === 'UNION LIBRE' || estadoCivil === 'UNIÓN LIBRE'
+                 || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO');
 
-    var roHtml = [
-      { label:'Propietario', val: nombreProp },
-      { label:'Cédula',      val: ciProp },
-      { label:'Estado civil',val: estadoCivil || '—' },
+    var roHtml = juridica ? [
+      { label:'Razón social', val:rucData.razonSocial || '' },
+      { label:'RUC', val:rucData.numeroRuc || '' },
+      { label:'Representante legal', val:nombreProp },
+      { label:'Cédula representante', val:ciProp },
+      { label:'Estado civil representante', val:estadoCivil || '—' }
+    ] : [
+      { label:'Propietario', val:nombreProp },
+      { label:'Cédula', val:ciProp },
+      { label:'Estado civil', val:estadoCivil || '—' }
+    ];
+    roHtml = roHtml.concat([
       { label:'Placa',       val: placa },
       { label:'Marca',       val: marca },
       { label:'Modelo',      val: modelo },
       { label:'Año',         val: anio },
       { label:'Color',       val: color },
       { label:'Chasis',      val: chasis },
-      { label:'Motor',       val: motor },
-    ];
+      { label:'Motor',       val: motor }
+    ]);
     if(esCasado){
       roHtml.push({ label:'Cónyuge', val: nombreCony });
       roHtml.push({ label:'C.C. Cónyuge', val: ciCony });
@@ -6276,7 +6856,6 @@ async function validarTodoEnConjunto(){
     var fechaDia  = (document.getElementById('genFechaDia').value||'').trim();
     var fechaMes  = (document.getElementById('genFechaMes').value||'').trim();
     var fechaAnio = (document.getElementById('genFechaAnio').value||'').trim();
-
     if(!km){
       errorEl.textContent = 'El kilometraje es obligatorio.';
       errorEl.style.display = 'block';
@@ -6310,7 +6889,7 @@ async function validarTodoEnConjunto(){
 
     try{
       // 1️⃣ Generar y descargar los .docx
-      generarContratos(extra);
+      var generationResult = generarContratos(extra);
 
       // 2️⃣ Guardar automáticamente en la hoja de cálculo (2x1)
       btn.innerHTML = '💾 Guardando en hoja...';
@@ -6346,7 +6925,12 @@ async function validarTodoEnConjunto(){
         } else if(driveResult && !driveResult.ok){
           driveLine = '<div style="margin-top:8px;font-size:12px;color:#92400e">⚠ Drive: '+(driveResult.message||'no se pudo subir')+'</div>';
         }
-        errorEl.innerHTML = '✓ Contratos descargados y datos guardados (placa '+saveResult.placa+').'
+        var generationLine = generationResult && generationResult.pendienteEncargoJuridico
+          ? '<div style="margin-top:8px;font-size:12px;color:#92400e">Pendiente: falta suministrar el formato de Encargo Fiduciario para persona jurídica.</div>'
+          : '';
+        var totalGenerados = generationResult && generationResult.generados ? generationResult.generados.length : 0;
+        errorEl.innerHTML = '✓ '+totalGenerados+' documento(s) descargado(s) y datos guardados (placa '+saveResult.placa+').'
+          + generationLine
           + driveLine
           + '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
           + '<button type="button" id="btnContinuarLiquidacion" '
@@ -6440,6 +7024,10 @@ async function validarTodoEnConjunto(){
   }
 
   function _nombreProp(){
+    if(flujoContrato.tipoPersona === 'juridica'){
+      var ruc = datos.ruc || {};
+      return String(ruc.razonSocial || ruc.nombreComercial || '').toUpperCase();
+    }
     var el = document.querySelector('[data-field="propietario"]');
     if(el && el.value && el.value.trim()) return el.value.trim().toUpperCase();
     var ced = datos['cedula-prop'] || {};
@@ -6457,12 +7045,15 @@ async function validarTodoEnConjunto(){
   }
 
   function _ciProp(){
+    if(flujoContrato.tipoPersona === 'juridica') return (datos.ruc||{}).numeroRuc || '';
     var ced = datos['cedula-prop'] || {};
     return ced.numeroCedula || ced.cedulaRuc || (datos['cuv']||{}).cedula || (datos['matricula']||{}).cedulaRuc || '';
   }
 
   function _estadoCivil(){
-    var valor = (datos['cedula-prop']||{}).estadoCivil || '';
+    var valor = flujoContrato.tipoPersona === 'natural'
+      ? (flujoContrato.estadoCivil || (datos['cedula-prop']||{}).estadoCivil || '')
+      : ((datos['cedula-prop']||{}).estadoCivil || '');
     return normalizeEstadoCivil(valor) || String(valor).toUpperCase();
   }
 
@@ -6492,11 +7083,21 @@ async function validarTodoEnConjunto(){
       propietario:        _nombreProp(),
       cedulaPropietario:  _ciProp(),
       estadoCivil:        _estadoCivil(),
+      tipoOperacion:      flujoContrato.operacion,
+      tipoPersona:        flujoContrato.tipoPersona,
+      razonSocial:        (datos.ruc||{}).razonSocial || '',
+      ruc:                (datos.ruc||{}).numeroRuc || '',
+      representanteLegal: flujoContrato.tipoPersona === 'juridica'
+        ? (((datos['cedula-prop']||{}).apellidos||'')+' '+((datos['cedula-prop']||{}).nombres||'')).trim().toUpperCase()
+        : '',
+      cedulaRepresentante: flujoContrato.tipoPersona === 'juridica'
+        ? ((datos['cedula-prop']||{}).numeroCedula || '') : '',
       riesgoValidacion:   vc.nivel,
       resumenValidacion:  vc.resumen,
       asesor:             auth.user || auth.displayName || '',
 
       // Datos completos extraídos de cada documento
+      ruc_doc:       datos.ruc || null,
       cedula_prop:  datos['cedula-prop']  || null,
       cedula_cony:  datos['cedula-cony']  || null,
       cuv:          datos['cuv']          || null,
@@ -6824,7 +7425,7 @@ async function validarTodoEnConjunto(){
         var dataUrl = await _fileToDataUrl(f);
         if(tipo === 'cuv'){
           window._cuvOriginalBase64 = dataUrl;
-        } else if(tipo === 'cedula-prop' || tipo === 'cedula-cony'
+        } else if(tipo === 'ruc' || tipo === 'cedula-prop' || tipo === 'cedula-cony'
                  || tipo === 'matricula' || tipo === 'notaria'){
           var pi = window.pastedImages;
           if(pi){
@@ -6902,7 +7503,8 @@ async function validarTodoEnConjunto(){
       } catch(e){ console.warn('[Drive] PDF '+nombrePdf+' falló:', e); }
     }
 
-    await _addImgDoc('cedula-prop',   'CEDULA TITULAR.pdf');
+    await _addImgDoc('ruc',           'RUC EMPRESA.pdf');
+    await _addImgDoc('cedula-prop',   window._contratosFlujo && window._contratosFlujo.tipoPersona === 'juridica' ? 'CEDULA REPRESENTANTE LEGAL.pdf' : 'CEDULA TITULAR.pdf');
     await _addImgDoc('cedula-cony',   'CEDULA CONYUGE.pdf');
     await _addImgDoc('matricula',     'MATRICULA.pdf');
     await _addImgDoc('notaria',       'NOTARIA.pdf');

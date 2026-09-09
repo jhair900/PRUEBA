@@ -729,21 +729,13 @@
         <div class="exp-pill" data-step="liquidacion" data-target="liquidacion">
           <span class="exp-pill-num">2</span>
           <div>
-            <div class="exp-pill-title">Liquidación + Contratos</div>
-            <div class="exp-pill-sub">—</div>
-          </div>
-          <span class="exp-pill-state">·</span>
-        </div>
-        <div class="exp-pill" data-step="firmas" data-target="firmas">
-          <span class="exp-pill-num">3</span>
-          <div>
-            <div class="exp-pill-title">Firmas electrónicas</div>
+            <div class="exp-pill-title">Liquidación</div>
             <div class="exp-pill-sub">—</div>
           </div>
           <span class="exp-pill-state">·</span>
         </div>
         <div class="exp-pill" data-step="pagos" data-target="pagos">
-          <span class="exp-pill-num">4</span>
+          <span class="exp-pill-num">3</span>
           <div>
             <div class="exp-pill-title">Pagos (aprobación final)</div>
             <div class="exp-pill-sub">—</div>
@@ -789,7 +781,7 @@
                 </svg>
               </div>
               <h2>Validación de Documentación</h2>
-              <p>Valida tus documentos y genera contratos y liquidación.</p>
+              <p>Valida los documentos y genera los contratos correspondientes.</p>
               <div class="actions">
                 <button type="button" class="btn red" onclick="abrirLogin('contratos')">
                   <span>INGRESAR</span>
@@ -798,20 +790,21 @@
               </div>
             </section>
 
-            <!-- 2) Firmas Digitales → firmas.html -->
+            <!-- 2) Liquidaciones → liquidacion.html -->
             <section class="card gray">
               <div class="icon-ring">
-                <svg class="icon-svg icon-firmas" viewBox="0 0 64 64" aria-hidden="true">
-                  <!-- Pluma firmando -->
-                  <path d="M40 12l12 12-26 26-14 4 4-14L40 12z" class="stroke-main"></path>
-                  <path d="M36 16l12 12" class="stroke-main"></path>
-                  <path d="M10 56h44" class="stroke-main"></path>
+                <svg class="icon-svg icon-liquidaciones" viewBox="0 0 64 64" aria-hidden="true">
+                  <rect x="12" y="8" width="40" height="48" rx="5" class="stroke-main"></rect>
+                  <line x1="20" y1="22" x2="44" y2="22" class="stroke-main"></line>
+                  <line x1="20" y1="32" x2="38" y2="32" class="stroke-main"></line>
+                  <circle cx="42" cy="43" r="9" class="accent"></circle>
+                  <path d="M39 43h6M42 39v8" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"></path>
                 </svg>
               </div>
-              <h2>Firmas Digitales</h2>
-              <p>Genera los datos y descarga los documentos para la firma.</p>
+              <h2>Liquidaciones</h2>
+              <p>Prepara, revisa y guarda la liquidación del vehículo.</p>
               <div class="actions">
-                <button type="button" class="btn silver" onclick="abrirLogin('firmas')">
+                <button type="button" class="btn silver" onclick="abrirLogin('liquidacion')">
                   <span>INGRESAR</span>
                   <span class="arrow">›</span>
                 </button>
@@ -921,7 +914,7 @@
       </div>
     </section>
 
-    <div class="footer-note">AUTOCOR · Inicio de módulos &nbsp;·&nbsp; <span style="opacity:.6;">v4.8</span></div>
+    <div class="footer-note">AUTOCOR · Inicio de módulos &nbsp;·&nbsp; <span style="opacity:.6;">v4.9</span></div>
   </main>
 
   <!-- ── Modal login compartido ───────────────────────────────── -->
@@ -994,8 +987,7 @@
       liquidacion: { nombre: 'Liquidaciones', url: 'liquidacion.html' },
       pagos:       { nombre: 'Pagos',         url: 'pagos.html'       },
       ventas:      { nombre: 'Ventas',         url: 'ventas.html'      },
-      contratos:   { nombre: 'Contratos',      url: 'contratos.html'   },
-      firmas:      { nombre: 'Firmas',         url: 'firmas.html'      }
+      contratos:   { nombre: 'Contratos',      url: 'contratos.html'   }
     };
 
     let moduloActivo = null; // clave del módulo que inició el login
@@ -1174,11 +1166,6 @@
         _pintarPill('liquidacion', est.liquidacion, est._liquidacion,
                     'liquidación guardada', 'sin liquidación');
 
-        // Firmas: ok si el estado del expediente ya pasó por firma
-        const yaFirmado = idxActual >= Expediente.indiceEstado('FIRMADO');
-        const enFirma   = idxActual === Expediente.indiceEstado('PENDIENTE_FIRMA');
-        _pintarPillFirmas(yaFirmado, enFirma);
-
         // Pagos: el color y la etiqueta vienen del DICTAMEN LEGAL FINAL
         _pintarPillPagos(est._pagos, idxActual);
 
@@ -1188,28 +1175,6 @@
       } catch(e){
         err.textContent = 'No se pudo consultar el expediente: '+(e.message||e);
         err.style.display = 'block';
-      }
-    }
-
-    /* Firmas: ya firmado = verde, en proceso = amarillo, sino pendiente */
-    function _pintarPillFirmas(yaFirmado, enFirma){
-      const pill = document.querySelector('.exp-pill[data-step="firmas"]');
-      if(!pill) return;
-      const sub = pill.querySelector('.exp-pill-sub');
-      const state = pill.querySelector('.exp-pill-state');
-      pill.classList.remove('ok','pending','warn','err');
-      if(yaFirmado){
-        pill.classList.add('ok');
-        state.textContent = 'Firmado';
-        sub.textContent = 'expediente firmado';
-      } else if(enFirma){
-        pill.classList.add('warn');
-        state.textContent = 'En proceso';
-        sub.textContent = 'enviado a firma digital';
-      } else {
-        pill.classList.add('pending');
-        state.textContent = 'Pendiente';
-        sub.textContent = 'sin firma';
       }
     }
 

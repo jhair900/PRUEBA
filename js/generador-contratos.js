@@ -76,6 +76,9 @@
 
   function recopilarDatos(extra){
     var datos = global._contratosData || {};
+    var flujo = global._contratosFlujo || {};
+    var esJuridica = flujo.tipoPersona === 'juridica';
+    var ruc  = datos['ruc']          || {};
     var ced  = datos['cedula-prop'] || {};
     var cony = datos['cedula-cony'] || {};
     var cuv  = datos['cuv']         || {};
@@ -113,7 +116,7 @@
     var motor   = pick('motor', 'numeroMotor');
 
     var estadoCivil = normalizarEstadoCivil(
-      ced.estadoCivil || cuv.estadoCivil || matr.estadoCivil || ''
+      (!esJuridica && flujo.estadoCivil) || ced.estadoCivil || cuv.estadoCivil || matr.estadoCivil || ''
     );
     var nacionalidad = normalizarNombre(
       ced.nacionalidad || cuv.nacionalidad || matr.nacionalidad || 'ECUATORIANA'
@@ -141,7 +144,10 @@
     var valorText = valorNum ? valorATexto(parseFloat(valorNum)||0) : '';
     var valorDisp = (extra.valorNum  || '').replace('.',','); // mostrar con coma decimal
 
-    var nombrePropFmt = nombreProp || '___________________';
+    var representanteLegal = nombreProp || ruc.representanteLegal || '';
+    var razonSocial = normalizarNombre(ruc.razonSocial || ruc.nombreComercial || '');
+    var numeroRuc = ruc.numeroRuc || '';
+    var nombrePropFmt = esJuridica ? (razonSocial || '___________________') : (nombreProp || '___________________');
     return {
       NOMBRE_PROP:          nombrePropFmt,
       CI_PROP:              ciProp     || '___________',
@@ -181,6 +187,13 @@
       FECHA_CONTRATO_MES:   extra.fechaMes  || fecha.mes,
       FECHA_CONTRATO_ANIO:  extra.fechaAnio || fecha.anio,
       ESTADO_CIVIL_PROP_MINUSCULA: (estadoCivil || '___________').toLowerCase(),
+      RAZON_SOCIAL:         razonSocial         || '___________________',
+      RUC:                  numeroRuc           || '_____________',
+      REPRESENTANTE_LEGAL: representanteLegal  || '___________________',
+      CI_REPRESENTANTE:     ciProp              || '___________',
+      ESTADO_CIVIL_REP:     estadoCivil         || '___________',
+      TIPO_OPERACION:       flujo.operacion     || 'compra_directa',
+      TIPO_PERSONA:         flujo.tipoPersona   || 'natural',
     };
   }
 
@@ -245,25 +258,36 @@
       throw new Error('Faltan librerías PizZip / Docxtemplater. Verifica la conexión a internet para cargar las CDN.');
     }
 
-    var vars   = recopilarDatos(extra);
-    var casado = esPlantillaCasados(vars.ESTADO_CIVIL_PROP);
-    var encKey = casado ? 'encargo-casado' : 'encargo-soltero';
-    var preKey = casado ? 'prestacion-casado' : 'prestacion-soltero';
-    if(!templates[encKey] || !templates[preKey]){
-      throw new Error('No se encontraron las plantillas Dilileg para el estado civil seleccionado.');
+    var vars      = recopilarDatos(extra);
+    var juridica  = vars.TIPO_PERSONA === 'juridica';
+    var comision  = vars.TIPO_OPERACION === 'comision';
+    var casado    = !juridica && esPlantillaCasados(vars.ESTADO_CIVIL_PROP);
+    var encKey    = juridica ? 'encargo-juridica' : (casado ? 'encargo-casado' : 'encargo-soltero');
+    var preKey;
+    if(juridica){
+      preKey = comision ? 'prestacion-juridica-comision' : 'prestacion-juridica-directa';
+    }else if(comision){
+      preKey = casado ? 'prestacion-comision-casado' : 'prestacion-comision-soltero';
+    }else{
+      preKey = casado ? 'prestacion-casado' : 'prestacion-soltero';
+    }
+    if(!templates[preKey] || (!juridica && !templates[encKey])){
+      throw new Error('No se encontraron las plantillas Dilileg para el flujo seleccionado.');
     }
     var fecha  = vars.FECHA_DIA+'-'+vars.FECHA_MES.substring(0,3).toUpperCase()+'-'+vars.FECHA_ANIO;
     var placa  = vars.PLACA.replace(/[^A-Z0-9]/gi,'') || 'CONTRATO';
 
-    console.log('[Contratos] Generando para', vars.NOMBRE_PROP, '| Estado civil:', vars.ESTADO_CIVIL_PROP, '| Plantilla encargo:', encKey);
+    console.log('[Contratos] Generando para', vars.NOMBRE_PROP, '| Persona:', vars.TIPO_PERSONA, '| Operación:', vars.TIPO_OPERACION, '| Prestación:', preKey);
 
     var generados = [];
 
-    // 1. Encargo Fiduciario
-    var bufEnc = generarDocx(templates[encKey], vars);
-    var nomEnc = 'Encargo_Fiduciario_'+placa+'_'+fecha+'.docx';
-    descargarDocx(bufEnc, nomEnc);
-    generados.push({ tipo:'encargo', nombre: nomEnc, buffer: bufEnc, casado: casado });
+    // 1. Encargo Fiduciario correspondiente al tipo de persona.
+    if(templates[encKey]){
+      var bufEnc = generarDocx(templates[encKey], vars);
+      var nomEnc = 'Encargo_Fiduciario_'+placa+'_'+fecha+'.docx';
+      descargarDocx(bufEnc, nomEnc);
+      generados.push({ tipo:'encargo', nombre: nomEnc, buffer: bufEnc, casado: casado });
+    }
 
     // 2. Contrato Prestación de Servicios
     var bufPre = generarDocx(templates[preKey], vars);
@@ -274,7 +298,13 @@
     // Exponer los buffers para que contratos.html pueda subirlos a Drive
     try { global._contratosGenerados = { placa: placa, fecha: fecha, generados: generados }; } catch(_){}
 
-    return { encargo: encKey, vars: vars, generados: generados };
+    return {
+      encargo: templates[encKey] ? encKey : null,
+      prestacion: preKey,
+      pendienteEncargoJuridico: juridica && !templates[encKey],
+      vars: vars,
+      generados: generados
+    };
   }
 
   /* Convierte un buffer .docx (Uint8Array) a base64 sin prefijo data: */

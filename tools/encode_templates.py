@@ -15,8 +15,13 @@ output_path   = os.path.join(ROOT, "js", "contrato-templates.js")
 template_files = {
     "encargo-soltero":  os.path.join(templates_dir, "encargo-soltero.docx"),
     "encargo-casado":   os.path.join(templates_dir, "encargo-casado.docx"),
+    "encargo-juridica": os.path.join(templates_dir, "encargo-juridica.docx"),
     "prestacion-soltero": os.path.join(templates_dir, "prestacion-soltero.docx"),
     "prestacion-casado":  os.path.join(templates_dir, "prestacion-casado.docx"),
+    "prestacion-comision-soltero": os.path.join(templates_dir, "prestacion-comision-soltero.docx"),
+    "prestacion-comision-casado": os.path.join(templates_dir, "prestacion-comision-casado.docx"),
+    "prestacion-juridica-directa": os.path.join(templates_dir, "prestacion-juridica-directa.docx"),
+    "prestacion-juridica-comision": os.path.join(templates_dir, "prestacion-juridica-comision.docx"),
 }
 
 encoded = {}
