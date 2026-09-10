@@ -103,10 +103,12 @@ No requiere servidor — abre `index.html` con doble clic.
 
 1. Copiar **todo** `gas/script.gs` al proyecto de Apps Script existente.
 2. En Gestionar implementaciones, editar el despliegue existente y elegir **Nueva versión**. Mantener la misma URL `/exec`.
-3. Publicar juntos los HTML y la carpeta `js/` actualizados, incluidos `js/gemini-client.js` y `js/record-conflict.js`. Cerrar las pestañas antiguas y volver a abrir la aplicación.
+3. Publicar juntos los HTML y la carpeta `js/` actualizados, incluido `js/gemini-client.js`. Cerrar las pestañas antiguas y volver a abrir la aplicación.
 4. Comprobar con una cuenta normal y una administradora: login, búsqueda y actualización en los cuatro módulos, administración de usuarios, extracción con IA y expediente Drive.
 
-El backend nuevo rechaza actualizaciones de registros existentes que no incluyan la revisión obtenida al buscarlos. Los clientes antiguos deben actualizarse. Un registro nuevo puede guardarse directamente; para editar uno existente conviene buscar primero su placa. Si el registro existe o cambió, aparece una comparación de la versión guardada y el formulario. Cancelar conserva el formulario sin guardar; Reemplazar requiere una decisión explícita y vuelve a comprobar que la versión comparada no haya cambiado. La aplicación no fusiona automáticamente formularios de dos usuarios.
+Los cuatro modulos permiten reprocesar y sobrescribir una placa existente sin comparar versiones ni pedir confirmacion de reemplazo. El ultimo guardado recibido actualiza la misma fila; si la placa no existe, se crea. El bloqueo del servidor protege la busqueda y escritura frente a guardados simultaneos. Los reintentos automaticos de una misma solicitud conservan su identificador.
+
+Para quitar el bloqueo en el sitio publicado es indispensable actualizar **todo `gas/script.gs` y desplegar una Nueva version** del Apps Script existente; actualizar solo los HTML no elimina la comprobacion del servidor. Despues publicar los HTML y `js/api-client.js` actualizados.
 
 ### Cambios incluidos
 
@@ -114,8 +116,8 @@ El backend nuevo rechaza actualizaciones de registros existentes que no incluyan
 - `setupUsers` no se puede ejecutar por web. `crearUsuariosAhora()` es una operación manual del editor que solo agrega usuarios faltantes y nunca restablece los existentes.
 - En una instalación nueva, el propietario configura `INITIAL_ADMIN_PASSWORD` (mínimo 12 caracteres) en Script Properties antes de ejecutar `crearUsuariosAhora()`. Esa clave permite entrar como el administrador inicial JSANCHEZ; la propiedad se elimina al terminar. Los demás usuarios reciben claves aleatorias y el administrador debe asignarles claves temporales desde la aplicación. En una instalación existente no es necesario ejecutar esta inicialización.
 - El proxy de Gemini exige sesión y recibe `{sessionToken, request}` por POST. Solo `request` se reenvía a Gemini. Su cliente está separado en `js/gemini-client.js`.
-- Las escrituras pasan por un bloqueo de Apps Script. Los guardados de los cuatro módulos comparan la revisión leída y utilizan un identificador para reconocer reintentos de la misma operación.
-- Los cambios de estado y los archivos de Drive se preservan al guardar contratos y no generan conflictos falsos con el formulario.
+- Las escrituras pasan por un bloqueo de Apps Script. Los guardados de los cuatro módulos sobrescriben por placa y utilizan un identificador para reconocer reintentos de la misma operación.
+- Los cambios de estado y los archivos de Drive se preservan al guardar contratos.
 - Las operaciones que no tienen protección contra repetición ya no se reintentan automáticamente. Los errores HTTP y de API se propagan al llamador.
 - Se unifica el mínimo de contraseña en seis caracteres y se rechazan fechas de expiración inválidas. Al cambiar la contraseña se cierra la sesión local, porque el servidor invalida el token.
 - Se retira de `auth-ui.js` la limpieza heurística que podía eliminar nombres legítimos del formulario.

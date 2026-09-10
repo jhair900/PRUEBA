@@ -80,43 +80,45 @@ function backend() {
     assert.equal(b.fetches(), 1);
   });
   for (const [save, get] of [['save', 'getByPlaca'], ['savePago', 'getPagoByPlaca'], ['saveVenta', 'getVentaByPlaca'], ['saveContrato', 'getContratoByPlaca']]) {
-    await test(save + ': crear, leer, actualizar, rechazar edicion antigua y repetir sin duplicar', () => {
+    await test(save + ': reprocesar sin revision sobrescribe una sola fila y el reintento no duplica', () => {
       const b = backend(), {ctx} = b;
-      const first = ctx.handleAction_(save, {sessionToken: 'user', data: {placa: 'ABC123'}, requestId: 'one'});
+      const data = {placa: 'ABC123', cliente: 'Inicial'};
+      const first = ctx.handleAction_(save, {sessionToken: 'user', data, requestId: 'one'});
       assert.equal(first.ok, true, first.message);
-      const loaded = ctx.handleAction_(get, {sessionToken: 'user', placa: 'ABC123'});
-      assert.equal(loaded.revision, first.revision);
-      const request = {sessionToken: 'user', data: {placa: 'ABC123', cliente: 'Nuevo'}, expectedRevision: loaded.revision, requestId: 'two'};
+      const request = {sessionToken: 'user', data: {...data, cliente: 'Reprocesado'}, requestId: 'two'};
       const second = ctx.handleAction_(save, request);
       assert.equal(second.ok, true, second.message);
-      assert.notEqual(second.revision, first.revision);
-      assert.equal(ctx.handleAction_(save, {...request, data: {placa: 'ABC123'}, requestId: 'stale'}).code, 'CONFLICT');
-      assert.equal(ctx.handleAction_(save, {sessionToken: 'user', data: {placa: 'ABC123'}}).code, 'CONFLICT');
-      assert.equal(ctx.handleAction_(save, request).revision, second.revision);
+      assert.equal(second.updated, true);
+      assert.equal(ctx.handleAction_(save, request).data.cliente, 'Reprocesado');
+      // Una revision antigua enviada por una pestaña previa tampoco debe bloquear.
+      const third = ctx.handleAction_(save, {sessionToken: 'admin', data: {...data, cliente: 'Ultimo'}, expectedRevision: 'antigua', requestId: 'three'});
+      assert.equal(third.ok, true, third.message);
+      assert.equal(ctx.handleAction_(get, {sessionToken: 'user', placa: 'ABC123'}).data.cliente, 'Ultimo');
       assert.equal(b.rows.length, 1);
-      assert.equal(b.releases(), 5);
+      assert.equal(b.releases(), 4);
       b.block();
       assert.equal(ctx.handleAction_(save, request).code, 'BUSY');
+      assert.equal(b.rows.length, 1);
     });
   }
   await test('Guardar contrato conserva historial de estados y archivos existentes', () => {
     const {ctx} = backend();
     const first = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC', historialEstados: [{estado: 'VALIDADO'}], expedienteDrive: {url: 'file'}}});
-    const second = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC'}, expectedRevision: first.revision});
+    const second = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC'}});
     assert.equal(second.data.historialEstados.length, 1);
     assert.equal(second.data.expedienteDrive.url, 'file');
   });
-  await test('Cambiar estado no provoca conflicto falso ni pierde el historial al guardar', () => {
+  await test('Reprocesar despues de cambiar estado conserva historial y archivos', () => {
     const {ctx} = backend();
     const first = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC', drive: {folderId: 'original'}}});
     assert.equal(ctx.handleAction_('setEstadoProceso', {sessionToken: 'user', placa: 'ABC', estado: 'CONTRATADO', observacion: 'Generado'}).ok, true);
-    const second = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC', drive: {}, historialEstados: []}, expectedRevision: first.revision});
+    const second = ctx.handleAction_('saveContrato', {sessionToken: 'user', data: {placa: 'ABC', drive: {}, historialEstados: []}});
     assert.equal(second.ok, true, second.message);
     assert.equal(second.data.estadoProceso, 'CONTRATADO');
     assert.equal(second.data.historialEstados.length, 1);
     assert.equal(second.data.drive.folderId, 'original');
   });
-  await test('Cliente envia token, revision y reutiliza ID despues de perder una respuesta', async () => {
+  await test('Cliente guarda sin revision y reutiliza ID despues de perder una respuesta', async () => {
     const calls = []; let fail = true;
     const context = vm.createContext({console, AbortController, setTimeout: fn => { queueMicrotask(fn); return 1; }, clearTimeout() {}, window: {crypto, localStorage: {getItem: () => '{"token":"user"}'}}, fetch: async (_, init) => {
       const body = JSON.parse(init.body); calls.push(body);
@@ -128,12 +130,12 @@ function backend() {
     await api.postJson('https://example.test', {action: 'getByPlaca', placa: 'ABC'});
     await api.postJson('https://example.test', {action: 'save', data: {placa: 'ABC'}});
     assert.equal(calls[1].sessionToken, 'user');
-    assert.equal(calls[1].expectedRevision, 'r1');
+    assert.equal(calls[1].expectedRevision, undefined);
     assert.equal(calls[1].requestId, calls[2].requestId);
     await api.postJson('https://example.test', {action: 'save', data: {placa: 'ABC'}});
-    assert.equal(calls[3].expectedRevision, 'r2');
+    assert.equal(calls[3].expectedRevision, undefined);
     await api.postJson('https://example.test', {action: 'save', data: {placa: 'OTHER'}});
-    assert.equal(calls[4].expectedRevision, null);
+    assert.equal(calls[4].expectedRevision, undefined);
   });
   await test('Cliente de IA exige login y usa POST incluso para listar modelos', async () => {
     let token = '', sent;
@@ -152,29 +154,14 @@ function backend() {
     assert.equal(JSON.parse(sent.body).sessionToken, token);
     assert.equal(sent.headers['Content-Type'], 'text/plain;charset=utf-8');
   });
-  for (const approve of [false, true]) {
-    await test('Conflicto: ' + (approve ? 'reemplazo explicito usa la revision revisada' : 'cancelar no escribe ni reintenta'), async () => {
-      for (const throwOnApiError of [false, true]) {
-        const calls = []; let reviews = 0;
-        const context = vm.createContext({console, AbortController, setTimeout, clearTimeout,
-          window: {crypto, localStorage: {getItem: () => '{"token":"user"}'}, AutoCorConflict: {review: async (current, next) => {
-            reviews++; assert.equal(current.cliente, 'Actual'); assert.equal(next.cliente, 'Propuesto'); return approve;
-          }}},
-          fetch: async (_, init) => {
-            const body = JSON.parse(init.body); calls.push(body);
-            const value = calls.length === 1 ? {ok: false, code: 'CONFLICT', currentRevision: 'reviewed', currentData: {cliente: 'Actual'}} : {ok: true, revision: 'saved'};
-            return {ok: true, status: 200, text: async () => JSON.stringify(value)};
-          }
-        });
-        vm.runInContext(fs.readFileSync(path.join(root, 'js/api-client.js'), 'utf8'), context);
-        const work = context.window.AutoCorApi.postJson('https://example.test', {action: 'save', data: {placa: 'ABC', cliente: 'Propuesto'}}, {throwOnApiError});
-        if(!approve && throwOnApiError) await assert.rejects(work, err => err.code === 'CONFLICT');
-        else assert.equal((await work).ok, approve);
-        assert.equal(reviews, 1);
-        assert.equal(calls.length, approve ? 2 : 1);
-        if(approve) assert.equal(calls[1].expectedRevision, 'reviewed');
-      }
-    });
-  }
+  await test('Ninguna pagina carga el aviso de reemplazo y el servidor no bloquea por revision', () => {
+    assert.ok(!source.includes("code: 'CONFLICT'"));
+    assert.ok(!source.includes('payload.expectedRevision'));
+    for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(root, f), 'utf8');
+      assert.ok(!html.includes('js/record-conflict.js'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260911-reprocesos-1'), f);
+    }
+  });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});

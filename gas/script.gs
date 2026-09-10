@@ -136,19 +136,14 @@ function ensureActionResources_(action) {
   }
 }
 
-// Las escrituras de Sheets comparten un bloqueo; el guardado valida la revision leida.
+// Reprocesos: guardar actualiza la misma placa. El ultimo guardado recibido prevalece.
+// El bloqueo mantiene atomica la busqueda de la placa y su escritura.
 const RECORD_ACTIONS = {
   save: [SHEET_NAME, 8], getByPlaca: [SHEET_NAME, 8],
   savePago: [PAYMENTS_SHEET, 6], getPagoByPlaca: [PAYMENTS_SHEET, 6],
   saveVenta: [VENTAS_SHEET, 6], getVentaByPlaca: [VENTAS_SHEET, 6],
   saveContrato: [CONTRATOS_SHEET, 8], getContratoByPlaca: [CONTRATOS_SHEET, 8]
 };
-// El estado y los archivos tienen operaciones propias; no invalidan un formulario abierto.
-function recordRevision_(data) {
-  const editable = Object.assign({}, data);
-  ['historialEstados', 'estadoProceso', 'estadoActualizadoEn', 'estadoActualizadoPor', 'observacionEstado', 'drive'].forEach(function(key) { delete editable[key]; });
-  return hashPassword_(JSON.stringify(editable));
-}
 function handleAction_(action, payload) {
   payload = payload || {};
   const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$|subirExpedienteDrive$)/.test(action);
@@ -166,18 +161,11 @@ function handleAction_(action, payload) {
       const row = sheet ? findRowByPlaca_(sheet, placa) : 0;
       const stored = row ? JSON.parse(sheet.getRange(row, spec[1]).getValue() || '{}') : null;
       if (stored && payload.requestId && stored._requestId === payload.requestId && stored._requestUser === session.user) {
-        return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: stored, revision: recordRevision_(stored), estadoProceso: stored.estadoProceso };
-      }
-      if ((stored ? recordRevision_(stored) : null) !== (payload.expectedRevision || null)) {
-        return { ok: false, code: 'CONFLICT', currentData: stored, currentRevision: stored ? recordRevision_(stored) : null, message: 'El registro ya existe o cambio desde que lo abriste. Conserva tus cambios, vuelve a buscar la placa y revisa la version actual antes de guardar.' };
+        return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: stored, estadoProceso: stored.estadoProceso };
       }
       payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid(), _requestUser: session.user });
     }
     const result = dispatchAction_(action, payload);
-    if (spec && result.ok && result.data) {
-      result.revision = saving ? recordRevision_(result.data) : result._storedRevision;
-      delete result._storedRevision;
-    }
     return result;
   } catch (err) {
     return { ok: false, message: 'Error al procesar la solicitud: ' + err.message };
@@ -913,7 +901,6 @@ function getByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 8).getValue();
     const data = JSON.parse(json || '{}');
-    const storedRevision = recordRevision_(data);
 
     const history = buildHistory_(data, {}, null);
     data.historialUsuarios = history;
@@ -923,7 +910,6 @@ function getByPlaca_(placa, session, sheetOverride) {
 
     return {
       ok: true,
-      _storedRevision: storedRevision,
       data: data,
       openedBy: session.user
     };
@@ -1051,7 +1037,6 @@ function getPagoByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 6).getValue();
     const data = JSON.parse(json || '{}');
-    const storedRevision = recordRevision_(data);
 
     // Reconstruir historial desde los campos guardados
     const history = buildHistory_(data, {}, null);
@@ -1060,7 +1045,7 @@ function getPagoByPlaca_(placa, session, sheetOverride) {
     data.asesorEditor = lastEditor_(history);
 
     if (!data.responsableValue) data.responsableValue = session.user || '';
-    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user };
+    return { ok: true, data: data, openedBy: session.user };
   } catch (err) {
     return { ok: false, message: 'Error al buscar pago: ' + err.message };
   }
@@ -1201,7 +1186,6 @@ function getVentaByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 6).getValue();
     const data = JSON.parse(json || '{}');
-    const storedRevision = recordRevision_(data);
 
     // Reconstruir historial desde los campos guardados
     const history = buildHistory_(data, {}, null);
@@ -1209,7 +1193,7 @@ function getVentaByPlaca_(placa, session, sheetOverride) {
     data.asesorCreador = firstUser_(history);
     data.asesorEditor  = lastEditor_(history);
 
-    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user };
+    return { ok: true, data: data, openedBy: session.user };
   } catch (err) {
     return { ok: false, message: 'Error al buscar venta: ' + err.message };
   }
@@ -1557,7 +1541,6 @@ function getContratoByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 8).getValue();
     const data = JSON.parse(json || '{}');
-    const storedRevision = recordRevision_(data);
 
     const history = buildHistory_(data, {}, null);
     data.historialUsuarios = history;
@@ -1571,7 +1554,7 @@ function getContratoByPlaca_(placa, session, sheetOverride) {
     if (estadoCol && !data.estadoProceso) data.estadoProceso = estadoCol.toUpperCase();
     if (!data.estadoProceso) data.estadoProceso = 'VALIDADO';
 
-    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user, estadoProceso: data.estadoProceso };
+    return { ok: true, data: data, openedBy: session.user, estadoProceso: data.estadoProceso };
   } catch (err) {
     return { ok: false, message: 'Error al buscar contrato: ' + err.message };
   }
