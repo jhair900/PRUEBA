@@ -26,7 +26,8 @@
           : 'El servidor devolvio una respuesta que no es JSON.';
       const preview = shortPreview(text);
       const responseError = new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
-      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500);
+      // 404, 408 y 429 en Google Apps Script a veces son transitorios por despliegues recientes o inicio en frío; permitimos reintento
+      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500 && resp.status !== 404 && resp.status !== 408 && resp.status !== 429);
       throw responseError;
     }
 
@@ -71,7 +72,7 @@
     // porque fallos de red intermitentes son comunes y no deberian
     // mostrarle un error al usuario a la primera.
     const retries = Number.isFinite(options.retries) ? options.retries : 2;
-    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 20000;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 25000;
     let lastError;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
