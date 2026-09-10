@@ -1,3 +1,17 @@
+/* ══════════════════════════════════════════════════════════════════
+   AUTOCOR — Backend único (Google Apps Script)
+   Esta es la ÚNICA versión que debe pegarse en el editor de Apps
+   Script y desplegarse. Incluye TODOS los módulos: Auth, Liquidaciones,
+   Pagos, Ventas, Contratos, Drive (expedientes), Gemini Proxy y
+   FirmasSP. No reemplazar por versiones parciales/antiguas: perderían
+   estas funciones.
+
+   Después de CUALQUIER cambio en este archivo:
+     Implementar → Gestionar implementaciones → ✏️ (editar) →
+     Versión: "Nueva versión" → Implementar
+   Si solo guardas el script sin crear una "Nueva versión", la URL
+   /exec en producción sigue sirviendo el código viejo.
+   ══════════════════════════════════════════════════════════════════ */
 
 const SHEET_NAME = 'Liquidaciones';
 const USERS_SHEET = 'Usuarios';
