@@ -3169,6 +3169,7 @@ async function preparePrint(){
     if(registroGuardado){
       setStatus('LIQUIDACIÓN GUARDADA, PERO NO SE PUDO GENERAR EL PDF', true);
       alert("La liquidación se guardó correctamente, pero no se pudo generar el PDF.\n\n" + (e.message || "Error desconocido."));
+    } else {
       setStatus('NO SE PUDO GUARDAR LA LIQUIDACIÓN', true);
       const msg = "No se pudo guardar la liquidación en el servidor:\n\n" + (e.message || "Error desconocido.") + "\n\n¿Deseas abrir el diálogo de impresión de todas formas?";
       if(confirm(msg)){

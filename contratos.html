@@ -2227,11 +2227,11 @@ async function ocrFileSimpleLegacy(file, tipo){
  * - catálogo amplio de modelos visibles en la API
  * - cola real para documentos solo con modelos compatibles con imagen+texto */
 const GEMINI_MODEL_CATALOG = [
-  { id:'gemini-2.5-flash', label:'Gemini 2.5 Flash', kind:'doc-vision', priority:10 },
-  { id:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash Lite', kind:'doc-vision', priority:20 },
-  { id:'gemini-3.1-flash-lite', label:'Gemini 3.1 Flash Lite', kind:'doc-vision', priority:30 },
-  { id:'gemini-3.1-flash-lite-preview', label:'Gemini 3.1 Flash Lite Preview', kind:'doc-vision', priority:40 },
-  { id:'gemini-3-flash-preview', label:'Gemini 3 Flash Preview', kind:'doc-vision', priority:50 },
+  { id:'gemini-3.1-flash-lite', label:'Gemini 3.1 Flash Lite', kind:'doc-vision', priority:10 },
+  { id:'gemini-3.1-flash-lite-preview', label:'Gemini 3.1 Flash Lite Preview', kind:'doc-vision', priority:20 },
+  { id:'gemini-3-flash-preview', label:'Gemini 3 Flash Preview', kind:'doc-vision', priority:30 },
+  { id:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash Lite', kind:'doc-vision', priority:40 },
+  { id:'gemini-2.5-flash', label:'Gemini 2.5 Flash', kind:'doc-vision', priority:50 },
   { id:'gemini-2.0-flash-lite', label:'Gemini 2.0 Flash-Lite', kind:'doc-vision', priority:60 },
   { id:'gemini-2.0-flash', label:'Gemini 2.0 Flash', kind:'doc-vision', priority:70 },
   { id:'gemini-2.5-flash-lite-preview-09-2025', label:'Gemini 2.5 Flash Lite Preview 09-2025', kind:'doc-vision', priority:80 },
@@ -2262,9 +2262,12 @@ let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
+const GEMINI_MODEL_COOLDOWNS = new Map();
 const GEMINI_FETCH_TIMEOUT_MS = 25000;
 const GEMINI_SESSION_KEY = 'autocor_gemini_model';
 const GEMINI_SESSION_TTL_MS = 5 * 60 * 1000;
+const GEMINI_QUOTA_COOLDOWN_MS = 10 * 60 * 1000;
+const GEMINI_ERROR_COOLDOWN_MS = 60 * 1000;
 const GEMINI_PROXY_URL = AutoCorConfig.apiUrl;
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
@@ -2460,6 +2463,83 @@ function setAIBanner(state, msg){
   if(t) t.textContent = msg;
   if(r) r.style.display = (state==='err'?'inline-block':'none');
 }
+
+const FIELD_DESCRIPTIONS = {
+  ruc: {
+    numeroRuc:           'Número de RUC de exactamente 13 dígitos. Si el documento muestra el encabezado "Razón Social Número RUC", el RUC está al final de la línea siguiente.',
+    razonSocial:         'Razón social completa de la empresa. En el formato SRI puede estar en la línea siguiente al encabezado doble "Razón Social Número RUC", antes del número de 13 dígitos. No devolver el encabezado.',
+    nombreComercial:     'Nombre comercial indicado expresamente; no usar la razón social si el documento no muestra un nombre comercial.',
+    estadoContribuyente: 'Solo el estado del contribuyente, por ejemplo ACTIVO. Si aparece "Estado Régimen", separar el primer estado del régimen que sigue.',
+    regimen:             'Régimen tributario visible, por ejemplo REGIMEN MICROEMPRESARIAL. No incluir el estado ACTIVO.',
+    direccionMatriz:     'Dirección postal completa del domicilio tributario: provincia, cantón, parroquia, barrio, calle, número, intersección, edificio, oficina, piso y referencia cuando sean visibles. No devolver títulos como "Domicilio tributario", "Ubicación geográfica" o "Dirección".',
+    actividadEconomica:  'Actividad económica principal indicada expresamente en el certificado.',
+    representanteLegal:  'Nombre completo de la persona que aparece inmediatamente después de "Representante legal". Eliminar viñetas como » y no devolver la etiqueta.',
+    cedulaRepresentante: 'Cédula del representante legal, exactamente 10 dígitos, solo si aparece expresamente.'
+  },
+  cedula: {
+    apellidos:       'SOLO los APELLIDOS del titular, SIN incluir nombres de pila. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la PRIMERA línea corresponde a los apellidos. CÉDULA ANTIGUA: buscar debajo de la etiqueta "APELLIDOS". Devolver SOLO apellidos en MAYÚSCULAS. NO incluir etiquetas del documento (IDENTIDAD, REPÚBLICA, CÉDULA, etc.). Si no puedes diferenciar entre apellidos y nombres, devuelve cadena vacía.',
+    nombres:         'SOLO los NOMBRES de pila del titular, SIN incluir apellidos. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la SEGUNDA línea corresponde a los nombres. CÉDULA ANTIGUA: buscar debajo de la etiqueta "NOMBRES". Devolver SOLO nombres en MAYÚSCULAS. NO devolver el nombre completo (apellidos + nombres juntos). Si no puedes diferenciar, devuelve cadena vacía.',
+    numeroCedula:    'Número de cédula ecuatoriana (exactamente 10 dígitos). CÉDULA NUEVA: buscar en la parte superior derecha del frente, junto a "No.". CÉDULA ANTIGUA: buscar junto a "NUI" en la parte inferior izquierda. NO confundir con el código dactilar.',
+    codigoDactilar:  'Código dactilar del titular. Está SIEMPRE en el REVERSO de la cédula, cerca de la etiqueta "CÓDIGO DACTILAR" o junto a la huella. Puede ser alfanumérico según el print. Es DIFERENTE del número de cédula. NO confundir con fechas, MRZ, NUI, código de barras o tipo de sangre. Si no se ve claramente, devuelve cadena vacía.',
+    fechaExpiracion: 'Fecha de expiración en formato DD/MM/YYYY. CÉDULA NUEVA: buscar en el REVERSO, parte inferior izquierda, bajo "FECHA DE EXPIRACIÓN". CÉDULA ANTIGUA: buscar en el frente, lado derecho, bajo "FECHA DE VENCIMIENTO".',
+    estadoCivil:     'Estado civil: SOLTERO, CASADO, DIVORCIADO, VIUDO o UNIÓN DE HECHO. CÉDULA NUEVA: buscar en el frente, junto a "ESTADO CIVIL". CÉDULA ANTIGUA: buscar en el REVERSO, lado izquierdo, bajo "ESTADO CIVIL". Solo devolver si se ve claramente.',
+    nacionalidad:    'Nacionalidad del titular: ECUATORIANA, COLOMBIANA, etc. Buscar junto a la etiqueta "NACIONALIDAD" en el frente de la cédula (ambos formatos). Solo devolver si se ve claramente.'
+  },
+  matricula: {
+    placa:       'Placa del vehiculo (formato AAA-1234)',
+    cedulaRuc:   'Numero de cedula del propietario (exactamente 10 digitos). Debe estar asociado a cedula, identificacion, CI, RUC, propietario o documento de identidad. NO aceptar telefonos ni numeros cercanos a telefono, celular, contacto, movil, tel. o convencional. Si no hay certeza, devuelve "".',
+    propietario: 'Nombre completo del propietario',
+    marca:       'Marca del vehículo',
+    modelo:      'Modelo del vehículo',
+    color:       'Color del vehículo',
+    chasis:      'Número de chasis o VIN',
+    motor:       'Número de motor',
+    anio:        'Año de fabricación del vehículo (4 dígitos)'
+  },
+  notaria: {
+    placa:                     'Placa del vehiculo (formato AAA-1234)',
+    anio:                      'Año del vehículo (4 dígitos)',
+    modelo:                    'Modelo del vehículo',
+    pais:                      'País del vehículo o país de origen',
+    serialChasis:              'Número de chasis o serial',
+    tipoIdPropietario:         'Tipo de identificación del propietario',
+    nombrePropietario:         'Nombre o razón social del propietario',
+    marca:                     'Marca del vehículo',
+    numeroMotor:               'Número de motor',
+    medidaCautelar:            'Medida cautelar',
+    identificacionPropietario: 'Identificación del propietario',
+    estadoTransferencia:       'Estado real de transferencia de dominio: no registra, registra, existe ultimo contrato, o texto equivalente visible',
+    valorContrato:             'Valor del contrato',
+    fechaContrato:             'Fecha del contrato',
+    tipoTransferencia:         'Tipo de transferencia',
+    compradores:               'Lista completa de compradores; cada fila debe tener tipoId, identificacion y nombre si son visibles',
+    vendedores:                'Lista completa de vendedores; cada fila debe tener tipoId, identificacion y nombre si son visibles'
+  }
+};
+
+function isFieldEmpty(val){
+  if(val===null || val===undefined) return true;
+  if(typeof val==='string' && val.trim()==='') return true;
+  if(Array.isArray(val) && val.length===0) return true;
+  return false;
+}
+function isFieldDubious(val, fieldDef){
+  if(isFieldEmpty(val)) return true;
+  if(fieldDef && typeof fieldDef.validate==='function'){
+    const result = fieldDef.validate(val);
+    if(result==='warn' || result===false) return true;
+  }
+  return false;
+}
+function getMissingFields(data, fields){
+  const missing = [];
+  for(const field of fields){
+    if(field.type==='separator') continue;
+    if(isFieldDubious(data[field.key], field)) missing.push(field.key);
+  }
+  return missing;
+}
+
 function mergearDatosConIA(d, origins, aiData, missingKeys, esArrayField, originResolver){
   const aplicados = [];
   for(const k of missingKeys){
@@ -5668,19 +5748,40 @@ function cedulaNamesLookMixed(apellidos, nombres){
 }
 
 function geminiCandidateModels(){
+  var now = Date.now();
   var availableVision = GEMINI_MODELS_FALLBACK.filter(function(model){
-    return GEMINI_AVAILABLE_MODELS.has(model);
+    var methods = GEMINI_AVAILABLE_METHODS[model];
+    var supportsGenerate = !methods || !methods.length || methods.indexOf('generateContent') >= 0;
+    var cooldownUntil = Number(GEMINI_MODEL_COOLDOWNS.get(model) || 0);
+    if(cooldownUntil && cooldownUntil <= now) GEMINI_MODEL_COOLDOWNS.delete(model);
+    return GEMINI_AVAILABLE_MODELS.has(model) && supportsGenerate && cooldownUntil <= now;
   });
-  var pool = availableVision.length ? availableVision : GEMINI_MODELS_FALLBACK;
-  var ordered = [GEMINI_MODEL_ACTIVE].concat(pool);
+  var pool = availableVision.length ? availableVision : GEMINI_MODELS_FALLBACK.filter(function(model){
+    return Number(GEMINI_MODEL_COOLDOWNS.get(model) || 0) <= now;
+  });
+  var preferred = pool.indexOf(GEMINI_MODEL_ACTIVE) >= 0 ? GEMINI_MODEL_ACTIVE : '';
+  var ordered = [preferred].concat(pool);
   var seen = new Set();
   return ordered.filter(function(model){
-    if(!model || seen.has(model)) return false;
+    if(!model || seen.has(model) || Number(GEMINI_MODEL_COOLDOWNS.get(model) || 0) > now) return false;
     seen.add(model);
     return true;
   });
 }
+function registerGeminiModelFailure(model, status, detail){
+  var message = String(detail || '').toUpperCase();
+  var quotaExhausted = Number(status) === 429 || message.indexOf('RESOURCE_EXHAUSTED') >= 0 ||
+    message.indexOf('QUOTA') >= 0 || message.indexOf('RATE LIMIT') >= 0;
+  var modelUnavailable = Number(status) === 404 || Number(status) === 400;
+  if(quotaExhausted || modelUnavailable || Number(status) >= 500){
+    GEMINI_MODEL_COOLDOWNS.set(
+      model,
+      Date.now() + (quotaExhausted || modelUnavailable ? GEMINI_QUOTA_COOLDOWN_MS : GEMINI_ERROR_COOLDOWN_MS)
+    );
+  }
+}
 function setGeminiReadyModel(model){
+  GEMINI_MODEL_COOLDOWNS.delete(model);
   GEMINI_MODEL_ACTIVE = model;
   GEMINI_LAST_OK_MODEL = model;
   aiAvailable = true;
@@ -5714,6 +5815,7 @@ async function geminiGenerateWithFallback(body, opts){
       var errTxt = await resp.text();
       attempts.push(model+'='+resp.status);
       lastErr = 'HTTP '+resp.status+': '+errTxt.substring(0,160);
+      registerGeminiModelFailure(model, resp.status, errTxt);
       console.warn('[IA] '+model+' falló:', resp.status, errTxt.substring(0,200));
     }catch(err){
       attempts.push(model+'=NET');
@@ -5730,46 +5832,12 @@ window.testAIConnection = function(){
   setAIBanner('checking','Verificando conexión con Gemini...');
   aiCheckPromise = (async function(){
     try{
-      // Probar directamente con ping ultraligero a los modelos de trabajo principales
-      var fastCandidates = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
-      var modelFound = '';
-      var pingReply = '';
-
-      for(var i = 0; i < fastCandidates.length; i++){
-        var candidate = fastCandidates[i];
-        try{
-          var resp = await geminiFetch(geminiUrl(candidate), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: 'Responde solo con: pong' }] }],
-              generationConfig: { temperature: 0, maxOutputTokens: 10 }
-            })
-          });
-          if(resp.ok){
-            var j = await resp.json();
-            var text = (j.candidates && j.candidates[0] && j.candidates[0].content
-                        && j.candidates[0].content.parts && j.candidates[0].content.parts[0]
-                        && j.candidates[0].content.parts[0].text) || '';
-            modelFound = candidate;
-            pingReply = text;
-            break;
-          }
-        }catch(e){
-          console.warn('[IA] Ping falló para ' + candidate + ':', e.message || e);
-        }
-      }
-
-      if(modelFound){
-        setGeminiReadyModel(modelFound);
-        aiAvailable = true;
-        setAIBanner('ok', '✓ IA lista: procesará los documentos con ' + renderAIBannerModel(modelFound));
-        console.log('[IA] Conexión confirmada con:', modelFound);
-        // Refrescar catálogo en segundo plano sin demorar la UI
-        try{ refreshGeminiModelAvailability(); }catch(_){}
-      } else {
-        throw new Error('No se pudo conectar con ningún modelo de IA disponible');
-      }
+      await refreshGeminiModelAvailability();
+      var result = await geminiGenerateWithFallback({
+        contents: [{ parts: [{ text: 'Responde solo con: pong' }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 10 }
+      }, { silent:true });
+      console.log('[IA] Conexión confirmada con:', result.model);
     }catch(err){
       setGeminiUnavailable();
       setAIBanner('err', '✗ Error de conexión con IA (' + (err.message || 'Sin respuesta') + '). Reintenta o se usará OCR.');
@@ -5789,10 +5857,6 @@ window.initializeAIState = function(){
      Date.now() - Number(cached.savedAt || 0) <= GEMINI_SESSION_TTL_MS){
     GEMINI_MODEL_ACTIVE = cached.model;
     GEMINI_LAST_OK_MODEL = cached.model;
-    aiAvailable = true;
-    aiAvailabilityChecked = true;
-    setAIBanner('ok', '✓ IA lista: procesará los documentos con '+renderAIBannerModel(cached.model));
-    return Promise.resolve(cached.model);
   }
   aiAvailable = false;
   return window.testAIConnection();

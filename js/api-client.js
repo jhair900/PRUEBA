@@ -1,12 +1,21 @@
 (function(global){
   'use strict';
 
+  const SERVICE_ERROR_COOLDOWN_MS = 15000;
+  let serviceBlockedUntil = 0;
+  let lastServiceError = null;
+
   function looksLikeHtml(text){
     return /^\s*<!doctype\b/i.test(text || '') || /^\s*<html[\s>]/i.test(text || '');
   }
 
   function shortPreview(text){
     return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+  }
+
+  function freshRequestUrl(url, attempt){
+    const separator = String(url).indexOf('?') >= 0 ? '&' : '?';
+    return String(url) + separator + '_autocor=' + Date.now() + '_' + (attempt || 0);
   }
 
   async function parseJsonResponse(resp, context, options){
@@ -24,10 +33,14 @@
         : looksLikeHtml(text)
           ? 'El servidor devolvio una pagina HTML en lugar de JSON. Suele pasar si Google Apps Script responde con una pagina temporal, error de permisos, cuota o despliegue.'
           : 'El servidor devolvio una respuesta que no es JSON.';
-      const preview = shortPreview(text);
+      const includePreview = !looksLikeHtml(text) && (!resp || resp.status !== 404);
+      const preview = includePreview ? shortPreview(text) : '';
       const responseError = new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
-      // 404, 408 y 429 en Google Apps Script a veces son transitorios por despliegues recientes o inicio en frío; permitimos reintento
-      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500 && resp.status !== 404 && resp.status !== 408 && resp.status !== 429);
+      responseError.isServiceUnavailable = !!(looksLikeHtml(text) || (resp && resp.status === 404));
+      responseError.isNonRetryable = !!(
+        resp && resp.status >= 400 && resp.status < 500 &&
+        !responseError.isServiceUnavailable && resp.status !== 408 && resp.status !== 429
+      );
       throw responseError;
     }
 
@@ -68,6 +81,9 @@
 
   async function postJson(url, body, options){
     options = options || {};
+    if(Date.now() < serviceBlockedUntil && lastServiceError){
+      throw lastServiceError;
+    }
     // 2 reintentos por defecto (3 intentos en total) con espera creciente,
     // porque fallos de red intermitentes son comunes y no deberian
     // mostrarle un error al usuario a la primera.
@@ -77,16 +93,19 @@
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const resp = await fetchWithTimeout(url, {
+        const resp = await fetchWithTimeout(freshRequestUrl(url, attempt), {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          cache: 'no-store',
+          credentials: 'omit',
+          redirect: 'follow'
         }, timeoutMs);
         return await parseJsonResponse(resp, options.context, options);
       } catch (err) {
         // Error de red (nunca llego respuesta) vs. error ya identificado
         // por parseJsonResponse (isApiError / isNonRetryable).
-        const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError);
+        const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
         lastError = isKnown ? err : wrapNetworkError(err, options.context, url);
 
         if (err && (err.isApiError || err.isNonRetryable)) break;
@@ -95,6 +114,11 @@
         const backoffMs = 700 * Math.pow(2, attempt); // 700ms, 1400ms, 2800ms...
         await new Promise(function(resolve){ setTimeout(resolve, backoffMs); });
       }
+    }
+
+    if(lastError && lastError.isServiceUnavailable){
+      serviceBlockedUntil = Date.now() + SERVICE_ERROR_COOLDOWN_MS;
+      lastServiceError = lastError;
     }
 
     throw lastError;
