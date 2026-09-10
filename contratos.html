@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -5730,24 +5730,13 @@ window.testAIConnection = function(){
   setAIBanner('checking','Verificando conexión con Gemini...');
   aiCheckPromise = (async function(){
     try{
-      // 1. Intentar refrescar catálogo de modelos vía proxy
-      var availableCount = await refreshGeminiModelAvailability();
-      var selectedModel = '';
-      if(availableCount > 0){
-        selectedModel = GEMINI_MODELS_FALLBACK.find(function(candidate){
-          var methods = GEMINI_AVAILABLE_METHODS[candidate] || [];
-          return GEMINI_AVAILABLE_MODELS.has(candidate) && methods.indexOf('generateContent') >= 0;
-        });
-      }
-
-      // 2. Probar candidatos disponibles (con fallback directo si op=models tardó)
-      var candidatesToTest = selectedModel ? [selectedModel].concat(geminiCandidateModels()) : geminiCandidateModels();
+      // Probar directamente con ping ultraligero a los modelos de trabajo principales
+      var fastCandidates = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
       var modelFound = '';
       var pingReply = '';
 
-      for(var i = 0; i < candidatesToTest.length; i++){
-        var candidate = candidatesToTest[i];
-        if(!candidate) continue;
+      for(var i = 0; i < fastCandidates.length; i++){
+        var candidate = fastCandidates[i];
         try{
           var resp = await geminiFetch(geminiUrl(candidate), {
             method: 'POST',
@@ -5775,9 +5764,11 @@ window.testAIConnection = function(){
         setGeminiReadyModel(modelFound);
         aiAvailable = true;
         setAIBanner('ok', '✓ IA lista: procesará los documentos con ' + renderAIBannerModel(modelFound));
-        console.log('[IA] Modelo activo verificado:', modelFound);
+        console.log('[IA] Conexión confirmada con:', modelFound);
+        // Refrescar catálogo en segundo plano sin demorar la UI
+        try{ refreshGeminiModelAvailability(); }catch(_){}
       } else {
-        throw new Error('No se pudo establecer conexión con ningún modelo de IA');
+        throw new Error('No se pudo conectar con ningún modelo de IA disponible');
       }
     }catch(err){
       setGeminiUnavailable();
@@ -5785,8 +5776,9 @@ window.testAIConnection = function(){
       console.error('[IA] Verificación falló:', err);
     }finally{
       aiAvailabilityChecked = true;
+      aiCheckPromise = null;
     }
-  })().finally(function(){ aiCheckPromise = null; });
+  })();
   return aiCheckPromise;
 };
 
@@ -5799,12 +5791,19 @@ window.initializeAIState = function(){
     GEMINI_LAST_OK_MODEL = cached.model;
     aiAvailable = true;
     aiAvailabilityChecked = true;
-    setAIBanner('ok', 'IA lista: procesará los documentos con '+renderAIBannerModel(cached.model));
-    return;
+    setAIBanner('ok', '✓ IA lista: procesará los documentos con '+renderAIBannerModel(cached.model));
+    return Promise.resolve(cached.model);
   }
   aiAvailable = false;
   return window.testAIConnection();
 };
+
+// Disparar verificación de IA automáticamente al cargar la página
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){ window.initializeAIState(); });
+} else {
+  setTimeout(function(){ window.initializeAIState(); }, 50);
+}
 
 async function analizarConGemini(tipo, dataUrl){
   const prompt = PROMPTS_IA[tipo];
