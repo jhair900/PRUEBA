@@ -72,24 +72,7 @@
       el.closest('#modalCambioClave');
   }
 
-  function scrubUserAutofill(){
-    var auth = getAuth();
-    if(!auth) return;
-    var values = [auth.user, auth.displayName]
-      .map(function(v){ return String(v || '').trim().toUpperCase(); })
-      .filter(Boolean);
-    if(!values.length) return;
-
-    document.querySelectorAll('input, textarea').forEach(function(el){
-      if(isAuthInput(el)) return;
-      var v = String(el.value || '').trim().toUpperCase();
-      if(v && values.indexOf(v) !== -1){
-        el.value = '';
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-  }
+  function scrubUserAutofill(){ /* Los datos del formulario solo se modifican por acciones explicitas. */ }
 
   function mountStyles(){
     if($('authUiStyles')) return;
@@ -268,6 +251,8 @@
       await api('changePassword', { username: auth.user, currentPassword: current, newPassword: next });
       alert('Clave actualizada correctamente.');
       closeModal('authUiChangeModal');
+      setAuth(null);
+      openModal('authUiLoginModal');
     }catch(err){
       console.error(err);
       alert(err.message || 'No se pudo cambiar la clave.');

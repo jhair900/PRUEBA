@@ -1,6 +1,18 @@
 (function(global){
   'use strict';
 
+  const recordActions = {
+    save: 'liquidacion', getByPlaca: 'liquidacion',
+    savePago: 'pago', getPagoByPlaca: 'pago',
+    saveVenta: 'venta', getVentaByPlaca: 'venta',
+    saveContrato: 'contrato', getContratoByPlaca: 'contrato'
+  };
+  const revisions = new Map();
+  function requestKey(body){
+    const data = body.data || {};
+    const placa = String(body.placa || data.placaValue || data.placa || '').trim().toUpperCase().replace(/\s+/g, '');
+    return (body.sessionToken || '') + ':' + recordActions[body.action] + ':' + placa;
+  }
   const SERVICE_ERROR_COOLDOWN_MS = 15000;
   let serviceBlockedUntil = 0;
   let lastServiceError = null;
@@ -48,9 +60,16 @@
       const where = context ? (context + ': ') : '';
       const apiError = new Error(where + (json.message || 'Error en API'));
       apiError.isApiError = true;
+      apiError.code = json.code;
+      apiError.response = json;
       throw apiError;
     }
 
+    if(resp.ok === false){
+      const error = new Error((context ? context + ': ' : '') + 'HTTP ' + resp.status);
+      error.isNonRetryable = resp.status >= 400 && resp.status < 500 && resp.status !== 408 && resp.status !== 429;
+      throw error;
+    }
     return json;
   }
 
@@ -81,13 +100,25 @@
 
   async function postJson(url, body, options){
     options = options || {};
+    body = Object.assign({}, body);
+    if(!body.sessionToken && body.action !== 'login'){
+      try { body.sessionToken = (JSON.parse(global.localStorage.getItem('autocor_auth') || '{}') || {}).token || ''; } catch (_) {}
+    }
+    const saving = recordActions[body.action] && body.action.indexOf('save') === 0;
+    const key = recordActions[body.action] ? requestKey(body) : null;
+    if(saving){
+      body.expectedRevision = revisions.has(key) ? revisions.get(key) : null;
+      body.requestId = global.crypto.randomUUID();
+      body.data = Object.assign({}, body.data);
+    }
     if(Date.now() < serviceBlockedUntil && lastServiceError){
       throw lastServiceError;
     }
     // 2 reintentos por defecto (3 intentos en total) con espera creciente,
     // porque fallos de red intermitentes son comunes y no deberian
     // mostrarle un error al usuario a la primera.
-    const retries = Number.isFinite(options.retries) ? options.retries : 2;
+    const safeRetry = saving || /^(get|list|ping)/.test(body.action || '');
+    const retries = safeRetry ? (Number.isFinite(options.retries) ? options.retries : 2) : 0;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 25000;
     let lastError;
 
@@ -101,8 +132,23 @@
           credentials: 'omit',
           redirect: 'follow'
         }, timeoutMs);
-        return await parseJsonResponse(resp, options.context, options);
+        const json = await parseJsonResponse(resp, options.context, options);
+        if(json && json.code === 'CONFLICT' && saving && global.AutoCorConflict){
+          if(await global.AutoCorConflict.review(json.currentData, body.action === 'saveContrato' ? Object.assign({}, json.currentData || {}, body.data) : body.data)){
+            revisions.set(key, json.currentRevision || null);
+            return postJson(url, body, options);
+          }
+        }
+        if(key && json && json.ok && json.revision) revisions.set(key, json.revision);
+        if(json && json.ok && /^delete/.test(body.action || '')) revisions.clear();
+        return json;
       } catch (err) {
+        if(err && err.code === 'CONFLICT' && saving && global.AutoCorConflict){
+          if(await global.AutoCorConflict.review(err.response.currentData, body.action === 'saveContrato' ? Object.assign({}, err.response.currentData || {}, body.data) : body.data)){
+            revisions.set(key, err.response.currentRevision || null);
+            return postJson(url, body, options);
+          }
+        }
         // Error de red (nunca llego respuesta) vs. error ya identificado
         // por parseJsonResponse (isApiError / isNonRetryable).
         const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);

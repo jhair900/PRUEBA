@@ -886,7 +886,9 @@
   }
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
-<script src="js/api-client.js?v=20260904-2"></script>
+<script src="js/api-client.js?v=20260910-1"></script>
+<script src="js/record-conflict.js?v=20260910-1"></script>
+<script src="js/gemini-client.js?v=20260910-1"></script>
 <script src="js/expediente.js?v=20260904-1"></script>
 </head>
 <body>
@@ -2278,40 +2280,10 @@ function geminiUrl(model){
 /* Wrapper: el proxy GAS devuelve {_proxy:{ok,status}, data:<google body>}.
    Esta función adapta la respuesta para que el código que usa
    resp.ok / resp.status / resp.json() / resp.text() siga funcionando. */
-async function geminiFetch(url, init){
-  /* Forzamos text/plain para evitar el preflight CORS (OPTIONS) que
-     Apps Script no responde. El body sigue siendo JSON y GAS lo lee
-     desde e.postData.contents sin importar el Content-Type. */
-  if(init && (init.method||'GET').toUpperCase() !== 'GET'){
-    init = Object.assign({}, init, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-  }
-  init = init ? Object.assign({}, init) : {};
-  var controller = null;
-  var timeoutId = null;
-  if(!init.signal && typeof AbortController !== 'undefined'){
-    controller = new AbortController();
-    init.signal = controller.signal;
-    timeoutId = setTimeout(function(){ controller.abort(); }, GEMINI_FETCH_TIMEOUT_MS);
-  }
-  var resp;
-  try{
-    resp = await fetch(url, init);
-  }finally{
-    if(timeoutId) clearTimeout(timeoutId);
-  }
-  let env = null;
-  try { env = await resp.json(); } catch(_){ env = null; }
-  const hasProxy = env && env._proxy && typeof env._proxy === 'object';
-  const ok = hasProxy ? !!env._proxy.ok : resp.ok;
-  const status = hasProxy ? (env._proxy.status|0) : resp.status;
-  const data = (env && Object.prototype.hasOwnProperty.call(env,'data')) ? env.data : env;
-  return {
-    ok: ok,
-    status: status,
-    json: async function(){ return data; },
-    text: async function(){ return typeof data === 'string' ? data : JSON.stringify(data); }
-  };
+function geminiFetch(url, init){
+  return AutoCorGemini.fetch(url, init, GEMINI_FETCH_TIMEOUT_MS);
 }
+
 function renderAIBannerModel(model){
   return String(model||'').trim() || 'IA';
 }

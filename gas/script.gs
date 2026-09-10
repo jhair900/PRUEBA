@@ -28,7 +28,7 @@ function doGet(e) {
     return geminiProxy_(params, '');
   }
   const action = params.action || 'ping';
-  return outputJson(handleAction_(action, params));
+  return outputJson(action === 'ping' ? handleAction_(action, {}) : { ok: false, message: 'Usa POST para esta accion.' });
 }
 
 function doPost(e) {
@@ -57,6 +57,12 @@ function doPost(e) {
    Devuelve { _proxy:{ok,status}, data:<respuesta Google> }
    ────────────────────────────────────────────────────────────── */
 function geminiProxy_(params, rawBody) {
+  let envelope;
+  try { envelope = JSON.parse(rawBody || '{}'); }
+  catch (_) { return outputJson({ _proxy: { ok: false, status: 400 }, data: { error: { message: 'JSON invalido.' } } }); }
+  const session = validateSession_(envelope.sessionToken);
+  if (!session.ok) return outputJson({ _proxy: { ok: false, status: 401 }, data: { error: { message: session.message } } });
+  rawBody = JSON.stringify(envelope.request || {});
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) {
     return outputJson({
@@ -130,15 +136,64 @@ function ensureActionResources_(action) {
   }
 }
 
+// Las escrituras de Sheets comparten un bloqueo; el guardado valida la revision leida.
+const RECORD_ACTIONS = {
+  save: [SHEET_NAME, 8], getByPlaca: [SHEET_NAME, 8],
+  savePago: [PAYMENTS_SHEET, 6], getPagoByPlaca: [PAYMENTS_SHEET, 6],
+  saveVenta: [VENTAS_SHEET, 6], getVentaByPlaca: [VENTAS_SHEET, 6],
+  saveContrato: [CONTRATOS_SHEET, 8], getContratoByPlaca: [CONTRATOS_SHEET, 8]
+};
+// El estado y los archivos tienen operaciones propias; no invalidan un formulario abierto.
+function recordRevision_(data) {
+  const editable = Object.assign({}, data);
+  ['historialEstados', 'estadoProceso', 'estadoActualizadoEn', 'estadoActualizadoPor', 'observacionEstado', 'drive'].forEach(function(key) { delete editable[key]; });
+  return hashPassword_(JSON.stringify(editable));
+}
 function handleAction_(action, payload) {
+  payload = payload || {};
+  const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$|subirExpedienteDrive$)/.test(action);
+  const lock = writes ? LockService.getScriptLock() : null;
+  if (lock && !lock.tryLock(10000)) return { ok: false, code: 'BUSY', message: 'Otro usuario esta guardando. Intenta de nuevo.' };
+  try {
+    const spec = RECORD_ACTIONS[action];
+    const saving = spec && action.indexOf('save') === 0;
+    if (saving) {
+      const session = validateSession_(payload.sessionToken);
+      if (!session.ok) return session;
+      if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) return { ok: false, message: 'Datos invalidos.' };
+      const placa = normalizePlaca_(payload.data.placaValue || payload.data.placa);
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(spec[0]);
+      const row = sheet ? findRowByPlaca_(sheet, placa) : 0;
+      const stored = row ? JSON.parse(sheet.getRange(row, spec[1]).getValue() || '{}') : null;
+      if (stored && payload.requestId && stored._requestId === payload.requestId && stored._requestUser === session.user) {
+        return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: stored, revision: recordRevision_(stored), estadoProceso: stored.estadoProceso };
+      }
+      if ((stored ? recordRevision_(stored) : null) !== (payload.expectedRevision || null)) {
+        return { ok: false, code: 'CONFLICT', currentData: stored, currentRevision: stored ? recordRevision_(stored) : null, message: 'El registro ya existe o cambio desde que lo abriste. Conserva tus cambios, vuelve a buscar la placa y revisa la version actual antes de guardar.' };
+      }
+      payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid(), _requestUser: session.user });
+    }
+    const result = dispatchAction_(action, payload);
+    if (spec && result.ok && result.data) {
+      result.revision = saving ? recordRevision_(result.data) : result._storedRevision;
+      delete result._storedRevision;
+    }
+    return result;
+  } catch (err) {
+    return { ok: false, message: 'Error al procesar la solicitud: ' + err.message };
+  } finally {
+    if (lock) { try { SpreadsheetApp.flush(); } finally { lock.releaseLock(); } }
+  }
+}
+function dispatchAction_(action, payload) {
   ensureActionResources_(action);
 
   if (action === 'ping') return { ok: true, message: 'API funcionando' };
-  if (action === 'setupUsers') return setupInitialUsers_();
+  if (action === 'setupUsers') return { ok: false, message: 'Inicializacion disponible solo desde el editor de Apps Script.' };
   if (action === 'login') return login_(payload.username, payload.password);
   if (action === 'changePassword') return changePassword_(payload.username, payload.currentPassword, payload.newPassword);
-  if (action === 'adminResetPassword') return adminResetPassword_(payload.adminUsername, payload.targetUsername, payload.newPassword);
-  if (action === 'listUsers') return listUsers_(payload.adminUsername);
+  if (action === 'adminResetPassword') return adminResetPassword_(payload.sessionToken, payload.targetUsername, payload.newPassword);
+  if (action === 'listUsers') return listUsers_(payload.sessionToken);
 
   if (action === 'listGlossary') return listGlossary_();
   if (action === 'saveGlossaryTerm') {
@@ -512,26 +567,30 @@ function setupInitialUsers_() {
     const sh = ensureUsersSheet_();
 
     const users = [
-      { username: 'YROMERO', displayName: 'YROMERO', password: '123456', isAdmin: false },
-      { username: 'NPADILLA', displayName: 'NPADILLA', password: '123456', isAdmin: false },
-      { username: 'PCHAMORRO', displayName: 'PCHAMORRO', password: '123456', isAdmin: false },
-      { username: 'SORTIZ', displayName: 'SORTIZ', password: '123456', isAdmin: false },
-      { username: 'JSANCHEZ', displayName: 'JSANCHEZ', password: '123456', isAdmin: true },
-      { username: 'TANDRADE', displayName: 'TANDRADE', password: '123456', isAdmin: false },
-      { username: 'JPRADO', displayName: 'JPRADO', password: '123456', isAdmin: false },
-      { username: 'PFERNANDEZ', displayName: 'PFERNANDEZ', password: '123456', isAdmin: false },
-      { username: 'FPROAÑO', displayName: 'FPROAÑO', password: '123456', isAdmin: false },
-      { username: 'IBATALLAS', displayName: 'IBATALLAS', password: '123456', isAdmin: false },
-      { username: 'ACIFUENTES', displayName: 'ACIFUENTES', password: '123456', isAdmin: false },
-      { username: 'PQUEZADA', displayName: 'PQUEZADA', password: '123456', isAdmin: false }
+      { username: 'YROMERO', displayName: 'YROMERO', isAdmin: false },
+      { username: 'NPADILLA', displayName: 'NPADILLA', isAdmin: false },
+      { username: 'PCHAMORRO', displayName: 'PCHAMORRO', isAdmin: false },
+      { username: 'SORTIZ', displayName: 'SORTIZ', isAdmin: false },
+      { username: 'JSANCHEZ', displayName: 'JSANCHEZ', isAdmin: true },
+      { username: 'TANDRADE', displayName: 'TANDRADE', isAdmin: false },
+      { username: 'JPRADO', displayName: 'JPRADO', isAdmin: false },
+      { username: 'PFERNANDEZ', displayName: 'PFERNANDEZ', isAdmin: false },
+      { username: 'FPROAÑO', displayName: 'FPROAÑO', isAdmin: false },
+      { username: 'IBATALLAS', displayName: 'IBATALLAS', isAdmin: false },
+      { username: 'ACIFUENTES', displayName: 'ACIFUENTES', isAdmin: false },
+      { username: 'PQUEZADA', displayName: 'PQUEZADA', isAdmin: false }
     ];
 
+    const initialAdmin = PropertiesService.getScriptProperties().getProperty('INITIAL_ADMIN_PASSWORD');
+    if (!findUserRow_(sh, 'JSANCHEZ') && (!initialAdmin || initialAdmin.length < 12)) {
+      return { ok: false, message: 'Configura INITIAL_ADMIN_PASSWORD con al menos 12 caracteres en Script Properties para crear el administrador inicial.' };
+    }
     users.forEach(function(u) {
       const row = findUserRow_(sh, u.username);
       const rowData = [
         normalizeUser_(u.username),
         u.displayName || normalizeUser_(u.username),
-        hashPassword_(u.password),
+        hashPassword_(u.isAdmin ? initialAdmin : Utilities.getUuid() + Utilities.getUuid()),
         u.isAdmin ? true : false,
         true,
         true,
@@ -539,11 +598,11 @@ function setupInitialUsers_() {
         ''
       ];
 
-      if (row > 0) sh.getRange(row, 1, 1, 8).setValues([rowData]);
-      else sh.appendRow(rowData);
+      if (!row) sh.appendRow(rowData);
     });
 
-    return { ok: true, message: 'Usuarios iniciales creados/actualizados.' };
+    PropertiesService.getScriptProperties().deleteProperty('INITIAL_ADMIN_PASSWORD');
+    return { ok: true, message: 'Usuarios faltantes creados con claves aleatorias. Asigna claves temporales desde una sesion administradora o el editor.' };
   } catch (err) {
     return { ok: false, message: 'Error en setupInitialUsers_: ' + err.message };
   }
@@ -609,7 +668,7 @@ function validateSession_(token) {
     const expiresAt = row[7];
     const isActive = row[4] === true || String(row[4]).toUpperCase() === 'TRUE';
     if (!isActive) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
-    if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
+    if (!expiresAt || !Number.isFinite(new Date(expiresAt).getTime()) || new Date(expiresAt).getTime() <= Date.now()) {
       return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión expirada.' };
     }
 
@@ -640,8 +699,8 @@ function changePassword_(username, currentPassword, newPassword) {
     const row = findUserRow_(sh, username);
 
     if (!row) return { ok: false, message: 'Usuario no encontrado.' };
-    if (!newPassword || String(newPassword).length < 4) {
-      return { ok: false, message: 'La nueva clave debe tener al menos 4 caracteres.' };
+    if (!newPassword || String(newPassword).length < 6) {
+      return { ok: false, message: 'La nueva clave debe tener al menos 6 caracteres.' };
     }
 
     const values = sh.getRange(row, 1, 1, 8).getValues()[0];
@@ -664,16 +723,19 @@ function changePassword_(username, currentPassword, newPassword) {
   }
 }
 
-function adminResetPassword_(adminUsername, targetUsername, newPassword) {
+function adminResetPassword_(sessionToken, targetUsername, newPassword) {
   try {
     const sh = ensureUsersSheet_();
-    const adminRow = findUserRow_(sh, adminUsername);
+    const session = validateSession_(sessionToken);
+    if (!session.ok) return session;
+    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    const adminRow = session.rowIndex;
     const targetRow = findUserRow_(sh, targetUsername);
 
     if (!adminRow) return { ok: false, message: 'Administrador no encontrado.' };
     if (!targetRow) return { ok: false, message: 'Usuario destino no encontrado.' };
-    if (!newPassword || String(newPassword).length < 4) {
-      return { ok: false, message: 'La nueva clave debe tener al menos 4 caracteres.' };
+    if (!newPassword || String(newPassword).length < 6) {
+      return { ok: false, message: 'La nueva clave debe tener al menos 6 caracteres.' };
     }
 
     const adminValues = sh.getRange(adminRow, 1, 1, 8).getValues()[0];
@@ -695,10 +757,13 @@ function adminResetPassword_(adminUsername, targetUsername, newPassword) {
   }
 }
 
-function listUsers_(adminUsername) {
+function listUsers_(sessionToken) {
   try {
     const sh = ensureUsersSheet_();
-    const adminRow = findUserRow_(sh, adminUsername);
+    const session = validateSession_(sessionToken);
+    if (!session.ok) return session;
+    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    const adminRow = session.rowIndex;
     if (!adminRow) return { ok: false, message: 'Administrador no encontrado.' };
 
     const adminValues = sh.getRange(adminRow, 1, 1, 8).getValues()[0];
@@ -848,6 +913,7 @@ function getByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 8).getValue();
     const data = JSON.parse(json || '{}');
+    const storedRevision = recordRevision_(data);
 
     const history = buildHistory_(data, {}, null);
     data.historialUsuarios = history;
@@ -857,6 +923,7 @@ function getByPlaca_(placa, session, sheetOverride) {
 
     return {
       ok: true,
+      _storedRevision: storedRevision,
       data: data,
       openedBy: session.user
     };
@@ -984,6 +1051,7 @@ function getPagoByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 6).getValue();
     const data = JSON.parse(json || '{}');
+    const storedRevision = recordRevision_(data);
 
     // Reconstruir historial desde los campos guardados
     const history = buildHistory_(data, {}, null);
@@ -992,7 +1060,7 @@ function getPagoByPlaca_(placa, session, sheetOverride) {
     data.asesorEditor = lastEditor_(history);
 
     if (!data.responsableValue) data.responsableValue = session.user || '';
-    return { ok: true, data: data, openedBy: session.user };
+    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user };
   } catch (err) {
     return { ok: false, message: 'Error al buscar pago: ' + err.message };
   }
@@ -1133,6 +1201,7 @@ function getVentaByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 6).getValue();
     const data = JSON.parse(json || '{}');
+    const storedRevision = recordRevision_(data);
 
     // Reconstruir historial desde los campos guardados
     const history = buildHistory_(data, {}, null);
@@ -1140,7 +1209,7 @@ function getVentaByPlaca_(placa, session, sheetOverride) {
     data.asesorCreador = firstUser_(history);
     data.asesorEditor  = lastEditor_(history);
 
-    return { ok: true, data: data, openedBy: session.user };
+    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user };
   } catch (err) {
     return { ok: false, message: 'Error al buscar venta: ' + err.message };
   }
@@ -1285,6 +1354,12 @@ function saveContrato_(data, session) {
       existingData = existingJson ? JSON.parse(existingJson) : null;
     }
 
+    data = Object.assign({}, existingData || {}, data);
+    if (existingData) {
+      ['historialEstados', 'estadoActualizadoEn', 'estadoActualizadoPor', 'observacionEstado', 'drive'].forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(existingData, key)) data[key] = existingData[key];
+      });
+    }
     const history = buildHistory_(existingData, data, session.user);
     data.placa = placa;
     data.historialUsuarios = history;
@@ -1482,6 +1557,7 @@ function getContratoByPlaca_(placa, session, sheetOverride) {
 
     const json = sheet.getRange(row, 8).getValue();
     const data = JSON.parse(json || '{}');
+    const storedRevision = recordRevision_(data);
 
     const history = buildHistory_(data, {}, null);
     data.historialUsuarios = history;
@@ -1495,7 +1571,7 @@ function getContratoByPlaca_(placa, session, sheetOverride) {
     if (estadoCol && !data.estadoProceso) data.estadoProceso = estadoCol.toUpperCase();
     if (!data.estadoProceso) data.estadoProceso = 'VALIDADO';
 
-    return { ok: true, data: data, openedBy: session.user, estadoProceso: data.estadoProceso };
+    return { ok: true, _storedRevision: storedRevision, data: data, openedBy: session.user, estadoProceso: data.estadoProceso };
   } catch (err) {
     return { ok: false, message: 'Error al buscar contrato: ' + err.message };
   }
