@@ -1,21 +1,12 @@
 (function(global){
   'use strict';
 
-  const SERVICE_ERROR_COOLDOWN_MS = 15000;
-  let serviceBlockedUntil = 0;
-  let lastServiceError = null;
-
   function looksLikeHtml(text){
     return /^\s*<!doctype\b/i.test(text || '') || /^\s*<html[\s>]/i.test(text || '');
   }
 
   function shortPreview(text){
     return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 180);
-  }
-
-  function freshRequestUrl(url, attempt){
-    const separator = String(url).indexOf('?') >= 0 ? '&' : '?';
-    return String(url) + separator + '_autocor=' + Date.now() + '_' + (attempt || 0);
   }
 
   async function parseJsonResponse(resp, context, options){
@@ -33,13 +24,9 @@
         : looksLikeHtml(text)
           ? 'El servidor devolvio una pagina HTML en lugar de JSON. Suele pasar si Google Apps Script responde con una pagina temporal, error de permisos, cuota o despliegue.'
           : 'El servidor devolvio una respuesta que no es JSON.';
-      const includePreview = !looksLikeHtml(text) && (!resp || resp.status !== 404);
-      const preview = includePreview ? shortPreview(text) : '';
+      const preview = shortPreview(text);
       const responseError = new Error(where + status + detail + (preview ? ' Respuesta: ' + preview : ''));
-      responseError.isServiceUnavailable = !!(looksLikeHtml(text) || (resp && resp.status === 404));
-      responseError.isNonRetryable = !!(
-        resp && resp.status >= 400 && resp.status < 500 && !responseError.isServiceUnavailable
-      );
+      responseError.isNonRetryable = !!(resp && resp.status >= 400 && resp.status < 500);
       throw responseError;
     }
 
@@ -53,36 +40,60 @@
     return json;
   }
 
+  // Convierte errores de red de bajo nivel (fetch rechazado antes de llegar
+  // al servidor: "Failed to fetch", "NetworkError", timeout, etc.) en un
+  // mensaje entendible en vez del texto crudo del navegador.
+  function wrapNetworkError(err, context, url){
+    const where = context ? (context + ': ') : '';
+    const isAbort = err && err.name === 'AbortError';
+    const message = isAbort
+      ? where + 'La solicitud tardo demasiado y se cancelo (posible problema de conexion o el servidor no respondio a tiempo). Intenta de nuevo.'
+      : where + 'No se pudo conectar con el servidor (' + (url || 'API') + '). Verifica tu conexion a internet. Si el problema persiste, revisa en Apps Script que el despliegue siga activo con acceso "Cualquier usuario, incluso anonimo".';
+    const wrapped = new Error(message);
+    wrapped.isNetworkError = true;
+    wrapped.cause = err;
+    return wrapped;
+  }
+
+  async function fetchWithTimeout(url, fetchOptions, timeoutMs){
+    const controller = new AbortController();
+    const timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
+    try {
+      return await fetch(url, Object.assign({}, fetchOptions, { signal: controller.signal }));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function postJson(url, body, options){
     options = options || {};
-    if(Date.now() < serviceBlockedUntil && lastServiceError){
-      throw lastServiceError;
-    }
+    // 2 reintentos por defecto (3 intentos en total) con espera creciente,
+    // porque fallos de red intermitentes son comunes y no deberian
+    // mostrarle un error al usuario a la primera.
     const retries = Number.isFinite(options.retries) ? options.retries : 2;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 20000;
     let lastError;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const resp = await fetch(freshRequestUrl(url, attempt), {
+        const resp = await fetchWithTimeout(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(body),
-          cache: 'no-store',
-          credentials: 'omit',
-          redirect: 'follow'
-        });
+          body: JSON.stringify(body)
+        }, timeoutMs);
         return await parseJsonResponse(resp, options.context, options);
       } catch (err) {
-        lastError = err;
+        // Error de red (nunca llego respuesta) vs. error ya identificado
+        // por parseJsonResponse (isApiError / isNonRetryable).
+        const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError);
+        lastError = isKnown ? err : wrapNetworkError(err, options.context, url);
+
         if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
-        await new Promise(function(resolve){ setTimeout(resolve, 700); });
-      }
-    }
 
-    if(lastError && lastError.isServiceUnavailable){
-      serviceBlockedUntil = Date.now() + SERVICE_ERROR_COOLDOWN_MS;
-      lastServiceError = lastError;
+        const backoffMs = 700 * Math.pow(2, attempt); // 700ms, 1400ms, 2800ms...
+        await new Promise(function(resolve){ setTimeout(resolve, backoffMs); });
+      }
     }
 
     throw lastError;
