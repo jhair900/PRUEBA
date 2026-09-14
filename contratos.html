@@ -887,7 +887,7 @@
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/api-client.js?v=20260911-rapidez-2"></script>
-<script src="js/gemini-client.js?v=20260910-1"></script>
+<script src="js/gemini-client.js?v=20260914-1"></script>
 <script src="js/expediente.js?v=20260904-1"></script>
 </head>
 <body>
@@ -2264,7 +2264,7 @@ let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
 const GEMINI_MODEL_COOLDOWNS = new Map();
-const GEMINI_FETCH_TIMEOUT_MS = 25000;
+const GEMINI_FETCH_TIMEOUT_MS = 60000;
 const GEMINI_SESSION_KEY = 'autocor_gemini_model';
 const GEMINI_SESSION_TTL_MS = 5 * 60 * 1000;
 const GEMINI_QUOTA_COOLDOWN_MS = 10 * 60 * 1000;
@@ -5786,11 +5786,17 @@ async function geminiGenerateWithFallback(body, opts){
       var errTxt = await resp.text();
       attempts.push(model+'='+resp.status);
       lastErr = 'HTTP '+resp.status+': '+errTxt.substring(0,160);
+      if(resp.status === 401 || resp.status === 403){
+        const error = new Error('La sesion de IA no esta autorizada. Vuelve a iniciar sesion.');
+        error.code = 'AI_SERVICE_ERROR';
+        throw error;
+      }
       registerGeminiModelFailure(model, resp.status, errTxt);
       console.warn('[IA] '+model+' falló:', resp.status, errTxt.substring(0,200));
     }catch(err){
       attempts.push(model+'=NET');
-      lastErr = 'Error de red: '+(err.message||err);
+      lastErr = err.message || 'No se pudo conectar con la IA.';
+      if(err.code === 'AI_TIMEOUT' || err.code === 'AI_CANCELLED' || err.code === 'AI_SERVICE_ERROR') throw err;
       console.warn('[IA] '+model+' red:', err);
     }
   }

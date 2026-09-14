@@ -15,25 +15,42 @@ async function fetchProxy(url, init, timeoutMs){
     init = Object.assign({}, init, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
   }
   init = init ? Object.assign({}, init) : {};
-  var controller = null;
-  var timeoutId = null;
-  if(!init.signal && typeof AbortController !== 'undefined'){
-    controller = new AbortController();
-    init.signal = controller.signal;
-    timeoutId = setTimeout(function(){ controller.abort(); }, (timeoutMs || 25000));
+  const controller = new AbortController();
+  const callerSignal = init.signal;
+  let timedOut = false;
+  const cancel = function(){ controller.abort(); };
+  if(callerSignal){
+    if(callerSignal.aborted) cancel();
+    else callerSignal.addEventListener('abort', cancel, {once:true});
   }
-  var resp;
-  try{
+  init.signal = controller.signal;
+  const timeoutId = setTimeout(function(){ timedOut = true; controller.abort(); }, timeoutMs || 60000);
+  let resp, env;
+  try {
     resp = await fetch(url, init);
-  }finally{
-    if(timeoutId) clearTimeout(timeoutId);
+    // El plazo incluye recibir el cuerpo; una respuesta incompleta no es exito.
+    env = await resp.json();
+  } catch(cause) {
+    const cancelled = callerSignal && callerSignal.aborted;
+    const err = new Error(cancelled ? 'La consulta a la IA fue cancelada.' : timedOut
+      ? 'La IA no respondio dentro del tiempo de espera. Puedes reintentar o continuar con OCR.'
+      : cause instanceof SyntaxError ? 'El servicio de IA devolvio una respuesta no valida. Reintenta.'
+      : 'No se pudo conectar con el servicio de IA. Comprueba la conexion y reintenta.');
+    err.code = cancelled ? 'AI_CANCELLED' : timedOut ? 'AI_TIMEOUT' : 'AI_SERVICE_ERROR';
+    err.cause = cause;
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    if(callerSignal) callerSignal.removeEventListener('abort', cancel);
   }
-  let env = null;
-  try { env = await resp.json(); } catch(_){ env = null; }
-  const hasProxy = env && env._proxy && typeof env._proxy === 'object';
-  const ok = hasProxy ? !!env._proxy.ok : resp.ok;
-  const status = hasProxy ? (env._proxy.status|0) : resp.status;
-  const data = (env && Object.prototype.hasOwnProperty.call(env,'data')) ? env.data : env;
+  if(!env || !env._proxy || typeof env._proxy.ok !== 'boolean' || !Object.prototype.hasOwnProperty.call(env, 'data')){
+    const err = new Error('El servicio de IA devolvio una respuesta inesperada. Comprueba el despliegue de Apps Script.');
+    err.code = 'AI_SERVICE_ERROR';
+    throw err;
+  }
+  const ok = resp.ok && env._proxy.ok;
+  const status = resp.ok ? Number(env._proxy.status) : resp.status;
+  const data = env.data;
   return {
     ok: ok,
     status: status,

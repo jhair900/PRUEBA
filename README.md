@@ -140,3 +140,8 @@ Antes de editar se guardó una copia de los archivos afectados en `.backups/2026
 - Si se pierde la respuesta de un guardado, se consulta la placa para comprobar el identificador de esa solicitud antes de repetirla. Solo se muestra confirmación si el identificador coincide. Si no se puede confirmar, se conserva el error y el formulario.
 
 Publicar los HTML y `js/api-client.js` (versión `20260911-rapidez-2`) junto con una **Nueva versión de todo `gas/script.gs`** en Apps Script. No hace falta cambiar la URL. Las pruebas locales verifican comportamiento y número de lecturas/búsquedas; los segundos reales de mejora deben medirse después del despliegue con las hojas de producción.
+
+
+## Cancelaciones de IA — 14 de septiembre de 2026
+
+El cliente de IA usa ahora 60 segundos incluyendo la lectura de la respuesta, distingue cancelacion y tiempo agotado, y rechaza respuestas incompletas. Los errores de transporte no desencadenan una cadena de intentos con otros modelos. Se conserva el cambio de modelo para respuestas HTTP de modelos no disponibles o cuotas agotadas. Publicar `contratos.html` y `js/gemini-client.js` (`20260914-1`) junto con las correcciones pendientes. Esta correccion no garantiza disponibilidad de Gemini ni elimina los limites externos de Google.

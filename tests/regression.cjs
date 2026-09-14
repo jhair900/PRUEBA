@@ -261,5 +261,26 @@ function backend() {
     assert.throws(() => ctx.withStorageLock_(() => {throw new Error('fallo');}, true), /fallo/);
     assert.equal(releases(), 2);
   });
+  await test('IA distingue tiempo agotado, cancelacion y respuesta incompleta', async () => {
+    for(const mode of ['timeout', 'cancel', 'invalid']) {
+      let expire, delay, cleaned = false;
+      const controller = new AbortController();
+      const context = vm.createContext({AbortController, window:{}, localStorage:{getItem: () => '{"token":"user"}'},
+        setTimeout(fn, ms) {expire = fn; delay = ms; return 1;}, clearTimeout() {cleaned = true;},
+        fetch: async (_, init) => {
+          if(mode === 'invalid') return {ok:true, status:200, json:async () => null};
+          return {ok:true, status:200, json: () => new Promise((_, reject) => {
+            init.signal.addEventListener('abort', () => reject(new Error('signal is aborted without reason')));
+            if(mode === 'timeout') expire(); else controller.abort();
+          })};
+        }
+      });
+      vm.runInContext(fs.readFileSync(path.join(root, 'js/gemini-client.js'), 'utf8'), context);
+      await assert.rejects(context.window.AutoCorGemini.fetch('https://example.test', {signal:controller.signal}), err =>
+        err.code === ({timeout:'AI_TIMEOUT', cancel:'AI_CANCELLED', invalid:'AI_SERVICE_ERROR'})[mode] && !err.message.includes('signal is aborted'));
+      assert.equal(delay, 60000);
+      assert.equal(cleaned, true);
+    }
+  });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});
