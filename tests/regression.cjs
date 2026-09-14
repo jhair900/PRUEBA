@@ -34,11 +34,12 @@ function backend() {
     ContentService: {MimeType: {JSON: 'json'}, createTextOutput: text => ({text, setMimeType() {return this;}})}
   });
   vm.runInContext(source, ctx);
+  const realValidate = ctx.validateSession_, realFindPlate = ctx.findRowByPlaca_;
   ctx.validateSession_ = token => token === 'admin' ? {ok: true, user: 'ADMIN', isAdmin: true, rowIndex: 2} : token === 'user' ? {ok: true, user: 'USER', isAdmin: false, rowIndex: 3} : {ok: false, code: 'AUTH_REQUIRED'};
   ctx.ensureActionResources_ = () => {};
   ctx.getSheet_ = ctx.getPaymentsSheet_ = ctx.getVentasSheet_ = ctx.getContratosSheet_ = ctx.ensureUsersSheet_ = () => sheet;
   ctx.findRowByPlaca_ = (_, placa) => { const index = rows.findIndex(r => r[0] === ctx.normalizePlaca_(placa)); return index < 0 ? 0 : index + 2; };
-  return {ctx, rows, block: () => blocked = true, releases: () => releases, fetches: () => fetches};
+  return {ctx, rows, realValidate, realFindPlate, block: () => blocked = true, releases: () => releases, fetches: () => fetches};
 }
 
 (async () => {
@@ -131,11 +132,12 @@ function backend() {
     await api.postJson('https://example.test', {action: 'save', data: {placa: 'ABC'}});
     assert.equal(calls[1].sessionToken, 'user');
     assert.equal(calls[1].expectedRevision, undefined);
-    assert.equal(calls[1].requestId, calls[2].requestId);
+    assert.equal(calls[2].action, 'getByPlaca');
+    assert.equal(calls[1].requestId, calls[3].requestId);
     await api.postJson('https://example.test', {action: 'save', data: {placa: 'ABC'}});
-    assert.equal(calls[3].expectedRevision, undefined);
-    await api.postJson('https://example.test', {action: 'save', data: {placa: 'OTHER'}});
     assert.equal(calls[4].expectedRevision, undefined);
+    await api.postJson('https://example.test', {action: 'save', data: {placa: 'OTHER'}});
+    assert.equal(calls[5].expectedRevision, undefined);
   });
   await test('Cliente de IA exige login y usa POST incluso para listar modelos', async () => {
     let token = '', sent;
@@ -160,8 +162,104 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260911-reprocesos-1'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260911-rapidez-2'), f);
     }
+  });
+  await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {
+    for (const action of ['save', 'savePago', 'saveVenta', 'saveContrato']) {
+      const {ctx} = backend();
+      let auth = 0, searches = 0;
+      const validate = ctx.validateSession_, find = ctx.findRowByPlaca_;
+      ctx.validateSession_ = token => {auth++; return validate(token);};
+      ctx.findRowByPlaca_ = (sheet, plate) => {searches++; return find(sheet, plate);};
+      assert.equal(ctx.handleAction_(action, {sessionToken: 'user', data: {placa: 'ABC'}}).ok, true);
+      assert.equal(auth, 1, action);
+      assert.equal(searches, 1, action);
+    }
+  });
+  await test('Busqueda por placa conserva espacios y caracteres literales sin descargar la columna', () => {
+    const {realFindPlate} = backend();
+    const values = [' A B C 1 2 3 ', 'ABCX'];
+    let downloads = 0;
+    const sheet = {getLastRow: () => 3, getRange: () => ({
+      getValues() {downloads++; return values.map(v => [v]);},
+      createTextFinder(pattern) {
+        return {matchCase() {return this;}, matchEntireCell() {return this;}, useRegularExpression() {return this;},
+          findNext() {const i = values.findIndex(v => new RegExp(pattern, 'i').test(v)); return i < 0 ? null : {getRow: () => i + 2};}
+        };
+      }
+    })};
+    assert.equal(realFindPlate(sheet, 'abc123'), 2);
+    assert.equal(realFindPlate(sheet, 'ZZZ'), 0);
+    assert.equal(realFindPlate(sheet, 'ABC.'), 0);
+    assert.equal(downloads, 0);
+  });
+  await test('Ubicacion de usuario en cache reduce lecturas y sigue detectando token revocado e inactividad', () => {
+    const {ctx, rows, realValidate} = backend();
+    const cache = new Map();
+    ctx.CacheService = {getScriptCache: () => ({get: k => cache.get(k), put: (k,v) => cache.set(k,v)})};
+    rows.push(['USER', 'Usuario', 'hash', false, true, false, 'token-live', new Date(Date.now() + 40*86400000)]);
+    let reads = 0, lastRows = 0;
+    const sheet = {getLastRow() {lastRows++; return rows.length + 1;}, getRange(row, col, count = 1, width = 1) {
+      return {getValues() {reads++; return rows.slice(row-2, row-2+count).map(r => r.slice(col-1, col-1+width));}};
+    }};
+    ctx.SpreadsheetApp = {getActiveSpreadsheet: () => ({getSheetByName: () => sheet})};
+    assert.equal(realValidate('token-live').ok, true);
+    reads = 0; lastRows = 0;
+    assert.equal(realValidate('token-live').ok, true);
+    assert.equal(reads, 1);
+    assert.equal(lastRows, 0);
+    rows[0][4] = false;
+    assert.equal(realValidate('token-live').ok, false);
+    rows[0][4] = true; rows[0][6] = 'changed';
+    assert.equal(realValidate('token-live').ok, false);
+  });
+  await test('Consultas simultaneas comparten peticion, pero una nueva busqueda vuelve al servidor', async () => {
+    let calls = 0, finish;
+    const context = vm.createContext({console, AbortController, setTimeout, clearTimeout,
+      window: {crypto, localStorage: {getItem: () => '{"token":"user"}'}},
+      fetch: async () => {calls++; await new Promise(resolve => {finish = resolve;}); return {ok: true, status: 200, text: async () => '{"ok":true,"data":{"cliente":"A"}}'};}
+    });
+    vm.runInContext(fs.readFileSync(path.join(root, 'js/api-client.js'), 'utf8'), context);
+    const api = context.window.AutoCorApi;
+    const a = api.postJson('https://example.test', {action: 'getVentaByPlaca', placa: 'ABC'});
+    const b = api.postJson('https://example.test', {action: 'getVentaByPlaca', placa: 'ABC'});
+    assert.equal(calls, 1); finish();
+    const results = await Promise.all([a,b]);
+    results[0].data.cliente = 'Modificado';
+    assert.equal(results[1].data.cliente, 'A');
+    const c = api.postJson('https://example.test', {action: 'getVentaByPlaca', placa: 'ABC'});
+    assert.equal(calls, 2); finish(); await c;
+  });
+  await test('Respuesta perdida: confirmar guardado por ID sin volver a escribir, en los cuatro modulos', async () => {
+    for (const action of ['save', 'savePago', 'saveVenta', 'saveContrato']) {
+      const calls = [], timeouts = []; let saved;
+      const context = vm.createContext({console, AbortController, clearTimeout() {}, setTimeout(fn, ms) {timeouts.push(ms); return 1;},
+        window: {crypto, localStorage: {getItem: () => '{"token":"user"}'}},
+        fetch: async (_, init) => {
+          const body = JSON.parse(init.body); calls.push(body);
+          if(body.action === action){ saved = {placa:'ABC', _requestId:body.requestId}; const err = new Error('timeout'); err.name = 'AbortError'; throw err; }
+          return {ok:true, status:200, text:async () => JSON.stringify({ok:true, data:saved})};
+        }
+      });
+      vm.runInContext(fs.readFileSync(path.join(root, 'js/api-client.js'), 'utf8'), context);
+      const result = await context.window.AutoCorApi.postJson('https://example.test', {action, data:{placa:'ABC'}});
+      assert.equal(result.ok, true);
+      assert.equal(result.message, 'Guardado confirmado.');
+      assert.equal(calls.filter(c => c.action === action).length, 1);
+      assert.equal(calls.length, 2);
+      assert.equal(timeouts[0], 60000);
+    }
+  });
+  await test('La conversion de Drive no ocupa el bloqueo global y las escrituras conservan bloqueo', () => {
+    const {ctx, releases} = backend();
+    ctx.subirExpedienteDrive_ = () => ({ok:true});
+    assert.equal(ctx.handleAction_('subirExpedienteDrive', {sessionToken:'user'}).ok, true);
+    assert.equal(releases(), 0);
+    assert.equal(ctx.withStorageLock_(() => 'written', true), 'written');
+    assert.equal(releases(), 1);
+    assert.throws(() => ctx.withStorageLock_(() => {throw new Error('fallo');}, true), /fallo/);
+    assert.equal(releases(), 2);
   });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});

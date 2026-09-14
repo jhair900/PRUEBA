@@ -127,3 +127,16 @@ Para quitar el bloqueo en el sitio publicado es indispensable actualizar **todo 
 Ejecutar `node tests/regression.cjs`. No requiere instalar dependencias. Comprueba sintaxis y regresiones con simulaciones de Apps Script/Sheets y de red; no reemplaza una prueba con el despliegue real, documentos y Drive.
 
 Antes de editar se guardó una copia de los archivos afectados en `.backups/20260910-154821/`. Esa carpeta contiene versiones anteriores inseguras: mantenerla fuera de cualquier publicación web.
+
+
+## Rendimiento y respuestas lentas — 11 de septiembre de 2026
+
+- Cada guardado valida la sesión y busca/lee el registro una sola vez. La comprobación de reintentos utiliza esa misma lectura.
+- Se guarda en caché únicamente la ubicación de la fila de usuario. Login y validación leen los datos actuales: desactivaciones, contraseñas y tokens revocados siguen siendo efectivos. Si la caché falta o la fila cambió, se busca de nuevo.
+- La búsqueda de placa admite espacios antiguos mediante TextFinder sin descargar la columna completa cuando una placa no existe.
+- Consultas idénticas simultáneas comparten petición; una búsqueda posterior vuelve al servidor. No se mantienen resultados de registros en caché.
+- La conversión Word/PDF ya no mantiene ocupado el bloqueo global. La creación de carpetas, reemplazo de archivos y actualización del registro conservan secciones de escritura protegidas.
+- Los guardados tienen hasta 60 segundos por intento; login 45 segundos y consultas 30 segundos. El plazo incluye leer la respuesta completa. Esto evita cancelar prematuramente respuestas lentas, pero no reduce por sí solo el tiempo de Google.
+- Si se pierde la respuesta de un guardado, se consulta la placa para comprobar el identificador de esa solicitud antes de repetirla. Solo se muestra confirmación si el identificador coincide. Si no se puede confirmar, se conserva el error y el formulario.
+
+Publicar los HTML y `js/api-client.js` (versión `20260911-rapidez-2`) junto con una **Nueva versión de todo `gas/script.gs`** en Apps Script. No hace falta cambiar la URL. Las pruebas locales verifican comportamiento y número de lecturas/búsquedas; los segundos reales de mejora deben medirse después del despliegue con las hojas de producción.

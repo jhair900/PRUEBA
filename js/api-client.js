@@ -74,7 +74,7 @@
     const where = context ? (context + ': ') : '';
     const isAbort = err && err.name === 'AbortError';
     const message = isAbort
-      ? where + 'La solicitud tardo demasiado y se cancelo (posible problema de conexion o el servidor no respondio a tiempo). Intenta de nuevo.'
+      ? where + 'No se recibio confirmacion a tiempo. Si estabas guardando, el servidor podria haber completado el registro. Conserva el formulario y verifica la placa antes de volver a guardar.'
       : where + 'No se pudo conectar con el servidor (' + (url || 'API') + '). Verifica tu conexion a internet. Si el problema persiste, revisa en Apps Script que el despliegue siga activo con acceso "Cualquier usuario, incluso anonimo".';
     const wrapped = new Error(message);
     wrapped.isNetworkError = true;
@@ -86,13 +86,42 @@
     const controller = new AbortController();
     const timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
     try {
-      return await fetch(url, Object.assign({}, fetchOptions, { signal: controller.signal }));
+      const response = await fetch(url, Object.assign({}, fetchOptions, { signal: controller.signal }));
+      const text = await response.text();
+      return { ok: response.ok, status: response.status, text: async function(){ return text; } };
     } finally {
       clearTimeout(timer);
     }
   }
 
+  // Compartir solo consultas identicas que aun estan en curso, nunca resultados antiguos.
+  const pendingReads = new Map();
+  let writeGeneration = 0;
   async function postJson(url, body, options){
+    body = Object.assign({}, body);
+    if(!body.sessionToken && body.action !== 'login'){
+      try { body.sessionToken = (JSON.parse(global.localStorage.getItem('autocor_auth') || '{}') || {}).token || ''; } catch (_) {}
+    }
+    const reading = /^(get|list|estadoPorPlaca$|ping$)/.test(body.action || '');
+    if(!reading){
+      writeGeneration++;
+      return sendJson(url, body, options);
+    }
+    const key = JSON.stringify([url, body, options || {}, writeGeneration]);
+    let promise = pendingReads.get(key);
+    if(!promise){
+      promise = sendJson(url, body, options);
+      pendingReads.set(key, promise);
+    }
+    try {
+      // Cada formulario puede adaptar su copia sin modificar la respuesta de otro.
+      return JSON.parse(JSON.stringify(await promise));
+    } finally {
+      if(pendingReads.get(key) === promise) pendingReads.delete(key);
+    }
+  }
+
+  async function sendJson(url, body, options){
     options = options || {};
     body = Object.assign({}, body);
     if(!body.sessionToken && body.action !== 'login'){
@@ -111,7 +140,8 @@
     // mostrarle un error al usuario a la primera.
     const safeRetry = saving || /^(get|list|ping)/.test(body.action || '');
     const retries = safeRetry ? (Number.isFinite(options.retries) ? options.retries : 2) : 0;
-    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 25000;
+    const defaultTimeout = saving ? 60000 : body.action === 'login' ? 45000 : /^(subirExpedienteDrive|convertirDocxAPdf)$/.test(body.action) ? 120000 : 30000;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeout;
     let lastError;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -132,6 +162,17 @@
         const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
         lastError = isKnown ? err : wrapNetworkError(err, options.context, url);
 
+        // Una respuesta perdida no implica que Sheets no haya guardado.
+        // Confirmar el identificador antes de repetir la escritura.
+        if(saving && !(err && (err.isApiError || err.isNonRetryable))){
+          const readAction = {save:'getByPlaca', savePago:'getPagoByPlaca', saveVenta:'getVentaByPlaca', saveContrato:'getContratoByPlaca'}[body.action];
+          try {
+            const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:30000, throwOnApiError:false});
+            if(check && check.ok && check.data && check.data._requestId === body.requestId){
+              return {ok:true, data:check.data, placa:check.data.placaValue || check.data.placa, updated:true, estadoProceso:check.data.estadoProceso, message:'Guardado confirmado.'};
+            }
+          } catch (_) { /* Si no se puede confirmar, reutilizar el mismo identificador. */ }
+        }
         if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
 

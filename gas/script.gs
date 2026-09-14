@@ -130,7 +130,7 @@ function ensureActionResources_(action) {
     return;
   }
   if (action === 'saveContrato' || action === 'setEstadoProceso' ||
-      action === 'listContratos' || action === 'deleteContrato' || action === 'subirExpedienteDrive') {
+      action === 'listContratos' || action === 'deleteContrato') {
     ensureContratosSheet_();
     return;
   }
@@ -146,24 +146,15 @@ const RECORD_ACTIONS = {
 };
 function handleAction_(action, payload) {
   payload = payload || {};
-  const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$|subirExpedienteDrive$)/.test(action);
+  const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$)/.test(action);
   const lock = writes ? LockService.getScriptLock() : null;
   if (lock && !lock.tryLock(10000)) return { ok: false, code: 'BUSY', message: 'Otro usuario esta guardando. Intenta de nuevo.' };
   try {
     const spec = RECORD_ACTIONS[action];
     const saving = spec && action.indexOf('save') === 0;
     if (saving) {
-      const session = validateSession_(payload.sessionToken);
-      if (!session.ok) return session;
       if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) return { ok: false, message: 'Datos invalidos.' };
-      const placa = normalizePlaca_(payload.data.placaValue || payload.data.placa);
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(spec[0]);
-      const row = sheet ? findRowByPlaca_(sheet, placa) : 0;
-      const stored = row ? JSON.parse(sheet.getRange(row, spec[1]).getValue() || '{}') : null;
-      if (stored && payload.requestId && stored._requestId === payload.requestId && stored._requestUser === session.user) {
-        return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: stored, estadoProceso: stored.estadoProceso };
-      }
-      payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid(), _requestUser: session.user });
+      payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid() });
     }
     const result = dispatchAction_(action, payload);
     return result;
@@ -509,12 +500,13 @@ function findRowByPlaca_(sheet, placa) {
 
   const range = sheet.getRange(2, 1, lastRow - 1, 1);
   try {
-    const match = range.createTextFinder(placaNorm)
+    const pattern = '^\\s*' + placaNorm.split('').map(function(c) { return c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('\\s*') + '\\s*$';
+    const match = range.createTextFinder(pattern)
       .matchCase(false)
       .matchEntireCell(true)
-      .useRegularExpression(false)
+      .useRegularExpression(true)
       .findNext();
-    if (match) return match.getRow();
+    return match ? match.getRow() : 0;
   } catch (_) {}
 
   // Compatibilidad con registros antiguos que tengan espacios en la placa.
@@ -600,14 +592,42 @@ function crearUsuariosAhora() {
   return setupInitialUsers_();
 }
 
+function userRowHintKey_(kind, value) { return 'autocor:row:' + kind + ':' + hashPassword_(value); }
+function rememberUserRow_(kind, value, row) {
+  try { CacheService.getScriptCache().put(userRowHintKey_(kind, value), String(row), 21600); } catch (_) {}
+}
+function readUserRecord_(sheet, kind, value) {
+  const expected = kind === 'name' ? normalizeUser_(value) : String(value || '');
+  if (!expected) return null;
+  const column = kind === 'name' ? 0 : 6;
+  function matches(row) { return (kind === 'name' ? normalizeUser_(row[column]) : String(row[column] || '')) === expected; }
+  try {
+    const hint = Number(CacheService.getScriptCache().get(userRowHintKey_(kind, expected)));
+    if (Number.isInteger(hint) && hint >= 2) {
+      const values = sheet.getRange(hint, 1, 1, 8).getValues()[0];
+      if (matches(values)) return { row: hint, values: values };
+    }
+  } catch (_) {}
+  const last = sheet.getLastRow();
+  if (last < 2) return null;
+  // La hoja de usuarios es pequena: obtener datos y credenciales en una sola lectura.
+  const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (matches(rows[i])) {
+      rememberUserRow_(kind, expected, i + 2);
+      return { row: i + 2, values: rows[i] };
+    }
+  }
+  return null;
+}
+
 function login_(username, password) {
   try {
-    const sh = ensureUsersSheet_();
-    const row = findUserRow_(sh, username);
-
-    if (!row) return { ok: false, message: 'Usuario no encontrado o inactivo.' };
-
-    const values = sh.getRange(row, 1, 1, 8).getValues()[0];
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(USERS_SHEET);
+    const found = sh && readUserRecord_(sh, 'name', username);
+    if (!found) return { ok: false, message: 'Usuario no encontrado o inactivo.' };
+    const row = found.row;
+    const values = found.values;
     const isActive = values[4] === true || String(values[4]).toUpperCase() === 'TRUE';
     if (!isActive) return { ok: false, message: 'Usuario no encontrado o inactivo.' };
 
@@ -618,6 +638,7 @@ function login_(username, password) {
     const token = generateToken_();
     const expires = new Date(Date.now() + SESSION_TTL_MINUTES * 60 * 1000);
     sh.getRange(row, 7, 1, 2).setValues([[token, expires]]);
+    rememberUserRow_('token', token, row);
 
     return {
       ok: true,
@@ -640,19 +661,10 @@ function validateSession_(token) {
 
     const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(USERS_SHEET);
     if (!sh) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
-    const lastRow = sh.getLastRow();
-    if (lastRow < 2) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
-
-    const tokenCell = sh.getRange(2, 7, lastRow - 1, 1)
-      .createTextFinder(String(token))
-      .matchCase(true)
-      .matchEntireCell(true)
-      .useRegularExpression(false)
-      .findNext();
-    if (!tokenCell) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
-
-    const rowIndex = tokenCell.getRow();
-    const row = sh.getRange(rowIndex, 1, 1, 8).getValues()[0];
+    const found = readUserRecord_(sh, 'token', token);
+    if (!found) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
+    const rowIndex = found.row;
+    const row = found.values;
     const expiresAt = row[7];
     const isActive = row[4] === true || String(row[4]).toUpperCase() === 'TRUE';
     if (!isActive) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
@@ -863,6 +875,10 @@ function saveLiquidacion_(data, session) {
       existingData = existingJson ? JSON.parse(existingJson) : null;
     }
 
+    if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
+      return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
+    }
+    data._requestUser = session.user;
     const history = buildHistory_(existingData, data, session.user);
     data.placa = placa;
     data.historialUsuarios = history;
@@ -1000,6 +1016,10 @@ function savePago_(data, session) {
     }
 
     // Construir historial acumulativo: existente + entrante + sesión actual
+    if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
+      return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
+    }
+    data._requestUser = session.user;
     const history = buildHistory_(existingData, data, session.user);
     data.placaValue = placa;
     data.placa = placa;
@@ -1150,6 +1170,10 @@ function saveVenta_(data, session) {
     }
 
     // Construir historial acumulativo: existente + entrante + sesión actual
+    if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
+      return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
+    }
+    data._requestUser = session.user;
     const history = buildHistory_(existingData, data, session.user);
     data.placaValue = placa;
     data.placa = placa;
@@ -1338,6 +1362,10 @@ function saveContrato_(data, session) {
       existingData = existingJson ? JSON.parse(existingJson) : null;
     }
 
+    if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
+      return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
+    }
+    data._requestUser = session.user;
     data = Object.assign({}, existingData || {}, data);
     if (existingData) {
       ['historialEstados', 'estadoActualizadoEn', 'estadoActualizadoPor', 'observacionEstado', 'drive'].forEach(function(key) {
@@ -1749,6 +1777,13 @@ function convertirDocxAPdf_(docxB64, nombre) {
 /* Recibe { placa, archivos: [{ nombre, contenidoBase64, esDocx? }] } y
    los guarda en la carpeta de la placa. Sobrescribe versiones previas.
    Devuelve URLs útiles para que el cliente las muestre. */
+// No mantener el bloqueo global mientras Google convierte los documentos.
+function withStorageLock_(operation, flush) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Otro guardado esta en curso. Intenta de nuevo.');
+  try { return operation(); }
+  finally { try { if (flush) SpreadsheetApp.flush(); } finally { lock.releaseLock(); } }
+}
 function subirExpedienteDrive_(placa, archivos, session) {
   try {
     const p = String(placa || '').replace(/\s/g, '').toUpperCase();
@@ -1757,7 +1792,7 @@ function subirExpedienteDrive_(placa, archivos, session) {
       return { ok: false, message: 'No se recibieron archivos.' };
     }
 
-    const folder = _getOrCreatePlacaFolder_(p);
+    const folder = withStorageLock_(function(){ return _getOrCreatePlacaFolder_(p); }, false);
     const resultado = { ok: true, placa: p, folderUrl: folder.getUrl(), folderId: folder.getId(), archivos: [] };
 
     archivos.forEach(function (a) {
@@ -1777,7 +1812,7 @@ function subirExpedienteDrive_(placa, archivos, session) {
         } else {
           bytes = _decodeBase64Pdf_(a.contenidoBase64);
         }
-        const file = _saveOrReplacePdf_(folder, nombre, bytes);
+        const file = withStorageLock_(function(){ return _saveOrReplacePdf_(folder, nombre, bytes); }, false);
         resultado.archivos.push({
           nombre: nombre,
           ok: true,
@@ -1792,7 +1827,8 @@ function subirExpedienteDrive_(placa, archivos, session) {
 
     // Persistir los URLs en el DATA_JSON del expediente
     try {
-      const sheet = getContratosSheet_();
+      withStorageLock_(function(){
+      const sheet = ensureContratosSheet_();
       const row = findRowByPlaca_(sheet, p);
       if (row > 0) {
         const json = sheet.getRange(row, 8).getValue();
@@ -1818,6 +1854,7 @@ function subirExpedienteDrive_(placa, archivos, session) {
         sheet.getRange(row, 8).setValue(JSON.stringify(data));
         sheet.getRange(row, 7).setValue(new Date());
       }
+      }, true);
     } catch (e) {
       resultado.warningPersist = 'No se pudo persistir URLs en hoja Contratos: ' + e.message;
     }
