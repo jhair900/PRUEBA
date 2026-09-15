@@ -886,9 +886,9 @@
   }
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
-<script src="js/api-client.js?v=20260911-rapidez-2"></script>
+<script src="js/api-client.js?v=20260915-login-1"></script>
 <script src="js/gemini-client.js?v=20260914-1"></script>
-<script src="js/expediente.js?v=20260904-1"></script>
+<script src="js/expediente.js?v=20260915-1"></script>
 </head>
 <body>
 
@@ -5809,12 +5809,13 @@ window.testAIConnection = function(){
   setAIBanner('checking','Verificando conexión con Gemini...');
   aiCheckPromise = (async function(){
     try{
-      await refreshGeminiModelAvailability();
-      var result = await geminiGenerateWithFallback({
-        contents: [{ parts: [{ text: 'Responde solo con: pong' }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 10 }
-      }, { silent:true });
-      console.log('[IA] Conexión confirmada con:', result.model);
+      const count = await refreshGeminiModelAvailability();
+      if(!count) throw new Error('No se pudo consultar la disponibilidad de la IA.');
+      const candidates = geminiCandidateModels();
+      if(!candidates.length) throw new Error('No hay modelos de IA disponibles en este momento.');
+      GEMINI_MODEL_ACTIVE = candidates[0];
+      aiAvailable = true;
+      setAIBanner('ok', 'IA habilitada. La respuesta se comprobara al procesar el documento.');
     }catch(err){
       setGeminiUnavailable();
       setAIBanner('err', '✗ Error de conexión con IA (' + (err.message || 'Sin respuesta') + '). Reintenta o se usará OCR.');
@@ -5834,6 +5835,10 @@ window.initializeAIState = function(){
      Date.now() - Number(cached.savedAt || 0) <= GEMINI_SESSION_TTL_MS){
     GEMINI_MODEL_ACTIVE = cached.model;
     GEMINI_LAST_OK_MODEL = cached.model;
+    aiAvailable = true;
+    aiAvailabilityChecked = true;
+    setAIBanner('ok', 'IA habilitada con el modelo utilizado recientemente.');
+    return Promise.resolve();
   }
   aiAvailable = false;
   return window.testAIConnection();
