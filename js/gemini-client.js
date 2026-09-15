@@ -27,7 +27,10 @@ async function fetchProxy(url, init, timeoutMs){
   const timeoutId = setTimeout(function(){ timedOut = true; controller.abort(); }, timeoutMs || 60000);
   let resp, env;
   try {
-    resp = await fetch(url, init);
+    const endpoint = global.AutoCorTransport ? new URL(url) : null;
+    const rpc = global.AutoCorTransport ? await global.AutoCorTransport.request(url, {action:'geminiProxy', op:endpoint.searchParams.get('op'), model:endpoint.searchParams.get('model'), sessionToken:auth.token, request:request}, init.signal) : null;
+    if(rpc !== null){ resp = {ok:true, status:200, json:async function(){return rpc;}}; }
+    else resp = await fetch(url, init);
     // El plazo incluye recibir el cuerpo; una respuesta incompleta no es exito.
     env = await resp.json();
   } catch(cause) {

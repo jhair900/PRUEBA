@@ -113,8 +113,8 @@ Para quitar el bloqueo en el sitio publicado es indispensable actualizar **todo 
 ### Cambios incluidos
 
 - `listUsers` y `adminResetPassword` validan la sesión y el rol del servidor; no confían en `adminUsername`.
-- `setupUsers` no se puede ejecutar por web. `crearUsuariosAhora()` es una operación manual del editor que solo agrega usuarios faltantes y nunca restablece los existentes.
-- En una instalación nueva, el propietario configura `INITIAL_ADMIN_PASSWORD` (mínimo 12 caracteres) en Script Properties antes de ejecutar `crearUsuariosAhora()`. Esa clave permite entrar como el administrador inicial JSANCHEZ; la propiedad se elimina al terminar. Los demás usuarios reciben claves aleatorias y el administrador debe asignarles claves temporales desde la aplicación. En una instalación existente no es necesario ejecutar esta inicialización.
+- `setupUsers` no se puede ejecutar por web. `crearUsuariosAhora_()` es una operación manual del editor que solo agrega usuarios faltantes y nunca restablece los existentes.
+- En una instalación nueva, el propietario configura `INITIAL_ADMIN_PASSWORD` (mínimo 12 caracteres) en Script Properties antes de ejecutar `crearUsuariosAhora_()`. Esa clave permite entrar como el administrador inicial JSANCHEZ; la propiedad se elimina al terminar. Los demás usuarios reciben claves aleatorias y el administrador debe asignarles claves temporales desde la aplicación. En una instalación existente no es necesario ejecutar esta inicialización.
 - El proxy de Gemini exige sesión y recibe `{sessionToken, request}` por POST. Solo `request` se reenvía a Gemini. Su cliente está separado en `js/gemini-client.js`.
 - Las escrituras pasan por un bloqueo de Apps Script. Los guardados de los cuatro módulos sobrescriben por placa y utilizan un identificador para reconocer reintentos de la misma operación.
 - Los cambios de estado y los archivos de Drive se preservan al guardar contratos.
@@ -159,3 +159,18 @@ Cada respuesta incluye `timing` con espera de bloqueo, procesamiento, flush y ti
 Publicar los HTML y `js/api-client.js` con version `20260915-traza-1`. Esta ampliacion no requiere modificar Apps Script si ya esta publicada la version con `timing`.
 
 Despues de un guardado lento, ejecutar `JSON.stringify(AutoCorApi.lastSaveTiming)` en la consola. El informe conserva cada intento, HTTP recibido, si hubo redireccion, tiempo hasta recibir cabeceras, tiempo de lectura del cuerpo, etapa del fallo y consultas de confirmacion. No incluye placas, documentos, contraseñas, tokens ni URLs. Las cabeceras agrupan conexion, redirecciones y espera de Google: no separan por si solas esos componentes. Una busqueda posterior no reemplaza el informe del ultimo guardado. Registrar tiempos no acelera la conexion; sirve para decidir la siguiente correccion con evidencia.
+
+
+## Conexion directa — 15 de septiembre de 2026
+
+Este cambio sustituye para las operaciones del sitio la llamada `fetch` al Content Service por un canal HTML Service reutilizable (`google.script.run`). La pagina carga una vez un iframe sin interfaz, verifica origen, canal aleatorio y ventana emisora, y conserva la conexion para login, consultas, guardados y Gemini. Las sesiones y permisos siguen comprobándose en el servidor; no se incluyen credenciales en URLs. El canal solo admite el origen de GitHub configurado y desarrollo local.
+
+### Publicacion obligatoria en este orden
+
+1. Pegar TODO `gas/script.gs` y publicar una Nueva version del despliegue existente. Incluye `autocorRpc`, `bridgePage_` y `bridgeRuntime_`; no se necesita crear archivos HTML en Apps Script.
+2. Publicar TODOS los HTML y la carpeta `js/`, incluido el NUEVO `js/apps-script-transport.js`. Las paginas usan la version `20260915-directo-1` del cliente.
+3. Recargar con Ctrl+F5 e iniciar sesion. La primera carga abre el canal; las solicitudes siguientes lo reutilizan.
+
+Si el canal no se establece en 12 segundos, la operacion indica que no se pudo abrir la conexion directa y no encadena automaticamente la ruta HTTP lenta. Reintentar permite abrir un canal nuevo. Si una solicitud ya fue enviada, nunca se cambia a HTTP como consecuencia de un error; los reintentos de guardado conservan el identificador existente. Una consulta fallida ahora muestra un mensaje de consulta, no una advertencia sobre guardados.
+
+El campo `details[].transport` del diagnostico debe indicar `google.script.run`. Este cambio evita la redireccion Content Service por cada consulta; no elimina la dependencia de disponibilidad, red y cuotas de Google. Las pruebas locales simulan el canal y verifican permisos y serializacion; es imprescindible verificar la integracion real despues de desplegar. La funcion manual de inicializacion se llama ahora `crearUsuariosAhora_` para no exponerla por RPC; sigue disponible desde el editor.

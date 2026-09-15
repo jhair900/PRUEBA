@@ -70,11 +70,11 @@
   // Convierte errores de red de bajo nivel (fetch rechazado antes de llegar
   // al servidor: "Failed to fetch", "NetworkError", timeout, etc.) en un
   // mensaje entendible en vez del texto crudo del navegador.
-  function wrapNetworkError(err, context, url){
+  function wrapNetworkError(err, context, url, saving){
     const where = context ? (context + ': ') : '';
     const isAbort = err && err.name === 'AbortError';
     const message = isAbort
-      ? where + 'No se recibio confirmacion a tiempo. Si estabas guardando, el servidor podria haber completado el registro. Conserva el formulario y verifica la placa antes de volver a guardar.'
+      ? where + (saving ? 'No se pudo confirmar el guardado a tiempo. Conserva el formulario y verifica la placa antes de volver a guardar.' : 'La consulta no respondio a tiempo. No se modifico ningun registro. Intenta de nuevo.')
       : where + 'No se pudo conectar con el servidor (' + (url || 'API') + '). Verifica tu conexion a internet. Si el problema persiste, revisa en Apps Script que el despliegue siga activo con acceso "Cualquier usuario, incluso anonimo".';
     const wrapped = new Error(message);
     wrapped.isNetworkError = true;
@@ -89,6 +89,15 @@
     const controller = new AbortController();
     const timer = setTimeout(function(){ trace.timedOut = true; controller.abort(); }, timeoutMs);
     try {
+      if(global.AutoCorTransport){
+        const result = await global.AutoCorTransport.request(url, JSON.parse(fetchOptions.body), controller.signal, trace);
+        if(result !== null){
+          trace.headersMs = Date.now()-started; trace.httpStatus = null; trace.bodyMs = 0;
+          return {ok:true, status:200, text:async function(){return JSON.stringify(result);}};
+        }
+      }
+      if(controller.signal.aborted){const error = new Error('Tiempo agotado');error.name='AbortError';throw error;}
+      trace.transport = 'fetch';
       const response = await fetch(url, Object.assign({}, fetchOptions, { signal: controller.signal }));
       trace.headersMs = Date.now() - started;
       trace.httpStatus = response.status;
@@ -189,7 +198,7 @@
         trace.errorType = err.code || err.name || 'Error';
         trace.serviceUnavailable = !!err.isServiceUnavailable;
         const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
-        lastError = isKnown ? err : wrapNetworkError(err, options.context, url);
+        lastError = isKnown ? err : wrapNetworkError(err, options.context, url, saving);
 
         // Una respuesta perdida no implica que Sheets no haya guardado.
         // Confirmar el identificador antes de repetir la escritura.

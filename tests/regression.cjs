@@ -162,7 +162,7 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260915-traza-1'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260915-directo-1'), f);
     }
   });
   await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {
@@ -377,6 +377,74 @@ function backend() {
     assert.equal(context.window.AutoCorApi.lastSaveTiming,saved);
     assert.ok(!JSON.stringify(saved).includes('PRIVATE-PLATE'));
     assert.ok(!JSON.stringify(saved).includes('secret'));
+  });
+  await test('Canal directo usa los mismos permisos y mantiene reprocesos por placa', () => {
+    const {ctx,rows} = backend();
+    assert.equal(ctx.autocorRpc({action:'savePago',data:{placa:'ABC'}}).ok,false);
+    assert.equal(ctx.autocorRpc({action:'adminResetPassword',adminUsername:'JSANCHEZ'}).ok,false);
+    assert.equal(ctx.autocorRpc({action:'savePago',sessionToken:'user',data:{placa:'ABC'},requestId:'a'}).ok,true);
+    assert.equal(ctx.autocorRpc({action:'savePago',sessionToken:'user',data:{placa:'ABC',clienteValue:'Nuevo'},requestId:'b'}).ok,true);
+    assert.equal(rows.length,1);
+    assert.equal(typeof ctx.crearUsuariosAhora,'undefined');
+  });
+  await test('Puente valida origen, ventana y canal antes de llamar al servidor', () => {
+    const {ctx} = backend();
+    let html, mode;
+    ctx.HtmlService={XFrameOptionsMode:{ALLOWALL:'allow'},createHtmlOutput:s=>{html=s;return {setXFrameOptionsMode:m=>{mode=m;}};}};
+    ctx.bridgePage_({parentOrigin:'https://evil.test',channel:'a'.repeat(36)});
+    assert.equal(html,'Origen no autorizado.');
+    const channel='a'.repeat(36), origin='https://jhair900.github.io';
+    ctx.bridgePage_({parentOrigin:origin,channel});
+    assert.equal(mode,'allow');
+    let listener,calls=0;
+    const parent={postMessage(){}};
+    const runner={withSuccessHandler(){return this;},withFailureHandler(){return this;},autocorRpc(){calls++;}};
+    const browser=vm.createContext({window:{top:parent,addEventListener:(_,fn)=>listener=fn},google:{script:{run:runner}}});
+    vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],browser);
+    const event={source:parent,origin,data:{channel,type:'autocor-request',id:'1',payload:{action:'ping'}}};
+    listener({...event,origin:'https://evil.test'});
+    listener({...event,source:{}});
+    listener({...event,data:{...event.data,channel:'wrong'}});
+    assert.equal(calls,0);
+    listener(event);assert.equal(calls,1);
+  });
+  await test('Cliente usa canal directo sin fetch y falla de forma segura si una consulta expira', async () => {
+    let reads=0;
+    const context=vm.createContext({AbortController,setTimeout,clearTimeout,window:{crypto,localStorage:{getItem:()=>'{"token":"user"}'},
+      AutoCorTransport:{request:async(_,body,signal,trace)=>{trace.transport='google.script.run';return {ok:true,data:{},timing:{serverMs:3}};}},
+    },fetch:async()=>{reads++;throw new Error('No debe utilizar fetch');}});
+    vm.runInContext(fs.readFileSync(path.join(root,'js/api-client.js'),'utf8'),context);
+    assert.equal((await context.window.AutoCorApi.postJson('https://example.test',{action:'getPagoByPlaca',placa:'ABC'})).ok,true);
+    assert.equal(reads,0);
+    assert.equal(context.window.AutoCorApi.lastTiming.details[0].transport,'google.script.run');
+    context.window.AutoCorTransport.request=async()=>{const error=new Error('aborted');error.name='AbortError';throw error;};
+    await assert.rejects(context.window.AutoCorApi.postJson('https://example.test',{action:'getPagoByPlaca',placa:'ABC'},{retries:0}),err=>err.message.includes('consulta') && !err.message.includes('guardado'));
+  });
+  await test('Transporte acepta solo respuestas del iframe autorizado y reutiliza el canal', async () => {
+    let listener, iframe, sent;
+    const context=vm.createContext({URL,setTimeout:()=>1,clearTimeout(){},window:{crypto,
+      location:{origin:'https://jhair900.github.io'},AutoCorConfig:{apiUrl:'https://script.google.com/macros/s/test/exec'},
+      addEventListener:(_,fn)=>listener=fn,removeEventListener(){}
+    },document:{readyState:'complete',createElement:()=>{
+      iframe={setAttribute(){},contentWindow:{},remove(){}};return iframe;
+    },body:{appendChild(){}}}});
+    vm.runInContext(fs.readFileSync(path.join(root,'js/apps-script-transport.js'),'utf8'),context);
+    const channel=new URL(iframe.src).searchParams.get('channel');
+    const origin='https://test-script.googleusercontent.com';
+    const peer={parent:iframe.contentWindow,postMessage:(data,target)=>{sent={data,target};}};
+    listener({source:peer,origin,data:{channel,type:'autocor-ready'}});
+    const work=context.window.AutoCorTransport.request('https://script.google.com/macros/s/test/exec',{action:'getPagoByPlaca'});
+    await Promise.resolve();
+    assert.equal(sent.target,origin);
+    const reply={type:'autocor-response',channel,id:sent.data.id,result:{ok:true}};
+    listener({source:peer,origin:'https://evil.test',data:reply});
+    listener({source:peer,origin,data:{...reply,channel:'wrong'}});
+    listener({source:peer,origin,data:reply});
+    assert.equal((await work).ok,true);
+    const next=context.window.AutoCorTransport.request('https://script.google.com/macros/s/test/exec',{action:'ping'});
+    await Promise.resolve();
+    listener({source:peer,origin,data:{...reply,id:sent.data.id}});
+    assert.equal((await next).ok,true);
   });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});

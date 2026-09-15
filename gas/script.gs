@@ -24,6 +24,7 @@ const SESSION_TTL_MINUTES = 60 * 24 * 30; // 30 días (expiración deslizante: s
 
 function doGet(e) {
   const params = (e && e.parameter) ? e.parameter : {};
+  if (params.action === 'bridge') return bridgePage_(params);
   if (params.action === 'geminiProxy') {
     return geminiProxy_(params, '');
   }
@@ -597,7 +598,7 @@ function setupInitialUsers_() {
   }
 }
 
-function crearUsuariosAhora() {
+function crearUsuariosAhora_() {
   return setupInitialUsers_();
 }
 
@@ -1879,4 +1880,41 @@ function subirExpedienteDrive_(placa, archivos, session) {
   } catch (err) {
     return { ok: false, message: 'Error en subirExpedienteDrive: ' + err.message };
   }
+}
+
+
+// Puente HTML Service. Reutiliza exactamente las mismas comprobaciones del backend.
+function autocorRpc(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {ok:false, message:'Solicitud invalida.'};
+  let result;
+  if (payload.action === 'geminiProxy') {
+    result = JSON.parse(geminiProxy_({op:payload.op, model:payload.model}, JSON.stringify({sessionToken:payload.sessionToken, request:payload.request})).getContent());
+  } else result = handleAction_(payload.action || 'ping', payload);
+  // google.script.run no admite objetos Date; igualar la serializacion de la API HTTP.
+  return JSON.parse(JSON.stringify(result));
+}
+function bridgePage_(params) {
+  const origin = String(params.parentOrigin || '');
+  const channel = String(params.channel || '');
+  if (!/^[a-f0-9-]{36}$/.test(channel) ||
+      !(origin === 'https://jhair900.github.io' || origin === 'null' || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))) {
+    return HtmlService.createHtmlOutput('Origen no autorizado.');
+  }
+  const html = '<!doctype html><html><head><meta charset="utf-8"></head><body><script>(' + bridgeRuntime_.toString() + ')(' + JSON.stringify(origin) + ',' + JSON.stringify(channel) + ');<\/script></body></html>';
+  return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+function bridgeRuntime_(origin, channel) {
+  const parent = window.top;
+  const target = origin === 'null' ? '*' : origin;
+  window.addEventListener('message', function(event){
+    const message = event.data;
+    if(event.source !== parent || event.origin !== origin || !message || message.channel !== channel || message.type !== 'autocor-request') return;
+    const id = message.id;
+    google.script.run.withSuccessHandler(function(result){
+      parent.postMessage({type:'autocor-response', channel:channel, id:id, result:result}, target);
+    }).withFailureHandler(function(error){
+      parent.postMessage({type:'autocor-response', channel:channel, id:id, error:String(error && error.message || 'No se pudo completar la solicitud.')}, target);
+    }).autocorRpc(message.payload);
+  });
+  parent.postMessage({type:'autocor-ready', channel:channel}, target);
 }
