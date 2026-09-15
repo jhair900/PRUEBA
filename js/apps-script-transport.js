@@ -2,8 +2,11 @@
 (function(global){
   'use strict';
   let connection;
+  let connectedClient = null;
+  let unavailableUntil = 0;
   function connect(){
     if(connection) return connection;
+    if(Date.now() < unavailableUntil) return Promise.resolve(null);
     connection = new Promise(function(resolve, reject){
       const channel = global.crypto.randomUUID();
       const iframe = document.createElement('iframe');
@@ -33,7 +36,7 @@
         if(message.type === 'autocor-ready' && !peer){
           peer = event.source; peerOrigin = event.origin;
           clearTimeout(readyTimer);
-          resolve({request:function(payload, signal){
+          connectedClient = {request:function(payload, signal){
             return new Promise(function(done, fail){
               const id = global.crypto.randomUUID();
               function cancel(){
@@ -45,7 +48,8 @@
               pending.set(id, {done:done, fail:fail, cleanup:function(){ if(signal) signal.removeEventListener('abort', cancel); }});
               peer.postMessage({type:'autocor-request', channel:channel, id:id, payload:payload}, peerOrigin);
             });
-          }});
+          }};
+          resolve(connectedClient);
           return;
         }
         if(event.source !== peer || event.origin !== peerOrigin || message.type !== 'autocor-response') return;
@@ -57,7 +61,8 @@
       global.addEventListener('message', receive);
       const readyTimer = setTimeout(function(){
         global.removeEventListener('message', receive); iframe.remove();
-        reject(new Error('No se pudo abrir la conexion directa. Verifica que el nuevo Apps Script este implementado.'));
+        unavailableUntil = Date.now() + 60000;
+        reject(new Error('El canal directo no esta disponible temporalmente.'));
       }, 12000);
       iframe.src = url.toString();
       document.body.appendChild(iframe);
@@ -70,12 +75,21 @@
     // Compatibilidad: solo usar el canal para el backend configurado.
     const endpoint = new URL(url);
     if(endpoint.origin + endpoint.pathname !== new URL(global.AutoCorConfig.apiUrl).origin + new URL(global.AutoCorConfig.apiUrl).pathname) return null;
-    let client;
-    try { client = await connect(); }
-    catch(error) {
+    let client = connectedClient;
+    if(!client){
+      // Solo esperar brevemente al arranque. Aun no se ha enviado ninguna operacion.
+      // Si el navegador bloquea el iframe, usar la API HTTP existente.
+      let timer;
+      try {
+        client = await Promise.race([
+          connect().catch(function(){ return null; }),
+          new Promise(function(resolve){timer=setTimeout(function(){resolve(null);},1500);})
+        ]);
+      } finally { clearTimeout(timer); }
+    }
+    if(!client){
       if(trace) trace.bridgeUnavailable = true;
-      error.isNonRetryable = true;
-      throw error;
+      return null;
     }
     if(trace) trace.transport = 'google.script.run';
     return client.request(body, signal);

@@ -174,3 +174,8 @@ Este cambio sustituye para las operaciones del sitio la llamada `fetch` al Conte
 Si el canal no se establece en 12 segundos, la operacion indica que no se pudo abrir la conexion directa y no encadena automaticamente la ruta HTTP lenta. Reintentar permite abrir un canal nuevo. Si una solicitud ya fue enviada, nunca se cambia a HTTP como consecuencia de un error; los reintentos de guardado conservan el identificador existente. Una consulta fallida ahora muestra un mensaje de consulta, no una advertencia sobre guardados.
 
 El campo `details[].transport` del diagnostico debe indicar `google.script.run`. Este cambio evita la redireccion Content Service por cada consulta; no elimina la dependencia de disponibilidad, red y cuotas de Google. Las pruebas locales simulan el canal y verifican permisos y serializacion; es imprescindible verificar la integracion real despues de desplegar. La funcion manual de inicializacion se llama ahora `crearUsuariosAhora_` para no exponerla por RPC; sigue disponible desde el editor.
+
+
+### Correccion del arranque del canal
+
+La version `20260915-respaldo-1` de `apps-script-transport.js` elimina el bloqueo obligatorio por falta de canal. Espera como maximo 1,5 segundos para aprovechar el canal que se precarga; si no esta listo, devuelve el control al transporte HTTP. Un canal fallido no se vuelve a abrir continuamente durante 60 segundos. El respaldo solo ocurre antes de enviar la operacion: una solicitud ya enviada por RPC no se repite automaticamente por HTTP. Esta correccion necesita publicar los HTML y `js/apps-script-transport.js`; no requiere otra implementacion de Apps Script. El respaldo evita la nueva interrupcion, pero no garantiza resolver la latencia previa del transporte HTTP.

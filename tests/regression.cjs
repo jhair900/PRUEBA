@@ -446,5 +446,22 @@ function backend() {
     listener({source:peer,origin,data:{...reply,id:sent.data.id}});
     assert.equal((await next).ok,true);
   });
+  await test('Iframe bloqueado permite respaldo HTTP sin enviar previamente la operacion', async () => {
+    let listener, iframe, sent=0;
+    const context=vm.createContext({URL,Date,clearTimeout(){},setTimeout(fn,ms){if(ms===1500)queueMicrotask(fn);return 1;},window:{crypto,
+      location:{origin:'https://jhair900.github.io'},AutoCorConfig:{apiUrl:'https://script.google.com/macros/s/test/exec'},
+      addEventListener:(_,fn)=>listener=fn,removeEventListener(){}
+    },document:{readyState:'complete',createElement:()=>{iframe={setAttribute(){},contentWindow:{},remove(){}};return iframe;},body:{appendChild(){}}}});
+    vm.runInContext(fs.readFileSync(path.join(root,'js/apps-script-transport.js'),'utf8'),context);
+    const transport=context.window.AutoCorTransport;
+    const trace={};
+    assert.equal(await transport.request('https://script.google.com/macros/s/test/exec',{action:'savePago'},null,trace),null);
+    assert.equal(trace.bridgeUnavailable,true);
+    const channel=new URL(iframe.src).searchParams.get('channel'),origin='https://test-script.googleusercontent.com';
+    const peer={parent:iframe.contentWindow,postMessage(message){sent++;queueMicrotask(()=>listener({source:peer,origin,data:{type:'autocor-response',channel,id:message.id,error:'Respuesta perdida'}}));}};
+    listener({source:peer,origin,data:{channel,type:'autocor-ready'}});
+    await assert.rejects(transport.request('https://script.google.com/macros/s/test/exec',{action:'savePago'}),/Respuesta perdida/);
+    assert.equal(sent,1);
+  });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});
