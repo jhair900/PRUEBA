@@ -152,3 +152,10 @@ El cliente de IA usa ahora 60 segundos incluyendo la lectura de la respuesta, di
 Los reprocesos reutilizan la ubicacion de la fila de la placa y leen su contenido actual. Si se ordena o elimina una fila, se comprueba la placa y se busca de nuevo. No se almacenan datos de formularios en cache. Esto evita la busqueda completa en reprocesos con ubicacion conocida.
 
 Cada respuesta incluye `timing` con espera de bloqueo, procesamiento, flush y tiempo total dentro del servidor. Los mismos tiempos quedan en el registro de ejecuciones de Apps Script. El navegador conserva la ultima medicion en `AutoCorApi.lastTiming` y la muestra en consola como `[AUTOCOR tiempo]`, sin datos del formulario ni tokens. La diferencia entre tiempo total del cliente y servidor puede incluir transporte, arranque del servicio, lectura de respuesta y reintentos; no equivale exclusivamente a tiempo de red. Publicar `gas/script.gs`, los HTML y `js/api-client.js` version `20260915-guardado-1`. Aun falta medir el guardado real de produccion para establecer la causa y mejora en segundos.
+
+
+### Traza de cada intento de guardado
+
+Publicar los HTML y `js/api-client.js` con version `20260915-traza-1`. Esta ampliacion no requiere modificar Apps Script si ya esta publicada la version con `timing`.
+
+Despues de un guardado lento, ejecutar `JSON.stringify(AutoCorApi.lastSaveTiming)` en la consola. El informe conserva cada intento, HTTP recibido, si hubo redireccion, tiempo hasta recibir cabeceras, tiempo de lectura del cuerpo, etapa del fallo y consultas de confirmacion. No incluye placas, documentos, contraseñas, tokens ni URLs. Las cabeceras agrupan conexion, redirecciones y espera de Google: no separan por si solas esos componentes. Una busqueda posterior no reemplaza el informe del ultimo guardado. Registrar tiempos no acelera la conexion; sirve para decidir la siguiente correccion con evidencia.

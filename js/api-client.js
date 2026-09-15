@@ -82,14 +82,27 @@
     return wrapped;
   }
 
-  async function fetchWithTimeout(url, fetchOptions, timeoutMs){
+  async function fetchWithTimeout(url, fetchOptions, timeoutMs, trace){
+    trace = trace || {};
+    const started = Date.now();
+    let stage = "connection";
     const controller = new AbortController();
-    const timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
+    const timer = setTimeout(function(){ trace.timedOut = true; controller.abort(); }, timeoutMs);
     try {
       const response = await fetch(url, Object.assign({}, fetchOptions, { signal: controller.signal }));
+      trace.headersMs = Date.now() - started;
+      trace.httpStatus = response.status;
+      trace.redirected = !!response.redirected;
+      stage = 'body';
       const text = await response.text();
+      trace.bodyMs = Date.now() - started - trace.headersMs;
       return { ok: response.ok, status: response.status, text: async function(){ return text; } };
+    } catch(err) {
+      trace.failedStage = stage;
+      trace.errorType = err && err.name || 'Error';
+      throw err;
     } finally {
+      trace.elapsedMs = Date.now() - started;
       clearTimeout(timer);
     }
   }
@@ -144,8 +157,19 @@
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeout;
     let lastError;
     const requestStartedAt = Date.now();
+    const traces = [];
+    function recordTiming(outcome, json){
+      const timing = {action:body.action, elapsedMs:Date.now()-requestStartedAt,
+        attempts:traces.filter(function(t){ return t.kind === 'request'; }).length,
+        outcome:outcome, server:json && json.timing || null, details:traces};
+      global.AutoCorApi.lastTiming = timing;
+      if(saving) global.AutoCorApi.lastSaveTiming = timing;
+      if(global.console) global.console.info('[AUTOCOR tiempo]', timing);
+    }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      const trace = {kind:'request', attempt:attempt+1, timeoutMs:timeoutMs};
+      traces.push(trace);
       try {
         const resp = await fetchWithTimeout(freshRequestUrl(url, attempt), {
           method: 'POST',
@@ -154,14 +178,16 @@
           cache: 'no-store',
           credentials: 'omit',
           redirect: 'follow'
-        }, timeoutMs);
+        }, timeoutMs, trace);
         const json = await parseJsonResponse(resp, options.context, options);
-        global.AutoCorApi.lastTiming = {action:body.action, elapsedMs:Date.now()-requestStartedAt, attempts:attempt+1, server:json && json.timing || null};
-        if(global.console) global.console.info('[AUTOCOR tiempo]', global.AutoCorApi.lastTiming);
+        trace.server = json && json.timing || null;
+        recordTiming(json && json.ok === false ? 'api_error' : 'success', json);
         return json;
       } catch (err) {
         // Error de red (nunca llego respuesta) vs. error ya identificado
         // por parseJsonResponse (isApiError / isNonRetryable).
+        trace.errorType = err.code || err.name || 'Error';
+        trace.serviceUnavailable = !!err.isServiceUnavailable;
         const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
         lastError = isKnown ? err : wrapNetworkError(err, options.context, url);
 
@@ -169,12 +195,23 @@
         // Confirmar el identificador antes de repetir la escritura.
         if(saving && !(err && (err.isApiError || err.isNonRetryable))){
           const readAction = {save:'getByPlaca', savePago:'getPagoByPlaca', saveVenta:'getVentaByPlaca', saveContrato:'getContratoByPlaca'}[body.action];
+          const verification = {kind:'verification', elapsedMs:0, confirmed:false};
+          traces.push(verification);
+          const verificationStarted = Date.now();
           try {
             const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:30000, throwOnApiError:false});
+            verification.elapsedMs = Date.now()-verificationStarted;
+            verification.server = check && check.timing || null;
+            verification.details = global.AutoCorApi.lastTiming && global.AutoCorApi.lastTiming.details || [];
             if(check && check.ok && check.data && check.data._requestId === body.requestId){
+              verification.confirmed = true;
+              recordTiming('confirmed_after_error', check);
               return {ok:true, data:check.data, placa:check.data.placaValue || check.data.placa, updated:true, estadoProceso:check.data.estadoProceso, message:'Guardado confirmado.'};
             }
-          } catch (_) { /* Si no se puede confirmar, reutilizar el mismo identificador. */ }
+          } catch (verifyError) {
+            verification.elapsedMs = Date.now()-verificationStarted;
+            verification.errorType = verifyError.code || verifyError.name || 'Error';
+          }
         }
         if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
@@ -189,6 +226,7 @@
       lastServiceError = lastError;
     }
 
+    recordTiming('failed', null);
     throw lastError;
   }
 

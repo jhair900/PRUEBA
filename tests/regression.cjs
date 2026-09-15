@@ -162,7 +162,7 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260915-guardado-1'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260915-traza-1'), f);
     }
   });
   await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {
@@ -246,6 +246,13 @@ function backend() {
       const result = await context.window.AutoCorApi.postJson('https://example.test', {action, data:{placa:'ABC'}});
       assert.equal(result.ok, true);
       assert.equal(result.message, 'Guardado confirmado.');
+      const timing = context.window.AutoCorApi.lastSaveTiming;
+      assert.equal(timing.action, action);
+      assert.equal(timing.outcome, 'confirmed_after_error');
+      assert.equal(timing.attempts, 1);
+      assert.equal(timing.details[0].failedStage, 'connection');
+      assert.equal(timing.details[1].kind, 'verification');
+      assert.equal(timing.details[1].confirmed, true);
       assert.equal(calls.filter(c => c.action === action).length, 1);
       assert.equal(calls.length, 2);
       assert.equal(timeouts[0], 60000);
@@ -348,6 +355,28 @@ function backend() {
     data.reverse();
     assert.equal(ctx.readRecordForSave_(sheet,'ABC',6).row,3);
     assert.equal(searches,1);
+  });
+  await test('El diagnostico de guardado registra fallo del cuerpo y se conserva tras buscar', async () => {
+    const context = vm.createContext({AbortController,setTimeout,clearTimeout,window:{crypto,localStorage:{getItem:()=>'{"token":"secret"}'}},
+      fetch:async (_, init) => {
+        const body=JSON.parse(init.body);
+        return {ok:true,status:200,redirected:true,text:async()=>{
+          if(body.action==='savePago') throw new Error('body failed');
+          return JSON.stringify({ok:true,data:{}});
+        }};
+      }
+    });
+    vm.runInContext(fs.readFileSync(path.join(root,'js/api-client.js'),'utf8'),context);
+    await assert.rejects(context.window.AutoCorApi.postJson('https://example.test',{action:'savePago',data:{placa:'PRIVATE-PLATE'}},{retries:0}));
+    const saved=context.window.AutoCorApi.lastSaveTiming;
+    assert.equal(saved.outcome,'failed');
+    assert.equal(saved.details[0].failedStage,'body');
+    assert.equal(saved.details[0].httpStatus,200);
+    assert.equal(saved.details[0].redirected,true);
+    await context.window.AutoCorApi.postJson('https://example.test',{action:'getPagoByPlaca',placa:'PRIVATE-PLATE'});
+    assert.equal(context.window.AutoCorApi.lastSaveTiming,saved);
+    assert.ok(!JSON.stringify(saved).includes('PRIVATE-PLATE'));
+    assert.ok(!JSON.stringify(saved).includes('secret'));
   });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});
