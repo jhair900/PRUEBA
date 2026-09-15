@@ -162,7 +162,7 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260915-login-1'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260915-guardado-1'), f);
     }
   });
   await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {
@@ -330,6 +330,24 @@ function backend() {
       assert.equal(context.aiAvailable,true);
       assert.equal(listings,cached ? 0 : 1);
     }
+  });
+  await test('Reproceso con fila localizada lee datos actuales sin buscar toda la placa; recupera filas movidas', () => {
+    const {ctx} = backend();
+    const cache = new Map(); let searches=0, reads=0;
+    const data = [['ABC', '', '', '', '', '{"cliente":"Primero"}'], ['XYZ', '', '', '', '', '{"cliente":"Otro"}']];
+    ctx.CacheService = {getScriptCache:()=>({get:k=>cache.get(k),put:(k,v)=>cache.set(k,v)})};
+    ctx.findRowByPlaca_ = (_, plate) => {searches++; const i=data.findIndex(row=>row[0]===plate); return i<0 ? 0 : i+2;};
+    const sheet = {getSheetId:()=>1,getRange:(row,col,count,width)=>({
+      getValue(){reads++;return data[row-2][col-1];},
+      getValues(){reads++;return [data[row-2].slice(col-1,col-1+width)];}
+    })};
+    assert.equal(ctx.readRecordForSave_(sheet,'ABC',6).data.cliente,'Primero');
+    data[0][5]='{"cliente":"Actualizado"}'; searches=0;reads=0;
+    assert.equal(ctx.readRecordForSave_(sheet,'ABC',6).data.cliente,'Actualizado');
+    assert.equal(searches,0); assert.equal(reads,1);
+    data.reverse();
+    assert.equal(ctx.readRecordForSave_(sheet,'ABC',6).row,3);
+    assert.equal(searches,1);
   });
   console.log(`\n${passed} comprobaciones completadas.`);
 })().catch(err => {console.error(err); process.exitCode = 1;});

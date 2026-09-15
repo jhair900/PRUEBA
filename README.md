@@ -145,3 +145,10 @@ Publicar los HTML y `js/api-client.js` (versión `20260911-rapidez-2`) junto con
 ## Cancelaciones de IA — 14 de septiembre de 2026
 
 El cliente de IA usa ahora 60 segundos incluyendo la lectura de la respuesta, distingue cancelacion y tiempo agotado, y rechaza respuestas incompletas. Los errores de transporte no desencadenan una cadena de intentos con otros modelos. Se conserva el cambio de modelo para respuestas HTTP de modelos no disponibles o cuotas agotadas. Publicar `contratos.html` y `js/gemini-client.js` (`20260914-1`) junto con las correcciones pendientes. Esta correccion no garantiza disponibilidad de Gemini ni elimina los limites externos de Google.
+
+
+## Diagnostico de guardado — 15 de septiembre de 2026
+
+Los reprocesos reutilizan la ubicacion de la fila de la placa y leen su contenido actual. Si se ordena o elimina una fila, se comprueba la placa y se busca de nuevo. No se almacenan datos de formularios en cache. Esto evita la busqueda completa en reprocesos con ubicacion conocida.
+
+Cada respuesta incluye `timing` con espera de bloqueo, procesamiento, flush y tiempo total dentro del servidor. Los mismos tiempos quedan en el registro de ejecuciones de Apps Script. El navegador conserva la ultima medicion en `AutoCorApi.lastTiming` y la muestra en consola como `[AUTOCOR tiempo]`, sin datos del formulario ni tokens. La diferencia entre tiempo total del cliente y servidor puede incluir transporte, arranque del servicio, lectura de respuesta y reintentos; no equivale exclusivamente a tiempo de red. Publicar `gas/script.gs`, los HTML y `js/api-client.js` version `20260915-guardado-1`. Aun falta medir el guardado real de produccion para establecer la causa y mejora en segundos.

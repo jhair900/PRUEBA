@@ -146,9 +146,13 @@ const RECORD_ACTIONS = {
 };
 function handleAction_(action, payload) {
   payload = payload || {};
+  const startedAt = Date.now();
+  let response;
+  let processingAt = startedAt;
   const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$)/.test(action);
   const lock = writes ? LockService.getScriptLock() : null;
   if (lock && !lock.tryLock(10000)) return { ok: false, code: 'BUSY', message: 'Otro usuario esta guardando. Intenta de nuevo.' };
+  processingAt = Date.now();
   try {
     const spec = RECORD_ACTIONS[action];
     const saving = spec && action.indexOf('save') === 0;
@@ -156,12 +160,17 @@ function handleAction_(action, payload) {
       if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) return { ok: false, message: 'Datos invalidos.' };
       payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid() });
     }
-    const result = dispatchAction_(action, payload);
-    return result;
+    response = dispatchAction_(action, payload);
+    return response;
   } catch (err) {
     return { ok: false, message: 'Error al procesar la solicitud: ' + err.message };
   } finally {
+    const flushAt = Date.now();
     if (lock) { try { SpreadsheetApp.flush(); } finally { lock.releaseLock(); } }
+    if (response) {
+      response.timing = {lockWaitMs:processingAt-startedAt, processingMs:flushAt-processingAt, flushMs:Date.now()-flushAt, serverMs:Date.now()-startedAt};
+      console.log(JSON.stringify({action:action, ok:response.ok !== false, timing:response.timing}));
+    }
   }
 }
 function dispatchAction_(action, payload) {
@@ -860,6 +869,27 @@ function resetGlossary_(session) {
   }
 }
 
+// Cache de ubicacion, nunca de datos: verificar placa en la fila actual antes de usarla.
+function readRecordForSave_(sheet, placa, jsonColumn) {
+  let key;
+  try {
+    key = 'autocor:record-row:' + sheet.getSheetId() + ':' + hashPassword_(placa);
+    const hint = Number(CacheService.getScriptCache().get(key));
+    if (Number.isInteger(hint) && hint >= 2) {
+      const values = sheet.getRange(hint, 1, 1, jsonColumn).getValues()[0];
+      if (normalizePlaca_(values[0]) === placa) {
+        return {row:hint, data:values[jsonColumn-1] ? JSON.parse(values[jsonColumn-1]) : null};
+      }
+    }
+  } catch (_) {}
+  const row = findRowByPlaca_(sheet, placa);
+  const json = row > 0 ? sheet.getRange(row, jsonColumn).getValue() : '';
+  if (key && row > 0) {
+    try { CacheService.getScriptCache().put(key, String(row), 21600); } catch (_) {}
+  }
+  return {row:row, data:json ? JSON.parse(json) : null};
+}
+
 function saveLiquidacion_(data, session) {
   try {
     if (!data) return { ok: false, message: 'No se recibió data.' };
@@ -868,12 +898,9 @@ function saveLiquidacion_(data, session) {
     const placa = normalizePlaca_(data.placa);
     if (!placa) return { ok: false, message: 'La placa es obligatoria.' };
 
-    let existingData = null;
-    const row = findRowByPlaca_(sheet, placa);
-    if (row > 0) {
-      const existingJson = sheet.getRange(row, 8).getValue();
-      existingData = existingJson ? JSON.parse(existingJson) : null;
-    }
+    const saved = readRecordForSave_(sheet, placa, 8);
+    const row = saved.row;
+    const existingData = saved.data;
 
     if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
       return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
@@ -1008,14 +1035,10 @@ function savePago_(data, session) {
     if (!placa) return { ok: false, message: 'La placa es obligatoria.' };
 
     // Leer data existente para fusionar historial correctamente
-    let existingData = null;
-    const row = findRowByPlaca_(sheet, placa);
-    if (row > 0) {
-      const existingJson = sheet.getRange(row, 6).getValue();
-      existingData = existingJson ? JSON.parse(existingJson) : null;
-    }
+    const saved = readRecordForSave_(sheet, placa, 6);
+    const row = saved.row;
+    const existingData = saved.data;
 
-    // Construir historial acumulativo: existente + entrante + sesión actual
     if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
       return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
     }
@@ -1162,14 +1185,10 @@ function saveVenta_(data, session) {
     if (!placa) return { ok: false, message: 'La placa es obligatoria.' };
 
     // Leer data existente para fusionar historial
-    let existingData = null;
-    const row = findRowByPlaca_(sheet, placa);
-    if (row > 0) {
-      const existingJson = sheet.getRange(row, 6).getValue();
-      existingData = existingJson ? JSON.parse(existingJson) : null;
-    }
+    const saved = readRecordForSave_(sheet, placa, 6);
+    const row = saved.row;
+    const existingData = saved.data;
 
-    // Construir historial acumulativo: existente + entrante + sesión actual
     if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
       return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };
     }
@@ -1355,12 +1374,9 @@ function saveContrato_(data, session) {
     if (!placa) return { ok: false, message: 'La placa es obligatoria.' };
 
     // Leer data existente para fusionar historial
-    let existingData = null;
-    const row = findRowByPlaca_(sheet, placa);
-    if (row > 0) {
-      const existingJson = sheet.getRange(row, 8).getValue();
-      existingData = existingJson ? JSON.parse(existingJson) : null;
-    }
+    const saved = readRecordForSave_(sheet, placa, 8);
+    const row = saved.row;
+    const existingData = saved.data;
 
     if (existingData && data._requestId && existingData._requestId === data._requestId && existingData._requestUser === session.user) {
       return { ok: true, message: 'Registro ya guardado.', placa: placa, updated: true, data: existingData, estadoProceso: existingData.estadoProceso };

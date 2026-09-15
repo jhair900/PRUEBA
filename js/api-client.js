@@ -143,6 +143,7 @@
     const defaultTimeout = saving ? 60000 : body.action === 'login' ? 45000 : /^(subirExpedienteDrive|convertirDocxAPdf)$/.test(body.action) ? 120000 : 30000;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeout;
     let lastError;
+    const requestStartedAt = Date.now();
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -155,6 +156,8 @@
           redirect: 'follow'
         }, timeoutMs);
         const json = await parseJsonResponse(resp, options.context, options);
+        global.AutoCorApi.lastTiming = {action:body.action, elapsedMs:Date.now()-requestStartedAt, attempts:attempt+1, server:json && json.timing || null};
+        if(global.console) global.console.info('[AUTOCOR tiempo]', global.AutoCorApi.lastTiming);
         return json;
       } catch (err) {
         // Error de red (nunca llego respuesta) vs. error ya identificado
