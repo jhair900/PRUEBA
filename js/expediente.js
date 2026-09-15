@@ -56,12 +56,13 @@
       return { placa:'', contratos:false, liquidacion:false, pagos:false, ventas:false,
                _contratos:null, _liquidacion:null, _pagos:null, _ventas:null };
     }
-    try {
-      const rapido = await _post('estadoPorPlaca', { placa: p });
-      if(rapido && Object.prototype.hasOwnProperty.call(rapido, 'placa')){
-        return rapido;
-      }
-    } catch(_){}
+    const rapido = await _post('estadoPorPlaca', { placa: p });
+    if(rapido && Object.prototype.hasOwnProperty.call(rapido, 'placa')) return rapido;
+    // Compatibilidad solo con un backend que aun no reconoce la accion.
+    // Ante errores de red o sesion, no multiplicar la consulta por cuatro.
+    if(!rapido || !/acci[oó]n no v[aá]lida/i.test(String(rapido.message || ''))){
+      throw new Error((rapido && rapido.message) || 'No se pudo consultar la placa. Intenta de nuevo.');
+    }
 
     const [c, l, pa, v] = await Promise.all([
       _post('getContratoByPlaca', { placa: p }).catch(function(){ return vacio; }),

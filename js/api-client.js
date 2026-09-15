@@ -132,14 +132,14 @@
       body.requestId = global.crypto.randomUUID();
       body.data = Object.assign({}, body.data);
     }
-    if(Date.now() < serviceBlockedUntil && lastServiceError){
+    if(body.action !== 'login' && Date.now() < serviceBlockedUntil && lastServiceError){
       throw lastServiceError;
     }
     // 2 reintentos por defecto (3 intentos en total) con espera creciente,
     // porque fallos de red intermitentes son comunes y no deberian
     // mostrarle un error al usuario a la primera.
-    const safeRetry = saving || /^(get|list|ping)/.test(body.action || '');
-    const retries = safeRetry ? (Number.isFinite(options.retries) ? options.retries : 2) : 0;
+    const safeRetry = saving || body.action === 'login' || /^(get|list|ping)/.test(body.action || '');
+    const retries = safeRetry ? (Number.isFinite(options.retries) ? options.retries : body.action === 'login' ? 1 : 2) : 0;
     const defaultTimeout = saving ? 60000 : body.action === 'login' ? 45000 : /^(subirExpedienteDrive|convertirDocxAPdf)$/.test(body.action) ? 120000 : 30000;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeout;
     let lastError;

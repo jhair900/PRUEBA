@@ -162,7 +162,7 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260911-rapidez-2'), f);
+      assert.ok(html.includes('js/api-client.js?v=20260915-login-1'), f);
     }
   });
   await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {
@@ -280,6 +280,55 @@ function backend() {
         err.code === ({timeout:'AI_TIMEOUT', cancel:'AI_CANCELLED', invalid:'AI_SERVICE_ERROR'})[mode] && !err.message.includes('signal is aborted'));
       assert.equal(delay, 60000);
       assert.equal(cleaned, true);
+    }
+  });
+  await test('Login reintenta un 404 temporal pero no una clave incorrecta', async () => {
+    for(const temporary of [true, false]) {
+      let calls = 0;
+      const context = vm.createContext({console, AbortController, clearTimeout() {},
+        setTimeout(fn, ms) {if(ms < 1000) queueMicrotask(fn); return 1;}, window:{},
+        fetch:async () => {
+          calls++;
+          if(temporary && calls === 1) return {ok:false,status:404,text:async () => '<html>Error temporal</html>'};
+          return {ok:true,status:200,text:async () => JSON.stringify(temporary ? {ok:true,sessionToken:'valid'} : {ok:false,message:'Clave incorrecta.'})};
+        }
+      });
+      vm.runInContext(fs.readFileSync(path.join(root, 'js/api-client.js'), 'utf8'), context);
+      const work = context.window.AutoCorApi.postJson('https://example.test', {action:'login',username:'TEST',password:'test'});
+      if(temporary) assert.equal((await work).sessionToken, 'valid');
+      else await assert.rejects(work, /Clave incorrecta/);
+      assert.equal(calls, temporary ? 2 : 1);
+    }
+  });
+  await test('Busqueda general no multiplica consultas ante fallos de red o sesion', async () => {
+    for(const network of [true,false]) {
+      let calls = 0;
+      const context = vm.createContext({window:{AutoCorConfig:{apiUrl:'https://example.test'},AutoCorApi:{postJson:async () => {
+        calls++; if(network) throw new Error('Conexion lenta'); return {ok:false,code:'AUTH_REQUIRED',message:'Sesion expirada'};
+      }}},localStorage:{getItem:() => '{"token":"user"}'},document:{getElementById:()=>({})}});
+      vm.runInContext(fs.readFileSync(path.join(root, 'js/expediente.js'), 'utf8'), context);
+      await assert.rejects(context.window.Expediente.estadoPorPlaca('ABC'));
+      assert.equal(calls,1);
+    }
+  });
+  await test('Inicio de IA reutiliza modelo reciente y no genera una consulta pong', async () => {
+    const html = fs.readFileSync(path.join(root, 'contratos.html'),'utf8');
+    const start = html.indexOf('window.testAIConnection = function');
+    const end = html.indexOf('// Disparar verificación de IA', start);
+    for(const cached of [true,false]) {
+      let listings=0;
+      const context = vm.createContext({window:{},console,Date,Promise,
+        aiCheckPromise:null, aiAvailable:false,aiAvailabilityChecked:false,
+        GEMINI_SESSION_KEY:'test',GEMINI_SESSION_TTL_MS:300000,GEMINI_MODELS_FALLBACK:['model'],
+        GEMINI_MODEL_ACTIVE:'',GEMINI_LAST_OK_MODEL:'',
+        sessionStorage:{getItem:()=>cached ? JSON.stringify({model:'model',savedAt:Date.now()}) : null},
+        refreshGeminiModelAvailability:async()=>{listings++;return 1;},geminiCandidateModels:()=>['model'],
+        geminiGenerateWithFallback:()=>{throw new Error('No debe generar un pong');},setAIBanner(){},setGeminiUnavailable(){}
+      });
+      vm.runInContext(html.slice(start,end),context);
+      await context.window.initializeAIState();
+      assert.equal(context.aiAvailable,true);
+      assert.equal(listings,cached ? 0 : 1);
     }
   });
   console.log(`\n${passed} comprobaciones completadas.`);
