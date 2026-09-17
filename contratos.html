@@ -889,6 +889,7 @@
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
 <script src="js/api-client.js?v=20260915-directo-1"></script>
 <script src="js/gemini-client.js?v=20260915-directo-1"></script>
+<script src="js/document-extraction.js?v=20260917-criterios-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 </head>
 <body>
@@ -1337,7 +1338,7 @@
         </div>
         <div class="gen-field">
           <label class="gen-label">Domicilio</label>
-          <input id="genDomicilio" type="text" class="gen-input" value="QUITO" autocomplete="off">
+          <input id="genDomicilio" type="text" class="gen-input" value="" autocomplete="off">
         </div>
       </div>
 
@@ -1433,7 +1434,7 @@
         </div>
         <div class="gp-field">
           <label class="gp-label">Domicilio</label>
-          <input id="gpDomicilio" type="text" class="gp-input" value="QUITO" autocomplete="off">
+          <input id="gpDomicilio" type="text" class="gp-input" value="" autocomplete="off">
         </div>
       </div>
 
@@ -1520,7 +1521,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
 <script src="js/contrato-templates.js?v=20260909-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20260909-1"></script>
+<script src="js/generador-contratos.js?v=20260917-domicilio-1"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1641,9 +1642,9 @@ function _aplicarFlujoDocumental(){
   const cuvStatus = document.querySelector('#status-cuv .status-text');
   if(cedLabel) cedLabel.innerHTML = juridica ? 'Cédula<br>Representante Legal' : 'Cédula<br>Propietario';
   if(papLabel) papLabel.innerHTML = juridica ? 'Papeleta<br>Representante Legal' : 'Papeleta<br>Votación Titular';
-  if(papBadge) papBadge.style.display = juridica ? 'none' : '';
+  if(papBadge) papBadge.style.display = '';
   if(cuvBadge) cuvBadge.style.display = '';
-  if(papStatus && !datos['papeleta-prop']) papStatus.textContent = juridica ? 'Sin documento' : 'Opcional — sin documento';
+  if(papStatus && !datos['papeleta-prop']) papStatus.textContent = 'Opcional — sin documento';
   if(cuvStatus && !datos.cuv) cuvStatus.textContent = 'Opcional — sin documento';
   try{ _refreshValidateAllBar(); }catch(_){}
   try{ renderResultsSection(); }catch(_){}
@@ -1742,12 +1743,12 @@ async function extractPdfText(file){
 const OCR_MIN_WIDTH = 2800;   // ↑ más resolución mínima → mejor para texto pequeño
 const OCR_MAX_WIDTH = 4200;   // ↑ techo más alto para fotos de alta resolución
 const OCR_MAX_PDF_PAGES = {
-  'ruc':          2,
-  'cedula-prop': 1,
-  'cedula-cony': 1,
-  'matricula':  1,
-  'notaria':    2,
-  'default':    1
+  'ruc':          6,
+  'cedula-prop': 6,
+  'cedula-cony': 6,
+  'matricula':   6,
+  'notaria':     6,
+  'default':     6
 };
 /* PSM (page segmentation modes) recomendados por tipo de documento:
  *   3  = Auto sin OSD (default)
@@ -1994,19 +1995,9 @@ function normalizeOcrText(text){
     .replace(/\r/g,'\n')
     .replace(/[“”]/g,'"')
     .replace(/[‘’]/g,"'")
-    .replace(/[|]+/g,' ')
     .replace(/[ \t]+/g,' ')
     .replace(/\n{3,}/g,'\n\n');
-  t = t.replace(/[A-Z0-9OQDISBIl]{8,17}/g, function(m){
-    const digits = (m.match(/\d/g)||[]).length;
-    if(digits < 4) return m;
-    return m
-      .replace(/[OQD]/g,'0')
-      .replace(/[Il]/g,'1')
-      .replace(/S/g,'5')
-      .replace(/B/g,'8');
-  });
-  t = t.replace(/(\d)[,;](\d)/g,'$1.$2');
+  // No convertir letras de VIN, motor o código dactilar en números.
   return t.trim();
 }
 
@@ -2312,115 +2303,7 @@ async function refreshGeminiModelAvailability(){
   }
 }
 
-/* ── Prompts por tipo de documento ──────────────────────────── */
-const PROMPTS_IA = {
-  'ruc':
-    'Eres un extractor de datos de documentos RUC emitidos por el SRI de Ecuador. '+
-    'Devuelve EXCLUSIVAMENTE un JSON válido, sin explicaciones ni markdown. '+
-    'No inventes información y usa cadena vacía cuando un dato no sea visible. '+
-    'En el certificado del SRI, "Razón Social Número RUC" es un encabezado de dos columnas: en la línea siguiente separa el nombre de la empresa del número de 13 dígitos. '+
-    'Después de "Representante legal" extrae únicamente el nombre de la persona y elimina viñetas o símbolos. '+
-    'Cuando aparezca "Estado Régimen", separa el estado (por ejemplo ACTIVO) del régimen (por ejemplo REGIMEN MICROEMPRESARIAL). '+
-    '"Domicilio tributario", "Ubicación geográfica" y "Dirección" son títulos de sección, no valores; direccionMatriz debe contener la dirección postal completa visible. '+
-    '\n\n{'+
-    '"numeroRuc":"<13 dígitos>",'+
-    '"razonSocial":"<razón social completa>",'+
-    '"nombreComercial":"<nombre comercial>",'+
-    '"estadoContribuyente":"<estado visible>",'+
-    '"regimen":"<régimen visible>",'+
-    '"direccionMatriz":"<dirección completa>",'+
-    '"actividadEconomica":"<actividad económica principal>",'+
-    '"representanteLegal":"<nombre del representante si aparece>",'+
-    '"cedulaRepresentante":"<10 dígitos si aparece>"'+
-    '}',
-
-  'cedula':
-    'Eres un extractor de datos de cédulas de identidad ecuatorianas. '+
-    'Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido (sin explicaciones, sin markdown) '+
-    'con esta estructura exacta. Si un dato no se ve con claridad, devuelve cadena vacía "". '+
-    'NO inventes datos. Las fechas deben ir en formato DD/MM/YYYY. '+
-    '\n\n{'+
-    '"numeroCedula":"<10 dígitos>",'+
-    '"apellidos":"<APELLIDOS en MAYÚSCULAS>",'+
-    '"nombres":"<NOMBRES en MAYÚSCULAS>",'+
-    '"fechaNacimiento":"DD/MM/YYYY",'+
-    '"nacionalidad":"<ej. ECUATORIANA>",'+
-    '"sexo":"<MASCULINO|FEMENINO>",'+
-    '"estadoCivil":"<SOLTERO|CASADO|DIVORCIADO|VIUDO|UNION DE HECHO>",'+
-    '"fechaExpedicion":"DD/MM/YYYY",'+
-    '"fechaExpiracion":"DD/MM/YYYY"'+
-    '}',
-
-  'matricula':
-    'Eres un extractor de datos de matrículas vehiculares ecuatorianas. '+
-    'Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido (sin explicaciones, sin markdown). '+
-    'Si un dato no aparece, usa "". NO inventes. Fechas en DD/MM/YYYY. '+
-    'La cedulaRuc debe ser la cédula del propietario, exactamente 10 dígitos, y debe estar asociada a CÉDULA, IDENTIFICACIÓN, CI, RUC, PROPIETARIO o DOCUMENTO DE IDENTIDAD. '+
-    'Nunca uses teléfonos, celulares, contacto, móvil, tel. ni convencional como cedulaRuc. '+
-    '\n\n{'+
-    '"placa":"<formato AAA-1234>",'+
-    '"propietario":"<nombre completo del propietario>",'+
-    '"cedulaRuc":"<10 dígitos o vacío>",'+
-    '"marca":"<MARCA>",'+
-    '"modelo":"<MODELO>",'+
-    '"anio":"<año 4 dígitos>",'+
-    '"color":"<COLOR>",'+
-    '"chasis":"<chasis/VIN>",'+
-    '"motor":"<número de motor>",'+
-    '"clase":"<clase del vehículo>",'+
-    '"tipo":"<tipo del vehículo>",'+
-    '"servicio":"<servicio>",'+
-    '"fechaEmision":"DD/MM/YYYY",'+
-    '"fechaCaducidad":"DD/MM/YYYY"'+
-    '}',
-
-  'notaria':
-    'Eres un extractor de datos de la FICHA VEHÍCULO del sistema notarial ecuatoriano. '+
-    'Existen dos formatos posibles: (A) sin transferencias de dominio, (B) con sección ÚLTIMO CONTRATO, '+
-    'COMPRADORES y VENDEDORES. Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido. '+
-    'Para campos no visibles usa "". Para arreglos sin datos usa []. NO inventes. NO mezcles datos del '+
-    'propietario con los compradores/vendedores. Lee tablas completas aunque tengan varias filas. Fechas en DD/MM/YYYY. '+
-    '\n\n{'+
-    '"anio":"","modelo":"","pais":"","serialChasis":"",'+
-    '"tipoIdPropietario":"","nombrePropietario":"","marca":"","numeroMotor":"",'+
-    '"placa":"","medidaCautelar":"","identificacionPropietario":"",'+
-    '"estadoTransferencia":"<estado real visible: NO REGISTRA TRANSFERENCIA DE DOMINIO, REGISTRA TRANSFERENCIA DE DOMINIO, EXISTE ÚLTIMO CONTRATO o texto equivalente>",'+
-    '"valorContrato":"","fechaContrato":"","tipoTransferencia":"",'+
-    '"compradores":[{"tipoId":"","identificacion":"","nombre":""}],'+
-    '"vendedores":[{"tipoId":"","identificacion":"","nombre":""}]'+
-    '}'+
-    '\n\nSi no hay sección ÚLTIMO CONTRATO, deja valorContrato/fechaContrato/tipoTransferencia como "" '+
-    'y compradores/vendedores como []. Si hay varios compradores o vendedores, conserva todas las filas como lista y no los mezcles.',
-
-  'papeleta':
-    'Eres un extractor de datos del CERTIFICADO DE VOTACIÓN ecuatoriano emitido por el CNE '+
-    '(Consejo Nacional Electoral). El certificado muestra normalmente: encabezado azul con la '+
-    'fecha del proceso ("16 DE NOVIEMBRE DE 2025"), el nombre completo del votante (apellidos '+
-    'primero), la provincia, cantón, parroquia, zona, junta, género, número de cédula al final '+
-    '(rotulado "CC N°" o "C.C."). También aparece un número de certificado (N° ...) que NO es '+
-    'la cédula. Analiza la imagen y devuelve EXCLUSIVAMENTE un JSON válido. Para campos no '+
-    'visibles devuelve "". NO inventes. Fechas en DD/MM/YYYY.'+
-    '\n\n{'+
-    '"numeroCedula":"<10 dígitos rotulados como CC N° o C.C. — NO el N° de certificado>",'+
-    '"apellidos":"<APELLIDOS del votante en MAYÚSCULAS, primer y segundo apellido>",'+
-    '"nombres":"<NOMBRES del votante en MAYÚSCULAS>",'+
-    '"fechaSufragio":"DD/MM/YYYY de la elección (la fecha del encabezado azul)",'+
-    '"tipoProceso":"<ej. ELECCIONES GENERALES, REFERÉNDUM, CONSULTA POPULAR>",'+
-    '"provincia":"<provincia mostrada>",'+
-    '"canton":"<cantón mostrado>",'+
-    '"parroquia":"<parroquia mostrada>",'+
-    '"junta":"<número de junta receptora del voto>",'+
-    '"genero":"<MASCULINO|FEMENINO según rotule>",'+
-    '"numeroCertificado":"<número largo del certificado, distinto a la cédula>"'+
-    '}'+
-    '\n\nReglas importantes:\n'+
-    '1) El nombre completo aparece en una línea o dos seguidas; por convención CNE es '+
-    'APELLIDO1 APELLIDO2 NOMBRES (ej. "LEON PALACIOS ISABEL CRISTINA"). Asigna los dos '+
-    'primeros tokens a apellidos y el resto a nombres.\n'+
-    '2) numeroCedula es SIEMPRE 10 dígitos. Si ves "CC N° 1722821509", devuelve 1722821509. '+
-    'Si solo ves "N° 57924911" (sin CC), eso es número de certificado, NO la cédula.\n'+
-    '3) fechaSufragio: extrae del encabezado tipo "16 DE NOVIEMBRE DE 2025" → "16/11/2025".'
-};
+/* Los criterios de extracción se comparten en js/document-extraction.js. */
 
 /* ── AI Status (window-exposed for retry button) ────────────── */
 let aiAvailable = false;
@@ -2436,58 +2319,7 @@ function setAIBanner(state, msg){
   if(r) r.style.display = (state==='err'?'inline-block':'none');
 }
 
-const FIELD_DESCRIPTIONS = {
-  ruc: {
-    numeroRuc:           'Número de RUC de exactamente 13 dígitos. Si el documento muestra el encabezado "Razón Social Número RUC", el RUC está al final de la línea siguiente.',
-    razonSocial:         'Razón social completa de la empresa. En el formato SRI puede estar en la línea siguiente al encabezado doble "Razón Social Número RUC", antes del número de 13 dígitos. No devolver el encabezado.',
-    nombreComercial:     'Nombre comercial indicado expresamente; no usar la razón social si el documento no muestra un nombre comercial.',
-    estadoContribuyente: 'Solo el estado del contribuyente, por ejemplo ACTIVO. Si aparece "Estado Régimen", separar el primer estado del régimen que sigue.',
-    regimen:             'Régimen tributario visible, por ejemplo REGIMEN MICROEMPRESARIAL. No incluir el estado ACTIVO.',
-    direccionMatriz:     'Dirección postal completa del domicilio tributario: provincia, cantón, parroquia, barrio, calle, número, intersección, edificio, oficina, piso y referencia cuando sean visibles. No devolver títulos como "Domicilio tributario", "Ubicación geográfica" o "Dirección".',
-    actividadEconomica:  'Actividad económica principal indicada expresamente en el certificado.',
-    representanteLegal:  'Nombre completo de la persona que aparece inmediatamente después de "Representante legal". Eliminar viñetas como » y no devolver la etiqueta.',
-    cedulaRepresentante: 'Cédula del representante legal, exactamente 10 dígitos, solo si aparece expresamente.'
-  },
-  cedula: {
-    apellidos:       'SOLO los APELLIDOS del titular, SIN incluir nombres de pila. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la PRIMERA línea corresponde a los apellidos. CÉDULA ANTIGUA: buscar debajo de la etiqueta "APELLIDOS". Devolver SOLO apellidos en MAYÚSCULAS. NO incluir etiquetas del documento (IDENTIDAD, REPÚBLICA, CÉDULA, etc.). Si no puedes diferenciar entre apellidos y nombres, devuelve cadena vacía.',
-    nombres:         'SOLO los NOMBRES de pila del titular, SIN incluir apellidos. CÉDULA NUEVA (azul): buscar en la zona central del frente, debajo de "APELLIDOS Y NOMBRES" — la SEGUNDA línea corresponde a los nombres. CÉDULA ANTIGUA: buscar debajo de la etiqueta "NOMBRES". Devolver SOLO nombres en MAYÚSCULAS. NO devolver el nombre completo (apellidos + nombres juntos). Si no puedes diferenciar, devuelve cadena vacía.',
-    numeroCedula:    'Número de cédula ecuatoriana (exactamente 10 dígitos). CÉDULA NUEVA: buscar en la parte superior derecha del frente, junto a "No.". CÉDULA ANTIGUA: buscar junto a "NUI" en la parte inferior izquierda. NO confundir con el código dactilar.',
-    codigoDactilar:  'Código dactilar del titular. Está SIEMPRE en el REVERSO de la cédula, cerca de la etiqueta "CÓDIGO DACTILAR" o junto a la huella. Puede ser alfanumérico según el print. Es DIFERENTE del número de cédula. NO confundir con fechas, MRZ, NUI, código de barras o tipo de sangre. Si no se ve claramente, devuelve cadena vacía.',
-    fechaExpiracion: 'Fecha de expiración en formato DD/MM/YYYY. CÉDULA NUEVA: buscar en el REVERSO, parte inferior izquierda, bajo "FECHA DE EXPIRACIÓN". CÉDULA ANTIGUA: buscar en el frente, lado derecho, bajo "FECHA DE VENCIMIENTO".',
-    estadoCivil:     'Estado civil: SOLTERO, CASADO, DIVORCIADO, VIUDO o UNIÓN DE HECHO. CÉDULA NUEVA: buscar en el frente, junto a "ESTADO CIVIL". CÉDULA ANTIGUA: buscar en el REVERSO, lado izquierdo, bajo "ESTADO CIVIL". Solo devolver si se ve claramente.',
-    nacionalidad:    'Nacionalidad del titular: ECUATORIANA, COLOMBIANA, etc. Buscar junto a la etiqueta "NACIONALIDAD" en el frente de la cédula (ambos formatos). Solo devolver si se ve claramente.'
-  },
-  matricula: {
-    placa:       'Placa del vehiculo (formato AAA-1234)',
-    cedulaRuc:   'Numero de cedula del propietario (exactamente 10 digitos). Debe estar asociado a cedula, identificacion, CI, RUC, propietario o documento de identidad. NO aceptar telefonos ni numeros cercanos a telefono, celular, contacto, movil, tel. o convencional. Si no hay certeza, devuelve "".',
-    propietario: 'Nombre completo del propietario',
-    marca:       'Marca del vehículo',
-    modelo:      'Modelo del vehículo',
-    color:       'Color del vehículo',
-    chasis:      'Número de chasis o VIN',
-    motor:       'Número de motor',
-    anio:        'Año de fabricación del vehículo (4 dígitos)'
-  },
-  notaria: {
-    placa:                     'Placa del vehiculo (formato AAA-1234)',
-    anio:                      'Año del vehículo (4 dígitos)',
-    modelo:                    'Modelo del vehículo',
-    pais:                      'País del vehículo o país de origen',
-    serialChasis:              'Número de chasis o serial',
-    tipoIdPropietario:         'Tipo de identificación del propietario',
-    nombrePropietario:         'Nombre o razón social del propietario',
-    marca:                     'Marca del vehículo',
-    numeroMotor:               'Número de motor',
-    medidaCautelar:            'Medida cautelar',
-    identificacionPropietario: 'Identificación del propietario',
-    estadoTransferencia:       'Estado real de transferencia de dominio: no registra, registra, existe ultimo contrato, o texto equivalente visible',
-    valorContrato:             'Valor del contrato',
-    fechaContrato:             'Fecha del contrato',
-    tipoTransferencia:         'Tipo de transferencia',
-    compradores:               'Lista completa de compradores; cada fila debe tener tipoId, identificacion y nombre si son visibles',
-    vendedores:                'Lista completa de vendedores; cada fila debe tener tipoId, identificacion y nombre si son visibles'
-  }
-};
+const FIELD_DESCRIPTIONS = AutoCorDocumentExtraction.fields;
 
 function isFieldEmpty(val){
   if(val===null || val===undefined) return true;
@@ -2503,11 +2335,12 @@ function isFieldDubious(val, fieldDef){
   }
   return false;
 }
-function getMissingFields(data, fields){
+function getMissingFields(data, fields, origins){
+  origins = origins || data._origins || {};
   const missing = [];
   for(const field of fields){
     if(field.type==='separator') continue;
-    if(isFieldDubious(data[field.key], field)) missing.push(field.key);
+    if(origins[field.key]==='review' || isFieldDubious(data[field.key], field)) missing.push(field.key);
   }
   return missing;
 }
@@ -2526,9 +2359,10 @@ function mergearDatosConIA(d, origins, aiData, missingKeys, esArrayField, origin
       aiValRaw = personasArrayATexto(aiValRaw);
     }
     const aiValNorm = normalizeFieldValue(k, aiValRaw, d);
+    const requiresReview = (aiData._reviewKeys || []).indexOf(k)>=0;
     if(!isFieldEmpty(aiValNorm)){
       d[k] = aiValNorm;
-      origins[k] = originResolver ? originResolver(k, aiValNorm) : 'ai';
+      origins[k] = requiresReview ? 'review' : (originResolver ? originResolver(k, aiValNorm) : 'ai');
       aplicados.push(k);
     } else if(!isFieldEmpty(aiValRaw)){
       // FALLBACK: la IA detectó algo pero no pasó la normalización estricta.
@@ -2536,7 +2370,7 @@ function mergearDatosConIA(d, origins, aiData, missingKeys, esArrayField, origin
       d[k] = String(aiValRaw).replace(/\s+/g,' ').trim();
       origins[k] = 'review';
       aplicados.push(k);
-    }
+    } else if(requiresReview){ origins[k] = 'review'; }
   }
   return aplicados;
 }
@@ -2561,56 +2395,35 @@ function fileToDataUrl(file){
   });
 }
 
-/* Preparar imagen para enviar a la IA: PDF→canvas→PNG, imagen→dataURL.
- * Para notaría (que puede tener múltiples páginas con secciones distintas:
- * vehículo, propietario, último contrato, compradores, vendedores), se
- * concatenan TODAS las páginas verticalmente en un solo canvas para que
- * la IA tenga acceso completo al documento. */
+/* Cada página llega por separado: conserva resolución y orden del documento. */
 async function prepararImagenParaIA(file, tipo){
-  const isPdf = file.name.toLowerCase().endsWith('.pdf');
-  if(!isPdf){
+  if(!file.name.toLowerCase().endsWith('.pdf')){
     setSpinnerBar(20);
     return fileToDataUrl(file);
   }
-
-  // Para notaría: concatenar TODAS las páginas (hasta 6 max para evitar saturar a la IA)
-  if(tipo === 'notaria'){
-    spinnerMsg('Convirtiendo PDF (todas las páginas) para IA...');
-    setSpinnerBar(12);
-    const total = await getPdfPageCount(file);
-    const maxPages = Math.min(total, 6);
-    const canvases = [];
-    for(let p=1; p<=maxPages; p++){
-      spinnerMsg('Renderizando página '+p+' de '+maxPages+' para IA...');
-      canvases.push(await pdfPageToCanvas(file, p, 2.0));
-      setSpinnerBar(12 + Math.round((p/maxPages)*18));
+  const pdf = await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  try{
+    if(pdf.numPages > 6){
+      const err = new Error('Este documento tiene '+pdf.numPages+' páginas. Selecciona un PDF de hasta 6 páginas que incluya las secciones necesarias; no se han omitido páginas en silencio.');
+      err.code = 'DOCUMENT_PAGE_LIMIT';
+      throw err;
     }
-    if(canvases.length === 1) return canvases[0].toDataURL('image/png');
-    // Concatenar verticalmente
-    const gap = 24;
-    const maxW = canvases.reduce(function(m,c){ return Math.max(m, c.width); }, 0);
-    const totalH = canvases.reduce(function(s,c){ return s + c.height; }, 0) + gap*(canvases.length-1);
-    const out = document.createElement('canvas');
-    out.width = maxW; out.height = totalH;
-    const ctx = out.getContext('2d');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,out.width,out.height);
-    let y = 0;
-    for(const c of canvases){
-      ctx.drawImage(c, 0, y);
-      y += c.height + gap;
+    const pages = [];
+    for(let n=1; n<=pdf.numPages; n++){
+      spinnerMsg('Preparando página '+n+' de '+pdf.numPages+' para IA...');
+      const page = await pdf.getPage(n);
+      const viewport = page.getViewport({scale:2});
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
+      pages.push({dataUrl:canvas.toDataURL('image/png'), label:'Página '+n+' de '+pdf.numPages});
+      canvas.width = canvas.height = 0;
+      page.cleanup();
+      setSpinnerBar(12 + Math.round(n/pdf.numPages*20));
     }
-    setSpinnerBar(32);
-    console.log('[IA] Notaría: enviando '+canvases.length+' página(s) concatenadas a la IA');
-    return out.toDataURL('image/png');
-  }
-
-  // Resto de tipos: solo página 1 (cédulas, matrícula, CUV)
-  spinnerMsg('Convirtiendo PDF a imagen...');
-  setSpinnerBar(15);
-  const canvas = await pdfPageToCanvas(file, 1);
-  setSpinnerBar(30);
-  return canvas.toDataURL('image/png');
+    return pages;
+  }finally{ await pdf.destroy(); }
 }
 
 /* ── Convertir compradores/vendedores [array] → texto multilinea ─ */
@@ -2711,385 +2524,18 @@ function parseRuc(texto){
 
 /* ── parseCedula ─────────────────────────────────────────────── */
 function parseCedula(texto){
-  texto = normalizeForParsing(texto);
-  var lines = texto.replace(/\r\n/g,'\n').replace(/\r/g,'\n')
-    .split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-  var flat = lines.join(' ');
+  // Archivo y pegado usan los mismos criterios; ningún dato se deduce por posición global.
+  var front = parseCedulaFrontal(texto);
+  var back = parseCedulaReverso(texto);
   var d = {
-    apellidos:'', nombres:'', numeroCedula:'', codigoDactilar:'',
-    fechaExpiracion:'', estadoCivil:'', nacionalidad:''
+    apellidos:front.apellidos || '', nombres:front.nombres || '',
+    numeroCedula:front.numeroCedula || back.numeroCedula || '',
+    codigoDactilar:back.codigoDactilar || '',
+    fechaExpiracion:front.fechaExpiracion || back.fechaExpiracion || '',
+    estadoCivil:front.estadoCivil || back.estadoCivil || '',
+    nacionalidad:front.nacionalidad || ''
   };
-
-  /* ═══ Helper: limpiar valor de nombre ═══ */
-  function limpiarNombre(v){
-    if(!v) return '';
-    var t = String(v).toUpperCase()
-      .replace(/\bNULL\b/g,'').replace(/\bNULO\b/g,'').replace(/\bUNDEFINED\b/g,'')
-      .replace(/\bNAN\b/g,'')
-      .replace(/[^A-ZÑ\s]/g,' ')
-      .replace(/\s+/g,' ').trim();
-    if(isKeyword(t)) return '';
-    if(KEYWORDS_CED_EXACT.some(function(k){ return t===k || t.startsWith(k+' ') || t.endsWith(' '+k); })) return '';
-    if(t.length < 3) return '';
-    var words = t.split(' ').filter(Boolean);
-    if(words.length===1 && words[0].length<4) return '';
-    if(words.length===1 && KEYWORDS_CED_EXACT.some(function(k){ return words[0].indexOf(k)===0; })) return '';
-    return t;
-  }
-
-  /* ═══ Helper: ¿línea parece nombre propio? ═══ */
-  function esNombrePropio(l){
-    if(!l || l.length<4) return false;
-    var cl = l.replace(/[^A-ZÑ\s]/g,'').replace(/\s+/g,' ').trim();
-    if(cl.length<4 || isKeyword(cl) || /\d/.test(l)) return false;
-    var words = cl.split(' ').filter(Boolean);
-    if(words.length===0 || words.length>6) return false;
-    if(!words.some(function(w){ return w.length>=3; })) return false;
-    if(words.some(function(w){ return KEYWORDS_CED_EXACT.some(function(k){ return w===k; }); })) return false;
-    return true;
-  }
-
-  /* ═══ DETECTAR FORMATO: NUEVA (azul) vs ANTIGUA ═══ */
-  /*
-   * Cédula NUEVA/azul:
-   *   - Frente: "No." (cédula arriba-derecha), "APELLIDOS Y NOMBRES" (bloque central),
-   *     "NACIONALIDAD", "ESTADO CIVIL"
-   *   - Reverso: "CÓDIGO DACTILAR" / "CÓD. DACTILAR" (arriba-derecha),
-   *     "FECHA DE EXPIRACIÓN" (abajo-izquierda)
-   *
-   * Cédula ANTIGUA:
-   *   - Frente: "NUI" (cédula abajo-izquierda), "APELLIDOS" separado de "NOMBRES",
-   *     "NACIONALIDAD", "FECHA DE VENCIMIENTO"
-   *   - Reverso: "CÓDIGO DACTILAR" (arriba-derecha), "ESTADO CIVIL" (izquierda)
-   */
-  var esNueva = /APELLIDOS\s+Y\s+NOMBRES/i.test(flat) ||
-                /\bNO\.\s*\d{10}\b/.test(flat) ||
-                /FECHA\s+DE\s+EXPIRACI[OÓ]N/i.test(flat);
-  var esAntigua = /\bNUI\b/i.test(flat) ||
-                  /FECHA\s+DE\s+VENCIMIENTO/i.test(flat) ||
-                  (/APELLIDOS\b/i.test(flat) && /NOMBRES\b/i.test(flat) && !/APELLIDOS\s+Y\s+NOMBRES/i.test(flat));
-  /* Si ambas detectan, preferir nueva; si ninguna, tratar como genérica */
-  var formato = esNueva ? 'nueva' : (esAntigua ? 'antigua' : 'generico');
-  console.log('[parseCedula] Formato detectado: ' + formato);
-
-  /* ═══ 1) NÚMERO DE CÉDULA ═══ */
-  /* Nueva: junto a "No." / Antigua: junto a "NUI" */
-  var cedM;
-  if(formato==='nueva'){
-    cedM = flat.match(/\bNO\.?\s*(\d{10})\b/i);
-    if(cedM && validarCedulaEc(cedM[1])) d.numeroCedula = cedM[1];
-  }
-  if(!d.numeroCedula && formato==='antigua'){
-    cedM = flat.match(/\bNUI\.?\s*(\d{10})\b/i);
-    if(cedM && validarCedulaEc(cedM[1])) d.numeroCedula = cedM[1];
-  }
-  /* Fallback genérico: primer grupo de 10 dígitos válido */
-  if(!d.numeroCedula){
-    var cedCandidates = flat.match(/\b(\d{10})\b/g) || [];
-    for(var ci=0;ci<cedCandidates.length;ci++){
-      if(validarCedulaEc(cedCandidates[ci])){ d.numeroCedula = cedCandidates[ci]; break; }
-    }
-    if(!d.numeroCedula && cedCandidates.length>0) d.numeroCedula = cedCandidates[0];
-  }
-
-  /* ═══ 2) APELLIDOS y NOMBRES — por formato ═══ */
-
-  if(formato==='nueva'){
-    /* ── Cédula NUEVA: bloque "APELLIDOS Y NOMBRES" ── */
-    /* En la cédula nueva, aparece "APELLIDOS Y NOMBRES" seguido de dos líneas:
-     *   Línea 1 → Apellidos
-     *   Línea 2 → Nombres
-     */
-    var idxAyN = -1;
-    for(var la=0;la<lines.length;la++){
-      if(/APELLIDOS\s+Y\s+NOMBRES/i.test(lines[la])){ idxAyN = la; break; }
-    }
-    if(idxAyN >= 0){
-      /* Buscar las siguientes 1-2 líneas que parezcan nombres */
-      var lineasNombre = [];
-      for(var ln=idxAyN+1; ln<Math.min(idxAyN+5, lines.length); ln++){
-        var candidato = lines[ln];
-        /* Parar si encontramos otra etiqueta conocida */
-        if(/\b(NACIONALIDAD|FECHA|SEXO|LUGAR|ESTADO\s+CIVIL|CEDULA|NO\.)\b/i.test(candidato)) break;
-        var limpio = limpiarNombre(candidato);
-        if(limpio) lineasNombre.push(limpio);
-        if(lineasNombre.length>=2) break;
-      }
-      if(lineasNombre.length>=2){
-        d.apellidos = lineasNombre[0];
-        d.nombres   = lineasNombre[1];
-      } else if(lineasNombre.length===1){
-        /* Una sola línea: puede ser "APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2" */
-        var partes = lineasNombre[0].split(' ').filter(Boolean);
-        if(partes.length>=4){
-          d.apellidos = partes.slice(0,2).join(' ');
-          d.nombres   = partes.slice(2).join(' ');
-        } else if(partes.length===3){
-          d.apellidos = partes.slice(0,1).join(' ');
-          d.nombres   = partes.slice(1).join(' ');
-        } else {
-          /* No se puede separar con certeza — dejar como apellidos para revisión */
-          d.apellidos = lineasNombre[0];
-        }
-      }
-    }
-  }
-
-  if(formato==='antigua' || (!d.apellidos && !d.nombres)){
-    /* ── Cédula ANTIGUA: etiquetas separadas "APELLIDOS" y "NOMBRES" ── */
-    var apIdx = -1, nmIdx = -1;
-    for(var lb=0;lb<lines.length;lb++){
-      /* Buscar líneas que sean SOLO la etiqueta o empiecen con ella */
-      if(apIdx<0 && /^APELLIDOS?\b/i.test(lines[lb]) && !/APELLIDOS\s+Y\s+NOMBRES/i.test(lines[lb])){
-        apIdx = lb;
-      }
-      if(nmIdx<0 && /^NOMBRES?\b/i.test(lines[lb])){
-        nmIdx = lb;
-      }
-    }
-
-    /* Extraer valor de la línea siguiente a la etiqueta */
-    if(apIdx>=0){
-      /* El valor puede estar en la misma línea (después de la etiqueta) o en la siguiente */
-      var apVal = lines[apIdx].replace(/^APELLIDOS?\s*[:\-]?\s*/i,'').trim();
-      apVal = limpiarNombre(apVal);
-      if(!apVal && apIdx+1<lines.length){
-        apVal = limpiarNombre(lines[apIdx+1]);
-      }
-      if(apVal && !d.apellidos) d.apellidos = apVal;
-    }
-    if(nmIdx>=0){
-      var nmVal = lines[nmIdx].replace(/^NOMBRES?\s*[:\-]?\s*/i,'').trim();
-      nmVal = limpiarNombre(nmVal);
-      if(!nmVal && nmIdx+1<lines.length){
-        nmVal = limpiarNombre(lines[nmIdx+1]);
-      }
-      if(nmVal && !d.nombres) d.nombres = nmVal;
-    }
-  }
-
-  /* ── Fallback: buscar con regex en texto plano ── */
-  if(!d.apellidos){
-    var apPatterns = [
-      /APELLIDOS?\s+Y\s+NOMBRES?\s*[:\-]?\s*([A-ZÑ][A-ZÑ\s]{3,50}?)(?=\s+NACIONALIDAD|\s+FECHA|\s+SEXO|\s+LUGAR|\s+ESTADO|\s*$)/i,
-      /APELLIDOS?\s*[:\-]?\s*([A-ZÑ][A-ZÑ\s]{3,50}?)(?=\s+NOMBRES|\s+NOMBRE|\s+FECHA|\s+SEXO|\s+NACIONALIDAD|\s*$)/i,
-      /APELLIDOS?\s*[:\-]?\s*([A-ZÑ][A-ZÑ\s]{3,50})/i
-    ];
-    for(var pi=0;pi<apPatterns.length;pi++){
-      var am = flat.match(apPatterns[pi]);
-      if(am){
-        var candidateA = limpiarNombre(am[1]);
-        if(candidateA){ d.apellidos = candidateA; break; }
-      }
-    }
-  }
-  if(!d.nombres){
-    var nmPatterns = [
-      /NOMBRES?\s*[:\-]?\s*([A-ZÑ][A-ZÑ\s]{3,50}?)(?=\s+FECHA|\s+NACIMIENTO|\s+SEXO|\s+NACIONALIDAD|\s+LUGAR|\s+ESTADO|\s*$)/i,
-      /NOMBRES?\s*[:\-]?\s*([A-ZÑ][A-ZÑ\s]{3,50})/i
-    ];
-    for(var ni=0;ni<nmPatterns.length;ni++){
-      var nmm = flat.match(nmPatterns[ni]);
-      if(nmm){
-        var candidateN = limpiarNombre(nmm[1]);
-        if(candidateN){ d.nombres = candidateN; break; }
-      }
-    }
-  }
-
-  /* ── Último fallback: líneas que parezcan nombres propios ── */
-  if(!d.apellidos && !d.nombres){
-    var nameLines = [];
-    for(var li=0;li<lines.length;li++){
-      if(esNombrePropio(lines[li])){
-        nameLines.push(lines[li].replace(/[^A-ZÑ\s]/g,'').replace(/\s+/g,' ').trim());
-      }
-    }
-    if(nameLines.length>=2){
-      d.apellidos = limpiarNombre(nameLines[0]);
-      d.nombres   = limpiarNombre(nameLines[1]);
-    } else if(nameLines.length===1){
-      var partsF = limpiarNombre(nameLines[0]).split(' ').filter(Boolean);
-      if(partsF.length>=4){
-        d.apellidos = partsF.slice(0,2).join(' ');
-        d.nombres   = partsF.slice(2).join(' ');
-      }
-    }
-  }
-
-  /* ── Si solo tenemos nombres y no apellidos, intentar separar ── */
-  if(d.nombres && !d.apellidos){
-    var parts = d.nombres.split(' ').filter(Boolean);
-    if(parts.length>=4){
-      d.apellidos = parts.slice(0,2).join(' ');
-      d.nombres   = parts.slice(2).join(' ');
-    } else if(parts.length===3){
-      d.apellidos = parts[0];
-      d.nombres   = parts.slice(1).join(' ');
-    }
-  }
-
-  /* ═══ 3) ESTADO CIVIL ═══ */
-  /* Nueva: frente / Antigua: reverso — pero en texto OCR es lo mismo */
-  var ecM = flat.match(/ESTADO\s+CIVIL\s*[:\-]?\s*(SOLTERO|SOLTERA|CASADO|CASADA|DIVORCIADO|DIVORCIADA|VIUDO|VIUDA|UNI[OÓ]N[\s\w]*)/i);
-  if(ecM){
-    d.estadoCivil = ecM[1].toUpperCase().replace(/\s+/g,' ').trim();
-  } else {
-    var ecM2 = flat.match(/\b(SOLTERO|SOLTERA|CASADO|CASADA|DIVORCIADO|DIVORCIADA|VIUDO|VIUDA|UNI[OÓ]N\s+LIBRE|UNI[OÓ]N\s+DE\s+HECHO)\b/i);
-    d.estadoCivil = ecM2 ? ecM2[1].toUpperCase() : '';
-  }
-
-  /* ═══ 4) NACIONALIDAD ═══ */
-  var natEtq = flat.match(/NACIONALIDAD\s*[:\-]?\s*(ECUATORIANA|ECUATORIANO|COLOMBIANA|COLOMBIANO|PERUANA|PERUANO|VENEZOLANA|VENEZOLANO|ESTADOUNIDENSE|ESPANOLA|ESPANOL|CHINA|CHINO)/i);
-  if(natEtq){
-    d.nacionalidad = natEtq[1].toUpperCase();
-  } else {
-    var natM = flat.match(/\b(ECUATORIANA|ECUATORIANO|COLOMBIANA|COLOMBIANO|PERUANA|PERUANO|VENEZOLANA|VENEZOLANO|ESTADOUNIDENSE|ESPANOLA|ESPANOL|CHINA|CHINO)\b/i);
-    d.nacionalidad = natM ? natM[1].toUpperCase() : '';
-    if(!d.nacionalidad && /\bECUADOR\b/i.test(flat)) d.nacionalidad = 'ECUATORIANA';
-  }
-
-  /* ═══ 5) FECHA DE EXPIRACIÓN ═══ */
-  /* Nueva: "FECHA DE EXPIRACIÓN" (reverso, abajo-izquierda) */
-  /* Antigua: "FECHA DE VENCIMIENTO" (frente, lado derecho)  */
-  d.fechaExpiracion = '';
-  if(formato==='nueva'){
-    d.fechaExpiracion = extraerFecha(flat, ['FECHA\\s+DE\\s+EXPIRACI[OÓ]N','EXPIRACI[OÓ]N','EXPIRACION','V[AÁ]LIDA\\s+HASTA']) || '';
-  } else if(formato==='antigua'){
-    d.fechaExpiracion = extraerFecha(flat, ['FECHA\\s+DE\\s+VENCIMIENTO','VENCIMIENTO','EXPIRACI[OÓ]N','CADUCIDAD']) || '';
-  }
-  if(!d.fechaExpiracion){
-    d.fechaExpiracion = extraerFecha(flat, ['EXPIRACI[OÓ]N','EXPIRACION','VENCIMIENTO','V[AÁ]LIDA\\s+HASTA','VALIDA\\s+HASTA','VENCE','CADUCIDAD']) || '';
-  }
-  if(!d.fechaExpiracion){
-    /* Fallback: fecha más lejana en el futuro */
-    var allDates = (flat.match(/\b\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}\b/g)||[]).concat(
-                   flat.match(/\b\d{4}[\/\-\.]\d{2}[\/\-\.]\d{2}\b/g)||[]);
-    var maxDate = null, maxStr = '';
-    for(var di=0;di<allDates.length;di++){
-      var nf = normFecha(allDates[di]);
-      var pm = nf.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      if(pm){
-        var dt = new Date(parseInt(pm[3]), parseInt(pm[2])-1, parseInt(pm[1]));
-        if(!maxDate || dt>maxDate){ maxDate=dt; maxStr=nf; }
-      }
-    }
-    if(maxStr) d.fechaExpiracion = maxStr;
-  }
-
-  /* ═══ 6) CÓDIGO DACTILAR — reverso de ambos formatos ═══ */
-  d.codigoDactilar = '';
-  /*
-   * Ubicación: SIEMPRE en el reverso de la cédula.
-   *   Nueva: arriba-derecha, junto a la huella dactilar.
-   *   Antigua: arriba-derecha, bajo etiqueta "CÓDIGO DACTILAR".
-   *
-   * Es un código numérico o alfanumérico de 6-10 dígitos.
-   * Puede estar precedido por la letra "V".
-   * NO es el número de cédula ni una fecha ni el MRZ.
-   */
-
-  /* Coleccionar todas las fechas para excluirlas */
-  var fechasEnTexto = new Set();
-  var fechasRaw = flat.match(/\b\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4}\b/g) || [];
-  fechasRaw.forEach(function(f){ fechasEnTexto.add(f.replace(/[\/\-\.]/g,'')); });
-
-  /* Coleccionar el MRZ (si presente) para excluir sus dígitos */
-  var mrzDigits = new Set();
-  var mrzLines = lines.filter(function(l){ return /^[A-Z0-9<]{20,}$/.test(l.replace(/\s/g,'')); });
-  mrzLines.forEach(function(l){
-    var nums = l.match(/\d{6,}/g) || [];
-    nums.forEach(function(n){ mrzDigits.add(n); });
-  });
-
-  /* Intento 1: etiqueta explícita con múltiples variantes */
-  var dactPatterns = [
-    /C[ÓO]D(?:IGO)?\.?\s+DACTILAR\s*[:\-=]?\s*([V]?\s*[\dA-Z][\dA-Z\s\-]{4,14})/i,
-    /DACTILAR\s*[:\-=]?\s*([V]?\s*[\dA-Z][\dA-Z\s\-]{4,14})/i,
-    /C[ÓO]D\.?\s*DACT\.?\s*[:\-=]?\s*([V]?\s*[\dA-Z][\dA-Z\s\-]{4,14})/i
-  ];
-  for(var dp=0;dp<dactPatterns.length;dp++){
-    var dactM = flat.match(dactPatterns[dp]);
-    if(dactM){
-      var rawD = dactM[1].replace(/^[V]/i,'').replace(/[\s\-]/g,'');
-      if(rawD === d.numeroCedula) continue;
-      if(fechasEnTexto.has(rawD)) continue;
-      if(mrzDigits.has(rawD)) continue;
-      if(/^\d{6}$/.test(rawD) || /^\d{10}$/.test(rawD)){
-        d.codigoDactilar = rawD; break;
-      }
-    }
-  }
-
-  /* Intento 2: contexto — línea con "DACTILAR" + dígitos cercanos */
-  if(!d.codigoDactilar){
-    for(var li2=0;li2<lines.length;li2++){
-      if(!/DACTILAR/i.test(lines[li2])) continue;
-      /* Buscar dígitos en esta línea, la siguiente y la anterior */
-      var searchLines = [lines[li2]];
-      if(lines[li2+1]) searchLines.push(lines[li2+1]);
-      if(li2>0) searchLines.push(lines[li2-1]);
-      for(var sl=0;sl<searchLines.length;sl++){
-        var numMs = searchLines[sl].match(/\b(\d{6,10})\b/g) || [];
-        for(var nm2=0;nm2<numMs.length;nm2++){
-          var dVal = numMs[nm2];
-          if(dVal===d.numeroCedula) continue;
-          if(fechasEnTexto.has(dVal)) continue;
-          if(mrzDigits.has(dVal)) continue;
-          d.codigoDactilar = dVal;
-          break;
-        }
-        if(d.codigoDactilar) break;
-      }
-      if(d.codigoDactilar) break;
-    }
-  }
-
-  /* Intento 3: segunda secuencia de 10 dígitos distinta de cédula/fechas/MRZ */
-  if(!d.codigoDactilar){
-    var allTens = flat.match(/\b\d{10}\b/g) || [];
-    for(var ti=0;ti<allTens.length;ti++){
-      var t10 = allTens[ti];
-      if(t10===d.numeroCedula) continue;
-      if(fechasEnTexto.has(t10)) continue;
-      if(mrzDigits.has(t10)) continue;
-      if(/^(\d{4})\1/.test(t10)) continue;
-      /* Evitar que sea un fragmento de MRZ */
-      var enMrz = mrzLines.some(function(l){ return l.indexOf(t10)>=0; });
-      if(enMrz) continue;
-      d.codigoDactilar = t10;
-      break;
-    }
-  }
-
-  /* Intento 4: patrón V+dígitos */
-  if(!d.codigoDactilar){
-    var alphaM = flat.match(/[V]\s*(\d{10})\b/i);
-    if(alphaM && alphaM[1]!==d.numeroCedula && !mrzDigits.has(alphaM[1])){
-      d.codigoDactilar = alphaM[1];
-    }
-  }
-
-  /* ═══ 7) Limpieza final ═══ */
-  d.apellidos = limpiarNombre(d.apellidos);
-  d.nombres   = limpiarNombre(d.nombres);
-
-  /* Si apellidos === nombres (OCR duplicó) */
-  if(d.apellidos && d.nombres && d.apellidos === d.nombres){
-    d.nombres = '';
-  }
-
-  /* Si nombres contiene los apellidos (nombre completo), separar */
-  if(d.apellidos && d.nombres && d.nombres.indexOf(d.apellidos)===0){
-    d.nombres = d.nombres.substring(d.apellidos.length).trim();
-  }
-  if(d.apellidos && d.nombres && d.nombres.indexOf(d.apellidos)>=0){
-    d.nombres = d.nombres.replace(d.apellidos,'').replace(/\s+/g,' ').trim();
-  }
-
-  /* Guardar formato detectado para debug/IA */
-  d._formatoCedula = formato;
-
+  d._reviewKeys = Array.from(new Set((front._reviewKeys || []).concat(back._reviewKeys || [])));
   return d;
 }
 
@@ -3163,74 +2609,101 @@ const KEYWORDS_CED_EXACT = [
   'DACTILAR','DACTIL','CODIGO','BIOMETR'
 ];
 function isKeyword(s){
-  const u = s.toUpperCase().replace(/\s+/g,' ').trim();
+  const u = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^A-Z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
   if(!u) return true;
   // Exact fragment match (truncated labels from OCR)
   if(KEYWORDS_CED_EXACT.some(function(k){ return u === k; })) return true;
-  // Contains any known label word
-  return KEYWORDS_CED.some(function(k){ return u.includes(k); });
+  // Las etiquetas son palabras completas: "NAN" no invalida FERNANDO o HERNAN.
+  return KEYWORDS_CED.some(function(k){
+    return (' '+u+' ').indexOf(' '+k+' ') >= 0;
+  });
 }
 
 /* ── parseMatricula ──────────────────────────────────────────── */
 function parseMatricula(texto){
-  texto = normalizeForParsing(texto);
-  const lines = texto.replace(/\r\n/g,'\n').replace(/\r/g,'\n')
-    .split('\n').map(l=>l.trim()).filter(Boolean);
-  const flat = lines.join(' ');
-  const d = {};
-
-  // Placa
-  const placaM = flat.match(/\b([A-Z]{2,3}[\-\s]?\d{3,4})\b/g)||[];
-  for(const p of placaM){
-    const clean = p.replace(/[\-\s]/g,'');
-    if(!/^(ANT|RUC|CED|NUM|NRO|CUV|PAS)/.test(clean)){ d.placa=clean; break; }
+  // Conservar filas y separaciones de columnas antes de normalizar espacios.
+  texto = normalizeForParsing(String(texto || '').replace(/\t+| {3,}/g,' | '));
+  const lines = texto.split(/\r\n|\r|\n/).map(l=>l.trim()).filter(Boolean);
+  const d = { _reviewKeys:[] };
+  function read(key, labels, normalize){
+    var values = etqMatr(texto, labels, { all:true });
+    if(values.length !== 1){
+      d[key] = '';
+      if(values.length > 1) d._reviewKeys.push(key);
+      return;
+    }
+    d[key] = normalize ? normalize(values[0]) : values[0];
+    if(!d[key]) d._reviewKeys.push(key);
   }
-  // Propietario
-  d.propietario = etqMatr(flat, ['PROPIETARIO','NOMBRES Y APELLIDOS','TITULAR']) || '';
-  // Cédula del propietario: solo se acepta con contexto explícito, nunca por 10 dígitos sueltos.
+  read('placa', ['(?:NUMERO\\s+(?:DE\\s+)?)?PLACA(?:\\s+ACTUAL)?'], normalizePlaca);
+  read('propietario', ['NOMBRES?\\s+Y\\s+APELLIDOS','NOMBRES?\\s+(?:DEL?\\s+)?PROPIETARIO','RAZON\\s+SOCIAL','PROPIETARIO','TITULAR']);
   d.cedulaRuc = findMatriculaCedulaContextual(lines);
-  // Marca
-  d.marca = etqMatr(flat,['MARCA']) || buscarWhitelist(flat, window.CUV_MARCAS||[]);
-  // Modelo
-  d.modelo = etqMatr(flat,['MODELO','CLASE DE VEHICULO']) || '';
-  // Año
-  const anioM = flat.match(/\b(19[7-9]\d|20[0-3]\d)\b/g)||[];
-  const etAnio = etqMatr(flat,['A[ÑN]O DE FABRICACI[OÓ]N','A[ÑN]O MOD','AÑO','ANO']);
-  d.anio = etAnio || (anioM.length>0?anioM[0]:'');
-  // Color
-  d.color = etqMatr(flat,['COLOR']) || buscarWhitelist(flat, window.CUV_COLORES||[]);
-  // Chasis/VIN
-  const vinM = flat.match(/\b([A-HJ-NPR-Z0-9]{17})\b/g)||[];
-  d.chasis = vinM[0] || etqMatr(flat,['CHASIS','VIN','N[ÚU]M.*CHASIS']) || '';
-  // Motor
-  d.motor = etqMatr(flat,['MOTOR','N[ÚU]M.*MOTOR','NUMERO.*MOTOR']) || '';
-  // Clase
-  d.clase = etqMatr(flat,['CLASE']) || '';
-  // Tipo
-  d.tipo = etqMatr(flat,['TIPO']) || '';
-  // Servicio
-  d.servicio = etqMatr(flat,['SERVICIO']) || '';
-  // Fechas
-  d.fechaEmision   = extraerFecha(flat,['EMISI[OÓ]N','EMISION','FECHA DE INICIO']);
-  d.fechaCaducidad = extraerFecha(flat,['CADUCIDAD','VENCIMIENTO','VIGENCIA','HASTA']);
-  // Fallback: pick dates from text
-  const allDates = flat.match(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/g)||[];
-  if(!d.fechaEmision   && allDates.length>0) d.fechaEmision   = normFecha(allDates[0]);
-  if(!d.fechaCaducidad && allDates.length>1) d.fechaCaducidad = normFecha(allDates[1]);
-
+  read('marca', ['MARCA']);
+  read('modelo', ['MODELO']);
+  read('anio', ['ANO(?:\\s+(?:DE\\s+FABRICACION|MODELO|MOD))?'], function(v){ return /^(?:19|20)\d{2}$/.test(v) ? v : ''; });
+  read('color', ['COLOR(?:\\s+(?:PRINCIPAL|1))?']);
+  read('chasis', ['(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?(?:CHASIS|VIN|SERIE)']);
+  read('motor', ['(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?MOTOR']);
+  read('clase', ['CLASE(?:\\s+DE\\s+VEHICULO)?']);
+  read('tipo', ['TIPO(?:\\s+DE\\s+VEHICULO)?']);
+  read('servicio', ['SERVICIO']);
+  read('fechaEmision', ['(?:FECHA\\s+(?:DE\\s+)?)?(?:EMISION|EXPEDICION|INICIO)'], normalizeDate);
+  read('fechaCaducidad', ['(?:FECHA\\s+(?:DE\\s+)?)?(?:CADUCIDAD|VENCIMIENTO|EXPIRACION)','VIGENCIA(?:\\s+HASTA)?','VALID[OA]\\s+HASTA'], normalizeDate);
   return d;
 }
 
-function etqMatr(texto, etiquetas){
-  for(const et of etiquetas){
-    const re = new RegExp('(?:'+et+')\\s*[:\\-]?\\s*([A-ZÁÉÍÓÚÑÜ0-9][^\\n:\\r]{1,60})','i');
-    const m = texto.match(re);
-    if(m){
-      const v = m[1].trim().split(/\s{3,}/)[0].trim();
-      if(v && v.length<70 && !isOnlyNumbers(v)) return v;
-    }
+function etqMatr(texto, etiquetas, opts){
+  var known = [
+    'NOMBRES?\\s+Y\\s+APELLIDOS', 'NOMBRES?\\s+(?:DEL?\\s+)?PROPIETARIO', 'RAZON\\s+SOCIAL',
+    '(?:NUMERO\\s+(?:DE\\s+)?)?PLACA(?:\\s+(?:ACTUAL|ANTERIOR))?',
+    '(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?(?:CHASIS|VIN|SERIE|MOTOR)',
+    'ANO(?:\\s+(?:DE\\s+FABRICACION|DE\\s+MATRICULACION|DE\\s+EMISION|MATRICULA|MODELO|MOD))?',
+    '(?:FECHA\\s+(?:DE\\s+)?)?(?:CADUCIDAD|VENCIMIENTO|EXPIRACION|EMISION|EXPEDICION|INICIO|NACIMIENTO)',
+    'VIGENCIA(?:\\s+HASTA)?', 'VALID[OA]\\s+HASTA',
+    '(?:CEDULA\\s*[/\\-]\\s*RUC|CEDULA|RUC|IDENTIFICACION)(?:\\s+(?:DEL?\\s+)?PROPIETARIO)?',
+    'TIPO\\s+(?:DE\\s+)?(?:IDENTIFICACION|COMBUSTIBLE|VEHICULO)',
+    'CLASE(?:\\s+DE\\s+VEHICULO)?', 'COLOR(?:\\s+(?:PRINCIPAL|SECUNDARIO|1|2))?',
+    'PROPIETARIO', 'TITULAR', 'MARCA', 'MODELO', 'TIPO', 'SERVICIO',
+    'TELEFONO', 'CELULAR', 'DIRECCION', 'CILINDRAJE', 'COMBUSTIBLE', 'CAPACIDAD',
+    'PAIS(?:\\s+DE\\s+ORIGEN)?', 'TONELAJE', 'PASAJEROS', 'AVALUO', 'OBSERVACIONES', 'FECHA'
+  ];
+  // Las etiquetas específicas van antes de MARCA/MODELO/ANO para no confundir subcampos.
+  var labelRe = new RegExp('\\b(?:'+known.concat(etiquetas).join('|')+')\\b', 'gi');
+  var targetRe = new RegExp('^(?:'+etiquetas.join('|')+')$', 'i');
+  var rows = normalizeForParsing(String(texto || '').replace(/\t+| {3,}/g,' | ')).split(/\r\n|\r|\n/)
+    .map(function(line){ return line.trim(); }).filter(Boolean)
+    .map(function(line){ return line.split('|').map(function(cell){ return cell.trim(); }); });
+  var values = [];
+  function labelsIn(cell){
+    labelRe.lastIndex = 0;
+    return Array.from(cell.matchAll(labelRe));
   }
-  return '';
+  function add(raw){
+    var value = raw.replace(/^[\s:;=.-]+|[\s:;]+$/g,'').trim();
+    if(value && value.length <= 180 && values.indexOf(value)<0) values.push(value);
+  }
+  rows.forEach(function(row, r){
+    row.forEach(function(cell, c){
+      var labels = labelsIn(cell);
+      labels.forEach(function(label, index){
+        if(!targetRe.test(label[0])) return;
+        var end = index+1 < labels.length ? labels[index+1].index : cell.length;
+        var raw = cell.slice(label.index + label[0].length, end).replace(/^[\s:;=.-]+/g,'').trim();
+        if(raw){ add(raw); return; }
+        // También admite pares horizontales como MARCA | TOYOTA | MODELO | COROLLA.
+        if(labels.length === 1 && label.index === 0 && row[c+1] && !labelsIn(row[c+1]).length){
+          add(row[c+1]);
+          return;
+        }
+        // Una etiqueta sin valor sólo usa su columna de la fila inmediatamente siguiente.
+        if(labels.length !== 1 || label.index !== 0 || !rows[r+1] || rows[r+1].length !== row.length) return;
+        var next = rows[r+1][c];
+        if(!labelsIn(next).length) add(next);
+      });
+    });
+  });
+  return opts && opts.all ? values : (values.length === 1 ? values[0] : '');
 }
 function matriculaHasPhoneContext(text){
   return /\b(TELEFONO|TEL[EÉ]FONO|TELF|TEL\.|CELULAR|CEL\.|CONTACTO|MOVIL|M[OÓ]VIL|CONVENCIONAL|WHATSAPP)\b/.test(trimUpper(text));
@@ -3241,7 +2714,7 @@ function matriculaHasCedulaContext(text){
 function findMatriculaCedulaContextual(lines){
   var candidates = [];
   function addCandidate(num, score, ctx){
-    var n = normalizeCedula10(num);
+    var n = normalizeIdentificacion(num);
     if(!n) return;
     if(matriculaHasPhoneContext(ctx) && !matriculaHasCedulaContext(ctx)) return;
     candidates.push({ value:n, score:score });
@@ -3252,7 +2725,7 @@ function findMatriculaCedulaContextual(lines){
     if(matriculaHasPhoneContext(raw)) continue;
     if(matriculaHasPhoneContext(ctx) && !matriculaHasCedulaContext(raw)) continue;
     if(!matriculaHasCedulaContext(ctx)) continue;
-    var nums = ctx.match(/\b\d{10}\b/g) || [];
+    var nums = raw.match(/\b(?:\d{13}|\d{10})\b/g) || [];
     for(var n=0;n<nums.length;n++){
       var score = matriculaHasCedulaContext(raw) ? 10 : 7;
       if(/\b(PROPIETARIO)\b/.test(trimUpper(ctx))) score += 2;
@@ -3264,7 +2737,7 @@ function findMatriculaCedulaContextual(lines){
   return candidates.length ? candidates[0].value : '';
 }
 function validarCedulaMatriculaPorOCR(cedula, ocrText){
-  var n = normalizeCedula10(cedula);
+  var n = normalizeIdentificacion(cedula);
   if(!n || !ocrText) return { ok:false, reason:'sin-contexto' };
   var lines = normalizeForParsing(ocrText).replace(/\r\n/g,'\n').replace(/\r/g,'\n')
     .split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
@@ -3288,6 +2761,10 @@ function validarCedulaMatriculaPorOCR(cedula, ocrText){
   return { ok:false, reason:'sin-contexto' };
 }
 function cedulaPropietarioReferencia(){
+  if(flujoContrato.tipoPersona === 'juridica'){
+    return normalizeRuc13((datos.ruc || {}).numeroRuc) ||
+      normalizeRuc13((datos.cuv || {}).cedula || (datos.cuv || {}).documentoIdentidad);
+  }
   var ced = datos['cedula-prop'] && normalizeCedula10(datos['cedula-prop'].numeroCedula);
   if(ced) return ced;
   ced = datos['cuv'] && normalizeCedula10(datos['cuv'].cedula || datos['cuv'].documentoIdentidad);
@@ -3296,10 +2773,11 @@ function cedulaPropietarioReferencia(){
 function postProcesarMatriculaConfiabilidad(d, origins, ocrText){
   if(!d || !origins) return d;
   var refCed = cedulaPropietarioReferencia();
-  var ced = normalizeCedula10(d.cedulaRuc);
-  if(d.cedulaRuc && !ced){
-    d.cedulaRuc = '';
-    origins.cedulaRuc = 'none';
+  var ced = normalizeIdentificacion(d.cedulaRuc);
+  if(origins.cedulaRuc === 'manual'){
+    // Las comprobaciones pueden advertir diferencias, pero no cambian una edición manual.
+  } else if(d.cedulaRuc && !ced){
+    origins.cedulaRuc = 'review';
   } else if(ced){
     var ctx = validarCedulaMatriculaPorOCR(ced, ocrText || '');
     if(ctx.reason === 'contexto-telefono'){
@@ -3308,9 +2786,10 @@ function postProcesarMatriculaConfiabilidad(d, origins, ocrText){
     } else if(refCed && ced !== refCed){
       d.cedulaRuc = ced;
       origins.cedulaRuc = 'review';
-    } else if(!ctx.ok && origins.cedulaRuc !== 'manual'){
-      d.cedulaRuc = refCed && ced === refCed ? ced : '';
-      origins.cedulaRuc = d.cedulaRuc ? 'review' : 'none';
+    } else if(!ctx.ok){
+      // Un OCR incompleto no debe borrar una identificación que sí leyó la IA.
+      d.cedulaRuc = ced;
+      if(!refCed || ced !== refCed) origins.cedulaRuc = 'review';
     } else {
       d.cedulaRuc = ced;
     }
@@ -3618,8 +3097,7 @@ function _removePaste(tipo, lado){
   var hasBack = !!pastedImages[tipo].reverso;
   var hasAny = !!(hasFront || hasBack);
   if(!hasAny){
-    var esPapeletaOpcional = tipo==='papeleta-cony' ||
-      (tipo==='papeleta-prop' && flujoContrato.tipoPersona!=='juridica');
+    var esPapeletaOpcional = tipo==='papeleta-cony' || tipo==='papeleta-prop';
     setStatus(tipo, 'pending', esPapeletaOpcional ? 'Opcional — sin documento' : 'Sin documento');
   } else {
     var statusTxt = (tipo==='ruc' || tipo==='notaria' || tipo==='papeleta-prop' || tipo==='papeleta-cony')
@@ -3699,65 +3177,38 @@ async function _procesarCedulaPaste(tipo){
 
     var aiResp = '';
     var aiAplicados = [];
-    if(aiAvailable){
-      try{
-        var aiChunks = [];
-        var frontKeys = ['apellidos','nombres','numeroCedula','nacionalidad','estadoCivil','fechaExpiracion'];
-        var backKeys = ['codigoDactilar','estadoCivil','fechaExpiracion'];
-        if(imgs.frontal){
-          spinnerMsg('IA revisando frontal de cédula...');
-          setSpinnerBar(20);
-          var aiFront = await analizarConGeminiCampos('cedula', imgs.frontal, frontKeys, { cedulaSide:'front' });
-          aiChunks.push('=== IA FRONTAL ===\n'+JSON.stringify(aiFront, null, 2));
-          aiAplicados = aiAplicados.concat(mergearDatosConIA(d, origins, aiFront, frontKeys, null, function(){ return 'ai-front'; }));
-        }
-        if(imgs.reverso){
-          spinnerMsg('IA revisando reverso de cédula...');
-          setSpinnerBar(40);
-          var aiBack = await analizarConGeminiCampos('cedula', imgs.reverso, backKeys, { cedulaSide:'back' });
-          aiChunks.push('=== IA REVERSO ===\n'+JSON.stringify(aiBack, null, 2));
-          aiAplicados = aiAplicados.concat(mergearDatosConIA(d, origins, aiBack, backKeys, null, function(){ return 'ai-back'; }));
-        }
-        aiResp = aiChunks.join('\n\n');
-        console.log('['+tipo+'] IA detectó '+aiAplicados.length+' campo(s):', aiAplicados);
-      }catch(err){
-        console.warn('['+tipo+'] IA principal falló:', err);
-      }
-    }
+    try{
+      spinnerMsg('IA revisando cédula: frontal y reverso...');
+      var attachments = [];
+      if(imgs.frontal) attachments.push({dataUrl:imgs.frontal, label:'Frontal de cédula'});
+      if(imgs.reverso) attachments.push({dataUrl:imgs.reverso, label:'Reverso de cédula'});
+      var allKeys = fields.map(function(f){ return f.key; });
+      var aiData = await analizarConGeminiCampos('cedula', attachments, allKeys);
+      aiResp = JSON.stringify(aiData, null, 2);
+      aiAplicados = mergearDatosConIA(d, origins, aiData, allKeys);
+    }catch(err){ console.warn('['+tipo+'] IA principal falló; se usará OCR:', err); }
 
-    var missing = getMissingFields(d, fields);
+    var missing = getMissingFields(d, fields, origins);
     if(missing.length>0){
       if(imgs.frontal){
         spinnerMsg('OCR de respaldo en frontal...');
         setSpinnerBar(58);
         var fileFront = _dataUrlToFile(imgs.frontal, 'cedula-frontal.png');
-        textoFrontal = await ocrFilePotenciado(fileFront, tipo);
+        textoFrontal = await ocrRespaldoSeguro(fileFront, tipo);
       }
       if(imgs.reverso){
         spinnerMsg('OCR de respaldo en reverso...');
         setSpinnerBar(72);
         var fileBack = _dataUrlToFile(imgs.reverso, 'cedula-reverso.png');
-        textoReverso = await ocrFilePotenciado(fileBack, tipo);
+        textoReverso = await ocrRespaldoSeguro(fileBack, tipo);
       }
       var frontData = textoFrontal ? sanitizeDetectedData(parseCedulaFrontal(textoFrontal), fields) : {};
       var backData = textoReverso ? sanitizeDetectedData(parseCedulaReverso(textoReverso), fields) : {};
-      var ocrData = {
-        apellidos: frontData.apellidos || '',
-        nombres: frontData.nombres || '',
-        numeroCedula: frontData.numeroCedula || backData.numeroCedula || '',
-        codigoDactilar: backData.codigoDactilar || '',
-        fechaExpiracion: frontData.fechaExpiracion || backData.fechaExpiracion || '',
-        estadoCivil: frontData.estadoCivil || backData.estadoCivil || '',
-        nacionalidad: frontData.nacionalidad || ''
-      };
-      ocrAplicados = ocrAplicados.concat(mergearDatosConOCR(d, origins, ocrData, missing.filter(function(k){
-        return ['apellidos','nombres','numeroCedula','nacionalidad','estadoCivil','fechaExpiracion'].indexOf(k)>=0;
+      ocrAplicados = ocrAplicados.concat(mergearDatosConOCR(d, origins, frontData, missing.filter(function(k){
+        return k !== 'codigoDactilar';
       }), 'ocr-front'));
-      ocrAplicados = ocrAplicados.concat(mergearDatosConOCR(d, origins, ocrData, missing.filter(function(k){
-        return ['codigoDactilar'].indexOf(k)>=0;
-      }), 'ocr-back'));
-      ocrAplicados = ocrAplicados.concat(mergearDatosConOCR(d, origins, ocrData, missing.filter(function(k){
-        return ['estadoCivil','fechaExpiracion'].indexOf(k)>=0 && origins[k]==='none';
+      ocrAplicados = ocrAplicados.concat(mergearDatosConOCR(d, origins, backData, getMissingFields(d, fields, origins).filter(function(k){
+        return ['codigoDactilar','estadoCivil','fechaExpiracion'].indexOf(k)>=0;
       }), 'ocr-back'));
       [].concat(frontData._reviewKeys || [], backData._reviewKeys || []).forEach(function(k){
         if(!d[k] && origins[k] === 'none') origins[k] = 'review';
@@ -3765,8 +3216,8 @@ async function _procesarCedulaPaste(tipo){
     }
 
     setSpinnerBar(92);
-    var missingFinal = getMissingFields(d, fields);
     d = sanitizeDetectedData(d, fields);
+    var missingFinal = getMissingFields(d, fields, origins);
     d._origins = origins;
     d._source = aiAplicados.length>0 ? (ocrAplicados.length>0 ? 'mixed' : 'ia') : (ocrAplicados.length>0 ? 'ocr' : 'none');
     var rawParts = [];
@@ -3790,6 +3241,7 @@ async function _procesarCedulaPaste(tipo){
       }
     }
 
+    d._missing = getMissingFields(d, fields, origins);
     datos[tipo] = d;
     var lbl = d.numeroCedula
       ? (d.apellidos ? (d.apellidos.split(' ')[0]+' '+((d.nombres||'').split(' ')[0]||'')) : d.numeroCedula)
@@ -3826,11 +3278,11 @@ async function _procesarMatriculaPaste(){
     var aiResp = '';
     var aiAplicados = [];
     var ocrAplicados = [];
-    if(aiAvailable){
+    {
       try{
         spinnerMsg('IA analizando matrícula...');
         setSpinnerBar(20);
-        var combinedUrl = await _combinarImagenesPaste(imgs.frontal, imgs.reverso);
+        var combinedUrl = [{dataUrl:imgs.frontal, label:'Frontal de matrícula'}, {dataUrl:imgs.reverso, label:'Reverso de matrícula'}].filter(function(p){ return !!p.dataUrl; });
         var allKeys = fields.filter(function(f){ return f.type!=='separator'; }).map(function(f){ return f.key; });
         var aiData = await analizarConGeminiCampos('matricula', combinedUrl, allKeys);
         aiResp = JSON.stringify(aiData, null, 2);
@@ -3842,18 +3294,18 @@ async function _procesarMatriculaPaste(){
     }
 
     var textoFrontal = '', textoReverso = '';
-    var missing = getMissingFields(d, fields);
+    var missing = getMissingFields(d, fields, origins);
     var needsOcrValidation = !!(d.cedulaRuc || d.chasis || d.motor);
     if(missing.length>0 || needsOcrValidation){
       if(imgs.frontal){
         spinnerMsg('OCR de respaldo en matrícula frontal...');
         setSpinnerBar(58);
-        textoFrontal = await ocrFilePotenciado(_dataUrlToFile(imgs.frontal, 'matricula-frontal.png'), 'matricula');
+        textoFrontal = await ocrRespaldoSeguro(_dataUrlToFile(imgs.frontal, 'matricula-frontal.png'), 'matricula');
       }
       if(imgs.reverso){
         spinnerMsg('OCR de respaldo en matrícula reverso...');
         setSpinnerBar(72);
-        textoReverso = await ocrFilePotenciado(_dataUrlToFile(imgs.reverso, 'matricula-reverso.png'), 'matricula');
+        textoReverso = await ocrRespaldoSeguro(_dataUrlToFile(imgs.reverso, 'matricula-reverso.png'), 'matricula');
       }
       var ocrText = [textoFrontal, textoReverso].filter(Boolean).join('\n\n');
       if(ocrText.trim()){
@@ -3879,7 +3331,7 @@ async function _procesarMatriculaPaste(){
     d._rawText = rawParts.join('\n\n');
     d._aiCompletados = aiAplicados;
     d._ocrCompletados = ocrAplicados;
-    d._missing = getMissingFields(d, fields);
+    d._missing = getMissingFields(d, fields, origins);
 
     datos['matricula'] = d;
     console.log('[matricula] FINAL datos:', JSON.parse(JSON.stringify(d)));
@@ -3913,7 +3365,7 @@ async function _procesarNotariaPaste(){
 
     var aiResp = '';
     var aiAplicados = [];
-    if(aiAvailable){
+    {
       try{
         spinnerMsg('IA analizando print notaría...');
         setSpinnerBar(20);
@@ -3928,11 +3380,11 @@ async function _procesarNotariaPaste(){
 
     var ocrText = '';
     var ocrAplicados = [];
-    var missing = getMissingFields(d, fields);
+    var missing = getMissingFields(d, fields, origins);
     if(missing.length>0){
       spinnerMsg('OCR de respaldo en print notaría...');
       setSpinnerBar(62);
-      ocrText = await ocrFilePotenciado(_dataUrlToFile(img, 'notaria-paste.png'), 'notaria');
+      ocrText = await ocrRespaldoSeguro(_dataUrlToFile(img, 'notaria-paste.png'), 'notaria');
       if(ocrText && ocrText.trim().length>=10){
         var ocrData = sanitizeDetectedData(parsePrintNotaria(ocrText), fields);
         ocrAplicados = mergearDatosConOCR(d, origins, ocrData, missing, 'ocr');
@@ -3954,7 +3406,7 @@ async function _procesarNotariaPaste(){
     d._rawText = rawParts.join('\n\n');
     d._aiCompletados = aiAplicados;
     d._ocrCompletados = ocrAplicados;
-    d._missing = getMissingFields(d, fields);
+    d._missing = getMissingFields(d, fields, origins);
 
     datos['notaria'] = d;
     console.log('[notaria] FINAL datos:', JSON.parse(JSON.stringify(d)));
@@ -4160,81 +3612,27 @@ async function procesarCUV(file, nombre){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PROCESADORES — OCR primero, IA solo para campos faltantes
+   PROCESADORES — IA primero, OCR para faltantes o dudosos
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Procesador genérico OCR-first ────────────────────────────── */
-/*
- *   1) OCR del documento → parser local
- *   2) Detectar campos faltantes/dudosos
- *   3) Si hay faltantes Y aiAvailable: pedir SOLO esos a la IA
- *   4) Mergear: OCR gana, IA llena huecos, vacíos se quedan vacíos
- *   5) Trackear origen por campo en _origins
- */
-async function procesarOcrFirst(opts){
-  const { file, tipo, parserLocal, fieldsFn, tipoIA, esArrayField } = opts;
-
-  // 1) OCR + parser local
-  spinnerMsg('Leyendo '+tipoLabel(tipo)+' con OCR...');
-  setSpinnerBar(15);
-  const ocrText = await ocrFile(file, tipo);
-  if(!ocrText || ocrText.trim().length<10){
-    throw new Error('OCR no pudo leer el documento');
+/* ── Completar con OCR sin reemplazar ediciones manuales ──────── */
+async function ocrRespaldoSeguro(file, tipo){
+  try{ return await ocrFilePotenciado(file, tipo); }
+  catch(err){
+    console.warn('['+tipo+'] No se pudo completar el OCR; se conservan los datos leídos por IA:', err);
+    return '';
   }
-  let d = parserLocal(ocrText);
-
-  // 2) Inicializar mapa de orígenes
-  const fields  = fieldsFn();
-  d = sanitizeDetectedData(d, fields);
-  const origins = inicializarOrigins(d, fields);
-
-  // 3) Identificar campos faltantes/dudosos
-  const missing = getMissingFields(d, fields);
-  console.log('['+tipo+'] OCR detectó '+(fields.filter(function(f){return f.type!=='separator';}).length-missing.length)+' campos. Faltantes:', missing);
-
-  // 4) Si hay faltantes y la IA está disponible, completar SOLO esos
-  let aiResp = '';
-  let aiAplicados = [];
-  if(missing.length>0 && aiAvailable){
-    try{
-      const dataUrl = await prepararImagenParaIA(file);
-      const aiData  = await analizarConGeminiCampos(tipoIA, dataUrl, missing);
-      aiResp = JSON.stringify(aiData, null, 2);
-      aiAplicados = mergearDatosConIA(d, origins, aiData, missing, esArrayField);
-      console.log('['+tipo+'] IA completó '+aiAplicados.length+' campo(s):', aiAplicados);
-    }catch(err){
-      console.warn('['+tipo+'] IA fallback completion falló:', err);
-      // Mantener solo OCR — no tirar error
-    }
-  } else if(missing.length===0){
-    console.log('['+tipo+'] OCR detectó TODOS los campos — no se llamó a la IA (ahorrando créditos)');
-  } else if(!aiAvailable){
-    console.log('['+tipo+'] '+missing.length+' campo(s) faltantes pero IA no disponible — quedan no detectados');
-  }
-
-  // 5) Asignar metadata
-  const missingFinal = getMissingFields(d, fields);
-  d = sanitizeDetectedData(d, fields);
-  d._origins = origins;
-  d._source  = aiAplicados.length>0 ? 'mixed' : 'ocr';
-  d._rawText = aiAplicados.length>0
-    ? '═══ TEXTO OCR ═══\n'+ocrText+'\n\n═══ COMPLETADO POR IA ('+aiAplicados.length+' campo(s)) ═══\n'+aiResp
-    : ocrText;
-  d._aiCompletados = aiAplicados;
-  d._missing      = missingFinal;
-
-  return d;
 }
 
 function mergearDatosConOCR(d, origins, ocrData, missingKeys, originCode){
   const aplicados = [];
   for(const k of missingKeys){
     if(origins[k] === 'manual') continue;
-    if(!isFieldEmpty(d[k])) continue;
+    // missingKeys contiene solo faltantes o dudosos; nunca reemplazar manuales.
     const ocrVal = normalizeFieldValue(k, ocrData[k], d);
     if(!isFieldEmpty(ocrVal)){
       d[k] = ocrVal;
-      origins[k] = originCode || 'ocr';
+      origins[k] = (ocrData._reviewKeys || []).indexOf(k)>=0 ? 'review' : (originCode || 'ocr');
       aplicados.push(k);
     }
   }
@@ -4257,44 +3655,23 @@ async function procesarIaFirst(opts){
   let ocrText = '';
   let ocrAplicados = [];
 
-  if(!aiAvailable){
-    try{
-      if(aiCheckPromise) await aiCheckPromise;
-      else if(!aiAvailabilityChecked && typeof window.testAIConnection === 'function') await window.testAIConnection();
-    }catch(_){ }
+  try{
+    spinnerMsg('Analizando '+tipoLabel(tipo)+' con IA...');
+    setSpinnerBar(20);
+    const dataUrl = await prepararImagenParaIA(file, tipo);
+    const allKeys = fields.filter(function(f){ return f.type!=='separator'; }).map(function(f){ return f.key; });
+    const aiData = await analizarConGeminiCampos(tipoIA, dataUrl, allKeys);
+    aiResp = JSON.stringify(aiData, null, 2);
+    aiAplicados = mergearDatosConIA(d, origins, aiData, allKeys, esArrayField);
+  }catch(err){
+    if(err.code === 'DOCUMENT_PAGE_LIMIT') throw err;
+    console.warn('['+tipo+'] IA principal falló; se usará OCR:', err);
   }
 
-  if(aiAvailable){
-    try{
-      spinnerMsg('Analizando '+tipoLabel(tipo)+' con IA...');
-      setSpinnerBar(20);
-      // Pasar el tipo para que notaria envíe TODAS las páginas del PDF a la IA
-      const dataUrl = await prepararImagenParaIA(file, tipo);
-      const allKeys = fields.filter(function(f){ return f.type!=='separator'; }).map(function(f){ return f.key; });
-      const aiData = await analizarConGeminiCampos(tipoIA, dataUrl, allKeys);
-      aiResp = JSON.stringify(aiData, null, 2);
-      aiAplicados = mergearDatosConIA(d, origins, aiData, allKeys, esArrayField);
-      console.log('['+tipo+'] IA detectó '+aiAplicados.length+' campo(s):', aiAplicados, 'datos parciales:', JSON.parse(JSON.stringify(d)));
-    }catch(err){
-      console.warn('['+tipo+'] IA principal falló:', err);
-    }
-  }
-
-  let missing = getMissingFields(d, fields);
-  const aiPrimaryValid = tipo === 'ruc'
-    ? !!(normalizeRuc13(d.numeroRuc) && normalizeCompanyName(d.razonSocial))
-    : aiAplicados.length > 0;
-  if(opts.ocrOnlyIfAiFails && !aiPrimaryValid){
-    fields.forEach(function(f){
-      if(f.type==='separator' || origins[f.key] === 'manual') return;
-      d[f.key] = '';
-      origins[f.key] = 'none';
-    });
-    aiAplicados = [];
-    missing = fields.filter(function(f){ return f.type!=='separator'; }).map(function(f){ return f.key; });
-  }
+  let missing = getMissingFields(d, fields, origins);
   const needsOcrValidation = tipo === 'matricula' && !!(d.cedulaRuc || d.chasis || d.motor);
-  const shouldUseOcr = opts.ocrOnlyIfAiFails ? !aiPrimaryValid : (missing.length>0 || needsOcrValidation);
+  const shouldUseOcr = missing.length>0 || needsOcrValidation;
+
   if(shouldUseOcr){
     try{
       spinnerMsg(needsOcrValidation ? 'Validando matrícula con OCR...' : 'Completando faltantes con OCR...');
@@ -4319,7 +3696,7 @@ async function procesarIaFirst(opts){
   if(tipo === 'matricula'){
     d = postProcesarMatriculaConfiabilidad(d, origins, ocrText);
   }
-  const missingFinal = getMissingFields(d, fields);
+  const missingFinal = getMissingFields(d, fields, origins);
   d._origins = origins;
   d._source = aiAplicados.length>0 ? (ocrAplicados.length>0 ? 'mixed' : 'ia') : (ocrAplicados.length>0 ? 'ocr' : 'none');
   const rawParts = [];
@@ -4336,7 +3713,7 @@ async function procesarIaFirst(opts){
 /* ── Cédula ──────────────────────────────────────────────────── */
 async function procesarRuc(file, nombre){
   const d = await procesarIaFirst({
-    file, tipo:'ruc', parserLocal:parseRuc, fieldsFn:camposRuc, tipoIA:'ruc', ocrOnlyIfAiFails:true
+    file, tipo:'ruc', parserLocal:parseRuc, fieldsFn:camposRuc, tipoIA:'ruc'
   });
   datos.ruc = d;
   setStatus('ruc','loaded',(d.numeroRuc || d.razonSocial || nombre));
@@ -4366,47 +3743,14 @@ async function procesarCedula(file, tipo, nombre){
     tipoIA:      'cedula'
   });
 
-  /* ── Post-procesamiento especial para cédulas ──────────────── */
-  var fmt = d._formatoCedula || 'generico';
-  console.log('['+tipo+'] Post-procesamiento cédula, formato: '+fmt);
-
-  /* Si la IA devolvió el nombre completo en "nombres", separar */
-  if(d.nombres && d.apellidos){
-    var nmUp = trimUpper(d.nombres);
-    var apUp = trimUpper(d.apellidos);
-    if(nmUp.indexOf(apUp)===0 && nmUp.length > apUp.length){
-      d.nombres = nmUp.substring(apUp.length).replace(/\s+/g,' ').trim();
-      if(d._origins) d._origins.nombres = 'review';
-    }
-  }
-  if(d.nombres && !d.apellidos){
-    var parts = d.nombres.split(' ').filter(Boolean);
-    if(parts.length>=4){
-      d.apellidos = parts.slice(0,2).join(' ');
-      d.nombres   = parts.slice(2).join(' ');
-      if(d._origins){
-        d._origins.apellidos = 'review';
-        d._origins.nombres   = 'review';
-      }
-    } else if(parts.length===3){
-      d.apellidos = parts[0];
-      d.nombres   = parts.slice(1).join(' ');
-      if(d._origins){
-        d._origins.apellidos = 'review';
-        d._origins.nombres   = 'review';
-      }
-    }
-  }
-
-  /* Limpieza final de NULL y etiquetas en apellidos/nombres */
+  // Conservar campos separados tal como se leen, sin repartir palabras por cantidad.
   d.apellidos = cleanCedulaName(d.apellidos);
-  d.nombres   = cleanCedulaName(d.nombres);
-
-  /* Si después de la limpieza quedaron vacíos, marcar como 'none' */
-  if(d._origins){
-    if(!d.apellidos) d._origins.apellidos = 'none';
-    if(!d.nombres)   d._origins.nombres   = 'none';
+  d.nombres = cleanCedulaName(d.nombres);
+  if(cedulaNamesLookMixed(d.apellidos, d.nombres)){
+    d._origins.apellidos = 'review';
+    d._origins.nombres = 'review';
   }
+  d._missing = getMissingFields(d, camposCedula());
 
   datos[tipo] = d;
   var lbl = d.numeroCedula
@@ -4417,26 +3761,7 @@ async function procesarCedula(file, tipo, nombre){
 
 /* ── Limpieza especializada de nombres/apellidos de cédula ──── */
 function cleanCedulaName(v){
-  if(!v) return '';
-  var t = String(v).toUpperCase()
-    .replace(/\bNULL\b/g,'').replace(/\bNULO\b/g,'')
-    .replace(/\bUNDEFINED\b/g,'').replace(/\bNAN\b/g,'')
-    .replace(/[^A-ZÑ\s]/g,' ')
-    .replace(/\s+/g,' ').trim();
-  if(/\b(PADRE|MADRE)\b/.test(t)) return '';
-  // Rechazar si es una etiqueta del documento
-  if(isKeyword(t)) return '';
-  // Rechazar fragmentos de etiquetas
-  if(KEYWORDS_CED_EXACT.some(function(k){ return t===k; })) return '';
-  // Rechazar si es muy corto para ser un nombre
-  if(t.length < 3) return '';
-  var words = t.split(' ').filter(Boolean);
-  // Rechazar si la única palabra es un fragmento de etiqueta
-  if(words.length===1){
-    if(KEYWORDS_CED_EXACT.some(function(k){ return words[0].indexOf(k)===0 || k.indexOf(words[0])===0; })) return '';
-    if(words[0].length < 3) return '';
-  }
-  return t;
+  return normalizeHumanName(v, 8);
 }
 
 /* ── Matrícula ───────────────────────────────────────────────── */
@@ -4466,37 +3791,26 @@ async function procesarNotaria(file, nombre){
   setStatus('notaria','loaded', lbl+' · '+nombre);
 }
 
-/* ── Papeleta de votación ────────────────────────────────────────
-   Procesa imagen del certificado de votación con IA. Extrae cédula,
-   nombres, fecha de sufragio. Valida que la fecha sea 16/11/2025
-   (proceso electoral oficial). El tipo es 'papeleta-prop' o
-   'papeleta-cony'. */
+/* Papeleta: extraer lo visible; la fecha exigida se verifica por separado. */
+function camposPapeleta(){
+  return [
+    {key:'numeroCedula', label:'Cédula', validate:function(v){ return validCed10(v)?'ok':'warn'; }},
+    {key:'nombreCompleto', label:'Nombre completo del elector', wide:true, validate:function(v){ return normalizeHumanName(v,12)?'ok':'warn'; }},
+    {key:'fechaSufragio', label:'Fecha de sufragio', validate:function(v){ return validDate(v)?'ok':'warn'; }},
+    {key:'tipoProceso', label:'Proceso electoral'},
+    {key:'provincia', label:'Provincia'},
+    {key:'canton', label:'Cantón'},
+    {key:'parroquia', label:'Parroquia'},
+    {key:'junta', label:'Junta'},
+    {key:'genero', label:'Género'},
+    {key:'numeroCertificado', label:'Número de certificado'}
+  ];
+}
 async function procesarPapeleta(file, tipo, nombre){
-  if(!aiAvailable){
-    setStatus(tipo,'error','IA no disponible para papeleta');
-    throw new Error('La papeleta requiere IA disponible. No hay parser local.');
-  }
-  spinnerMsg('Analizando papeleta con IA...');
-  setSpinnerBar(40);
-  const dataUrl = await fileToDataUrl(file);
-  setSpinnerBar(60);
-  const raw = await analizarConGemini('papeleta', dataUrl);
-  setSpinnerBar(90);
-  // Saneamiento básico
-  const d = {
-    numeroCedula:      String(raw.numeroCedula      || '').replace(/\D/g,'').slice(0,10),
-    apellidos:         String(raw.apellidos         || '').toUpperCase().trim(),
-    nombres:           String(raw.nombres           || '').toUpperCase().trim(),
-    fechaSufragio:     String(raw.fechaSufragio     || '').trim(),
-    tipoProceso:       String(raw.tipoProceso       || '').toUpperCase().trim(),
-    provincia:         String(raw.provincia         || '').toUpperCase().trim(),
-    canton:            String(raw.canton            || '').toUpperCase().trim(),
-    parroquia:         String(raw.parroquia         || '').toUpperCase().trim(),
-    junta:             String(raw.junta             || '').trim(),
-    genero:            String(raw.genero            || '').toUpperCase().trim(),
-    numeroCertificado: String(raw.numeroCertificado || '').trim(),
-    _source:           'ia'
-  };
+  const d = await procesarIaFirst({
+    file, tipo, tipoIA:'papeleta', fieldsFn:camposPapeleta,
+    parserLocal:AutoCorDocumentExtraction.parsePapeleta
+  });
   datos[tipo] = d;
   const quien = tipo === 'papeleta-prop' ? 'TITULAR' : 'CÓNYUGE';
   setStatus(tipo, 'loaded', quien+' · '+(d.numeroCedula || nombre)+' · '+(d.fechaSufragio || 'sin fecha'));
@@ -4568,6 +3882,8 @@ function renderResultsSection(){
     { tipo:'cedula-cony', iconClass:'cedula-c',  label:'Cédula Cónyuge',     optional:false, fields:camposCedula(), visible:_flujoEsConyugal() },
     { tipo:'cuv',         iconClass:'cuv',        label:'Certificado Único Vehicular', optional:true, fields:camposCuv() },
     { tipo:'matricula',   iconClass:'matricula',  label:'Matrícula Vehicular',optional:false, fields:camposMatricula() },
+    { tipo:'papeleta-prop', iconClass:'cedula', label:'Papeleta de votación titular', optional:true, fields:camposPapeleta() },
+    { tipo:'papeleta-cony', iconClass:'cedula-c', label:'Papeleta de votación cónyuge', optional:false, fields:camposPapeleta(), visible:_flujoEsConyugal() },
     { tipo:'notaria',     iconClass:'notaria',    label:'Print Notaría',      optional:true, fields:camposNotaria() }
   ];
 
@@ -4623,16 +3939,11 @@ function nombresEquivalentes(a, b){
   const nb = normalizarValor(b);
   if(!na || !nb) return null;
   if(na === nb) return true;
-  const wordsA = na.split(' ').filter(function(w){ return w.length>=2; });
-  const wordsB = nb.split(' ').filter(function(w){ return w.length>=2; });
+  const wordsA = na.split(' ').filter(Boolean).sort();
+  const wordsB = nb.split(' ').filter(Boolean).sort();
   if(wordsA.length===0 || wordsB.length===0) return false;
-  const setA = new Set(wordsA);
-  let comunes = 0;
-  for(const w of wordsB){ if(setA.has(w)) comunes++; }
-  // Permite cambio de orden y nombres adicionales sin marcar falso conflicto.
-  const overlap = comunes / Math.max(wordsA.length, wordsB.length);
-  const shorterCovered = comunes >= Math.min(wordsA.length, wordsB.length) && Math.min(wordsA.length, wordsB.length) >= 2;
-  return overlap >= 0.70 || shorterCovered;
+  // Se admite distinto orden, pero un apellido o nombre faltante exige revisión.
+  return wordsA.length === wordsB.length && wordsA.every(function(w,i){ return w === wordsB[i]; });
 }
 
 /* Comparación estricta (placas, cédulas, chasis, motor) */
@@ -4657,17 +3968,19 @@ function getValidacionesCruzadas(){
         { tipo:'cuv',           getValue:function(d){ return d.propietario||''; } },
         { tipo:'matricula',     getValue:function(d){ return d.propietario||''; } },
         { tipo:'notaria',       getValue:function(d){ return d.nombrePropietario||''; } },
-        { tipo:'papeleta-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
+        { tipo:'papeleta-prop', getValue:function(d){ return d.nombreCompleto || ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
       ])
     },
     {
       campo: 'identificacionPropietario', label: juridica ? 'RUC del propietario' : 'Cédula del propietario', modo: 'estricto',
       sources: (juridica ? [
         { tipo:'ruc',           getValue:function(d){ return d.numeroRuc||''; } },
+        { tipo:'cuv',           getValue:function(d){ return d.cedula||d.documentoIdentidad||''; } },
         { tipo:'matricula',     getValue:function(d){ return d.cedulaRuc||''; } },
         { tipo:'notaria',       getValue:function(d){ return d.identificacionPropietario||''; } }
       ] : [
         { tipo:'cedula-prop',   getValue:function(d){ return d.numeroCedula||''; } },
+        { tipo:'cuv',           getValue:function(d){ return d.cedula||d.documentoIdentidad||''; } },
         { tipo:'matricula',     getValue:function(d){ return d.cedulaRuc||''; } },
         { tipo:'notaria',       getValue:function(d){ return d.identificacionPropietario||''; } },
         { tipo:'papeleta-prop', getValue:function(d){ return d.numeroCedula||''; } }
@@ -4678,7 +3991,7 @@ function getValidacionesCruzadas(){
       sources:[
         { tipo:'ruc', getValue:function(d){ return d.representanteLegal||''; } },
         { tipo:'cedula-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } },
-        { tipo:'papeleta-prop', getValue:function(d){ return ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
+        { tipo:'papeleta-prop', getValue:function(d){ return d.nombreCompleto || ((d.apellidos||'')+' '+(d.nombres||'')).trim(); } }
       ]
     },{
       campo:'cedulaRepresentante', label:'Cédula del representante legal', modo:'estricto',
@@ -4798,12 +4111,12 @@ function similitudCadena(a, b){
 function vcEquivalentes(a, b, modo, campo){
   const na = normalizarValor(a), nb = normalizarValor(b);
   if(!na || !nb) return false;
+  if(['placa','chasis','motor','identificacionPropietario','cedulaRepresentante','cedulaConyuge'].indexOf(campo)>=0){
+    return na.replace(/[^A-Z0-9]/g,'') === nb.replace(/[^A-Z0-9]/g,'');
+  }
   if(na === nb) return true;
   if(modo === 'nombre') return nombresEquivalentes(a, b) === true;
-  // marca/modelo: aceptar similitud alta (>=0.85)
-  if(campo === 'marca' || campo === 'modelo' || campo === 'color'){
-    return similitudCadena(na, nb) >= 0.85;
-  }
+  // Una marca, modelo o color parecido puede corresponder a otro vehículo.
   // motor/chasis: estricto. La similitud se evalúa después (para advertencia OCR)
   if(campo === 'motor' || campo === 'chasis'){
     return false; // solo iguales exactos se agrupan
@@ -4835,6 +4148,33 @@ function vcMejorValor(grupo){
   return grupo.slice().sort(function(a, b){ return b.raw.length - a.raw.length; })[0].raw;
 }
 
+function vcOrigenCampo(d, tipo, campo){
+  const origins = d._origins || {};
+  let keys = [campo];
+  if(campo === 'propietario'){
+    keys = tipo === 'ruc' ? ['razonSocial'] : tipo === 'notaria' ? ['nombrePropietario'] :
+      /^(cedula|papeleta)-/.test(tipo) ? ['apellidos','nombres'] : ['propietario'];
+  } else if(campo === 'identificacionPropietario'){
+    keys = [tipo === 'ruc' ? 'numeroRuc' : tipo === 'matricula' ? 'cedulaRuc' :
+      tipo === 'notaria' ? 'identificacionPropietario' : tipo === 'cuv' ? 'cedula' : 'numeroCedula'];
+  } else if(campo === 'representanteLegal'){
+    keys = tipo === 'ruc' ? ['representanteLegal'] : ['apellidos','nombres'];
+  } else if(campo === 'cedulaRepresentante' || campo === 'cedulaConyuge'){
+    keys = [tipo === 'ruc' ? 'cedulaRepresentante' : 'numeroCedula'];
+  } else if(campo === 'fechaSufragioProp' || campo === 'fechaSufragioCony'){
+    keys = ['fechaSufragio'];
+  } else if(tipo === 'notaria' && campo === 'chasis'){
+    keys = ['serialChasis'];
+  } else if(tipo === 'notaria' && campo === 'motor'){
+    keys = ['numeroMotor'];
+  }
+  if(/^papeleta-/.test(tipo) && d.nombreCompleto && (campo === 'propietario' || campo === 'representanteLegal')){
+    keys = ['nombreCompleto'];
+  }
+  if(keys.some(function(k){ return origins[k] === 'review'; })) return 'review';
+  return keys.map(function(k){ return origins[k] || ''; }).filter(Boolean)[0] || '';
+}
+
 /* Computar el resultado de las validaciones (con regla de mayoría) */
 function computarValidaciones(){
   const resultados = [];
@@ -4851,12 +4191,7 @@ function computarValidaciones(){
         noDetectados.push(s.tipo);
         continue;
       }
-      const origin = d._origins && d._origins[v.campo === 'cedulaPropietario' && s.tipo === 'matricula' ? 'cedulaRuc' :
-        v.campo === 'cedulaPropietario' && s.tipo === 'notaria' ? 'identificacionPropietario' :
-        v.campo === 'propietario' && s.tipo === 'notaria' ? 'nombrePropietario' :
-        v.campo === 'chasis' && s.tipo === 'notaria' ? 'serialChasis' :
-        v.campo === 'motor' && s.tipo === 'notaria' ? 'numeroMotor' :
-        v.campo];
+      const origin = vcOrigenCampo(d, s.tipo, v.campo);
       valores.push({ tipo:s.tipo, raw:raw.trim(), norm:normalizarValor(raw), origin:origin||'' });
     }
 
@@ -4927,10 +4262,21 @@ function computarValidaciones(){
         } else {
           // Sin mayoría clara (empate o todos distintos)
           estado = 'diff';
-          mensaje = 'Inconsistencia real entre documentos';
+          mensaje = 'Los datos difieren o están incompletos; revisar los documentos';
           sugerido = vcMejorValor(valores);
           sospechosos = valores.map(function(x){ return x.tipo; });
         }
+      }
+
+      if(hasReview && (estado === 'ok' || estado === 'majority')){
+        estado = 'diff';
+        mensaje = 'Hay datos que requieren revisión, aunque otros documentos coincidan';
+      }
+      if(hasReview){
+        valores.filter(function(x){ return x.origin === 'review'; }).forEach(function(x){
+          coincidentes = coincidentes.filter(function(t){ return t !== x.tipo; });
+          if(sospechosos.indexOf(x.tipo)<0) sospechosos.push(x.tipo);
+        });
       }
 
       // Dentro de la mayoría: detectar valores incompletos (nombre corto vs largo)
@@ -4994,20 +4340,21 @@ function computarValidaciones(){
   resultados.forEach(function(r){
     if(r.campo !== 'fechaSufragioProp' && r.campo !== 'fechaSufragioCony') return;
     if(!r.valores || r.valores.length === 0) return;
-    const valDoc = _normFecha(r.valores[0].raw);
+    const valDoc = normalizeDate(_normFecha(r.valores[0].raw));
     const ok = valDoc === FECHA_SUFRAGIO_OFICIAL
-            || valDoc === '16/11/25'
-            || /16.*11.*2025/.test(valDoc);
+            || _normFecha(r.valores[0].raw) === '16/11/25';
     if(!ok){
       r.estado = 'diff';
       r.mensaje = 'No corresponde al proceso 16/11/2025';
       r.sospechosos = [r.valores[0].tipo];
-      r.sugerido = FECHA_SUFRAGIO_OFICIAL;
+      r.sugerido = r.valores[0].raw;
     } else {
-      r.estado = 'ok';
-      r.mensaje = 'Coincide con proceso oficial 16/11/2025';
-      r.sugerido = FECHA_SUFRAGIO_OFICIAL;
-      r.coincidentes = [r.valores[0].tipo];
+      const needsReview = r.valores[0].origin === 'review';
+      r.estado = needsReview ? 'diff' : 'ok';
+      r.mensaje = needsReview ? 'Fecha del proceso esperado, pero requiere revisión' : 'Coincide con proceso oficial 16/11/2025';
+      r.sugerido = r.valores[0].raw;
+      r.coincidentes = needsReview ? [] : [r.valores[0].tipo];
+      if(needsReview) r.sospechosos = [r.valores[0].tipo];
     }
   });
 
@@ -5352,6 +4699,7 @@ window.onFieldEdit = function(input){
     tipo==='cedula-prop' || tipo==='cedula-cony' ? camposCedula() :
     tipo==='cuv' ? camposCuv() :
     tipo==='matricula' ? camposMatricula() :
+    tipo==='papeleta-prop' || tipo==='papeleta-cony' ? camposPapeleta() :
     camposNotaria()
   );
   const fieldDef = fieldDefs.find(function(f){ return f.key===key; }) || {};
@@ -5391,20 +4739,15 @@ function normalizeHumanName(v, maxWords){
     .replace(/[^A-ZÁÉÍÓÚÜÑ\s]/g,' ').replace(/\s+/g,' ').trim();
   if(!t) return '';
   if(/\b(PADRE|MADRE)\b/.test(t)) return '';
-  // Rechazar si contiene dígitos (ya se eliminaron pero verificar el original)
-  if(/\d/.test(String(v||''))) {
-    // Solo rechazar si la mayor parte son dígitos
-    const digits = (String(v||'').match(/\d/g)||[]).length;
-    if(digits > t.length * 0.3) return '';
-  }
+  // No convertir una lectura con dígitos en un nombre aparentemente válido.
+  if(/\d/.test(String(v||''))) return '';
   if(isKeyword(t)) return '';
   const words = t.split(' ').filter(Boolean);
   if(words.length===0 || words.length>(maxWords||8)) return '';
   // Rechazar palabras de 1 letra (excepto compuestos como "DE", "LA")
   const preposiciones = new Set(['DE','LA','EL','LOS','LAS','DEL','Y','E']);
   if(words.some(function(w){ return w.length<2 && !preposiciones.has(w); })) return '';
-  // Rechazar si TODAS las palabras son de 3 letras o menos (probablemente basura OCR)
-  if(words.every(function(w){ return w.length<=3; }) && words.length<=2) return '';
+  // ANA, LUZ y PAZ son nombres válidos; la longitud no decide su identidad.
   // Rechazar si alguna palabra individual es una etiqueta conocida
   if(words.some(function(w){ return KEYWORDS_CED_EXACT.some(function(k){ return w===k; }); })) return '';
   return t;
@@ -5423,6 +4766,13 @@ function normalizeIdentificacion(v){
 function normalizeCompanyName(v){
   const t = trimUpper(v).replace(/[^A-Z0-9ÁÉÍÓÚÜÑ.&\-\s]/g,' ').replace(/\s+/g,' ').trim();
   return t.length>=3 && t.length<=160 ? t : '';
+}
+function normalizeOwnerName(v){
+  // Un titular vehicular puede ser una persona o una razón social.
+  const t = trimUpper(v).replace(/[^A-Z0-9ÁÉÍÓÚÜÑ.&'\-\s]/g,' ').replace(/\s+/g,' ').trim();
+  if(t.length<2 || t.length>180 || !/[A-Z]/.test(t)) return '';
+  if(/^(PROPIETARIO|NOMBRE DEL PROPIETARIO|NOMBRES Y APELLIDOS|RAZON SOCIAL|NULL|NULO|UNDEFINED|NAN)$/.test(t)) return '';
+  return t;
 }
 function normalizeDactilar(v, cedula){
   const raw = trimUpper(v)
@@ -5445,11 +4795,12 @@ function normalizeDactilar(v, cedula){
 }
 function normalizeDate(v){
   const raw = String(v||'').trim();
-  const m = raw.match(/(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{4})/);
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const m = iso ? [iso[0], iso[3], iso[2], iso[1]] : raw.match(/^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{4})$/);
   if(!m) return '';
   const dd = parseInt(m[1],10), mm = parseInt(m[2],10), yy = parseInt(m[3],10);
   const dt = new Date(yy, mm-1, dd);
-  if(yy<2000||yy>2100||dt.getFullYear()!==yy||dt.getMonth()!==mm-1||dt.getDate()!==dd) return '';
+  if(yy<1900||yy>2100||dt.getFullYear()!==yy||dt.getMonth()!==mm-1||dt.getDate()!==dd) return '';
   return String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
 }
 function normalizeEstadoCivil(v){ return ESTADOS_CIVILES_VALIDOS[trimUpper(v)] || ''; }
@@ -5489,6 +4840,11 @@ function normalizeMotor(v){
   return t;
 }
 function normalizeFieldValue(key, value, allData){
+  if(key === 'compradores' || key === 'vendedores'){
+    return String(value || '').split(/\r\n|\r|\n/).map(function(line){
+      return line.replace(/\b(NULL|NULO|UNDEFINED|NAN)\b/gi,'').replace(/[\t ]+/g,' ').trim();
+    }).filter(Boolean).join('\n');
+  }
   // Limpieza universal de NULL/basura
   var v = String(value||'')
     .replace(/\bNULL\b/gi,'').replace(/\bNULO\b/gi,'')
@@ -5496,20 +4852,11 @@ function normalizeFieldValue(key, value, allData){
     .replace(/\s+/g,' ').trim();
 
   switch(key){
-    case 'apellidos': return normalizeHumanName(v, 4);
+    case 'apellidos': return normalizeHumanName(v, 8);
+    case 'nombreCompleto': return normalizeHumanName(v, 12);
     case 'nombres':
-      // Si "nombres" contiene los apellidos del mismo doc, quitar la parte de apellidos
-      var nm = normalizeHumanName(v, 5);
-      if(nm && allData && allData.apellidos){
-        var apNorm = trimUpper(allData.apellidos);
-        var nmNorm = trimUpper(nm);
-        if(nmNorm.indexOf(apNorm)===0){
-          nm = nmNorm.substring(apNorm.length).replace(/\s+/g,' ').trim();
-        } else if(nmNorm.indexOf(apNorm)>=0){
-          nm = nmNorm.replace(apNorm,'').replace(/\s+/g,' ').trim();
-        }
-      }
-      return nm;
+      // No deducir ni recortar apellidos: ANA también puede formar parte de MARIANA.
+      return normalizeHumanName(v, 8);
     case 'numeroCedula': return normalizeCedula10(v);
     case 'numeroRuc': return normalizeRuc13(v);
     case 'cedulaRepresentante': return normalizeCedula10(v);
@@ -5517,7 +4864,13 @@ function normalizeFieldValue(key, value, allData){
     case 'nombreComercial': return normalizeCompanyName(v);
     case 'representanteLegal': return normalizeHumanName(v, 8);
     case 'codigoDactilar': return normalizeDactilar(v, allData && allData.numeroCedula);
-    case 'fechaExpiracion': return normalizeDate(v);
+    case 'fechaExpiracion':
+    case 'fechaNacimiento':
+    case 'fechaExpedicion':
+    case 'fechaEmision':
+    case 'fechaCaducidad':
+    case 'fechaContrato':
+    case 'fechaSufragio': return normalizeDate(v);
     case 'estadoCivil': return normalizeEstadoCivil(v);
     case 'nacionalidad': return normalizeNacionalidad(v);
     case 'placa': return normalizePlaca(v);
@@ -5530,7 +4883,7 @@ function normalizeFieldValue(key, value, allData){
     case 'motor':
     case 'numeroMotor': return normalizeMotor(v);
     case 'propietario':
-    case 'nombrePropietario': return normalizeHumanName(v, 8);
+    case 'nombrePropietario': return normalizeOwnerName(v);
     case 'cedulaRuc':
     case 'identificacionPropietario': return normalizeIdentificacion(v);
     default: return v;
@@ -5544,83 +4897,70 @@ function normalizeOcrDigits(v){
     .replace(/S/g,'5');
 }
 function splitCedulaLines(texto){
-  return normalizeForParsing(texto).replace(/\r\n/g,'\n').replace(/\r/g,'\n')
-    .split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  // Los códigos alfanuméricos conservan B/S/O; no son errores OCR por definición.
+  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()
+    .replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n')
+    .map(function(l){ return l.replace(/[ \t]+/g,' ').trim(); }).filter(Boolean);
 }
 function hasForbiddenCedulaContext(line){
-  var t = trimUpper(line);
-  return /\b(PADRE|MADRE|PROFESION|INSTRUCCION|LUGAR DE NACIMIENTO|LUGAR DE EXPEDICION|LUGAR DE EMISION|EMISION|EXPEDICION)\b/.test(t);
+  return /\b(PADRE|MADRE|CONYUGE|PROFESION|OCUPACION|INSTRUCCION|LUGAR DE NACIMIENTO|LUGAR DE EXPEDICION|LUGAR DE EMISION|EMISION|EXPEDICION)\b/.test(trimUpper(line));
+}
+function cedulaFieldBoundary(){
+  return /\b(?:APELLIDOS?(?:\s+Y\s+NOMBRES?)?|NOMBRES?|NACIONALIDAD|ESTADO\s+CIVIL|FECHA|NACIMIENTO|VENCIMIENTO|EXPIRACION|CADUCIDAD|LUGAR|SEXO|GENERO|PADRE|MADRE|CONYUGE|PROFESION|OCUPACION|INSTRUCCION|EMISION|EXPEDICION|COD(?:IGO)?\.?\s+DACTILAR|TIPO\s+DE\s+SANGRE|SANGRE|FIRMA|NUI|CEDULA|IDENTIFICACION|REPUBLICA|REGISTRO\s+CIVIL)\b/;
 }
 function cleanCedulaLabelValue(line, labelRegex){
-  return String(line||'').replace(labelRegex,'').replace(/^[\s:.-]+/,'').trim();
+  var value = String(line||'').replace(labelRegex,'').replace(/^[\s:.-]+/,'').trim();
+  var boundary = value.search(cedulaFieldBoundary());
+  return (boundary < 0 ? value : value.slice(0,boundary)).trim();
 }
 function getCedulaCandidateName(line){
-  if(!line || hasForbiddenCedulaContext(line)) return '';
-  return cleanCedulaName(line);
+  if(!line || hasForbiddenCedulaContext(line) || cedulaFieldBoundary().test(trimUpper(line))) return '';
+  return normalizeHumanName(line, 16);
 }
 function findLabeledCedulaText(lines, labelRegex, validator, opts){
-  opts = opts || {};
+  // Sólo se permite el valor de la misma línea o la inmediatamente siguiente.
+  // Saltar etiquetas vacías puede atribuir al titular datos de padres/cónyuge.
   for(var i=0;i<lines.length;i++){
-    var raw = lines[i] || '';
-    var up = trimUpper(raw);
-    if(!labelRegex.test(up)) continue;
+    var raw = trimUpper(lines[i]);
+    var match = raw.match(labelRegex);
+    if(!match || match.index !== 0) continue;
+    var tail = raw.slice(match[0].length).replace(/^[\s:.-]+/,'').trim();
     var same = cleanCedulaLabelValue(raw, labelRegex);
     if(same){
       var sameVal = validator(same);
       if(sameVal) return sameVal;
     }
-    var maxOffset = opts.maxOffset || 2;
-    for(var j=i+1; j<Math.min(lines.length, i+1+maxOffset); j++){
-      if(hasForbiddenCedulaContext(lines[j])) continue;
-      var nextVal = validator(lines[j]);
-      if(nextVal) return nextVal;
-    }
+    if(tail) continue;
+    var next = trimUpper(lines[i+1] || '');
+    if(!next || cedulaFieldBoundary().test(next)) continue;
+    var nextVal = validator(next);
+    if(nextVal) return nextVal;
   }
   return '';
 }
 function findCedulaNumeroFront(lines){
-  var candidatePool = [];
-  function pushCandidate(num, score){
-    var n = normalizeCedula10(num);
-    if(!n) return;
-    candidatePool.push({ value:n, score:score });
-  }
-  for(var i=0;i<lines.length;i++){
-    var raw = lines[i] || '';
-    var up = trimUpper(raw);
-    if(/\b(CODIGO DACTILAR|MRZ|PADRE|MADRE)\b/.test(up)) continue;
-    var labeled = raw.match(/(?:\bNO\.?\b|\bNUI\b|\bCEDULA DE\b|\bIDENTIFICACION\b)\s*[:.]?\s*([A-Z0-9\s-]{8,20})/i);
-    if(labeled){
-      pushCandidate(normalizeOcrDigits(labeled[1]), 10);
-    }
-    var next = trimUpper(lines[i+1] || '');
-    if(/\b(NO\.?|NUI|CEDULA DE|IDENTIFICACION)\b/.test(up+' '+next)){
-      var nearMatches = (raw+' '+(lines[i+1]||'')).match(/[A-Z0-9]{10,14}/g) || [];
-      for(var nm=0; nm<nearMatches.length; nm++) pushCandidate(normalizeOcrDigits(nearMatches[nm]), 8);
-    }
-    var matches = raw.match(/[A-Z0-9]{10,14}/g) || [];
-    for(var m=0;m<matches.length;m++){
-      pushCandidate(normalizeOcrDigits(matches[m]), /\b(NO\.?|NUI)\b/.test(up) ? 7 : 3);
-    }
-  }
-  candidatePool.sort(function(a,b){ return b.score - a.score; });
-  return candidatePool.length ? candidatePool[0].value : '';
+  return findLabeledCedulaText(lines,
+    /^(?:NUI|N[Oº°]\.?(?:\s+DE\s+CEDULA)?|NUMERO\s+(?:DE\s+)?(?:CEDULA|IDENTIFICACION)|CEDULA(?:\s+DE\s+IDENTIDAD)?|IDENTIFICACION)(?=\s|[:.\-]|$)/i,
+    function(value){
+      // No tomar teléfonos, números de padres ni secuencias del MRZ sin etiqueta.
+      if(!/^[0-9\s-]+$/.test(value)) return '';
+      return normalizeCedula10(value);
+    });
 }
 function findCedulaBlockNames(lines){
   var data = { apellidos:'', nombres:'', reviewKeys:[] };
   for(var i=0;i<lines.length;i++){
-    var up = trimUpper(lines[i]);
-    if(up.indexOf('APELLIDOS Y NOMBRES') === -1) continue;
-    var candidates = [];
-    for(var j=i+1; j<Math.min(lines.length, i+6); j++){
-      var nm = getCedulaCandidateName(lines[j]);
-      if(nm) candidates.push(nm);
-      if(candidates.length>=2) break;
-    }
-    if(candidates.length>=2){
-      data.apellidos = candidates[0];
-      data.nombres = candidates[1];
-    } else if(candidates.length===1){
+    var label = /^APELLIDOS?\s+Y\s+NOMBRES?\b/;
+    if(!label.test(lines[i]) || hasForbiddenCedulaContext(lines[i])) continue;
+    var inlineValue = cleanCedulaLabelValue(lines[i], label);
+    var first = getCedulaCandidateName(lines[i+1] || '');
+    var second = getCedulaCandidateName(lines[i+2] || '');
+    // Este formato identifica apellidos y nombres en dos líneas consecutivas.
+    // Una sola línea no permite separar apellidos compuestos por conteo de palabras.
+    if(!inlineValue && first && second){
+      data.apellidos = first;
+      data.nombres = second;
+    } else {
       data.reviewKeys = ['apellidos','nombres'];
     }
     return data;
@@ -5629,65 +4969,35 @@ function findCedulaBlockNames(lines){
 }
 function extractDactilarCandidatesFromLine(line, cedula){
   var raw = trimUpper(line);
-  if(!raw || /\b(PADRE|MADRE|MRZ|NUI|FECHA|NACIMIENTO|EXPEDICION|EMISION|TIPO DE SANGRE|SANGRE|CODIGO DE BARRAS|BARCODE)\b/.test(raw)) return [];
-  if(raw.indexOf('<<<') >= 0) return [];
-  var matches = raw.match(/[A-Z0-9]{8,12}/g) || [];
-  var out = [];
-  for(var i=0; i<matches.length; i++){
-    var compact = matches[i];
-    if(/^\d{10}$/.test(compact)) continue;
-    if(cedula && compact === trimUpper(cedula)) continue;
-    if((compact.match(/\d/g)||[]).length < 4) continue;
-    if(!/[A-Z]/.test(compact) && !/^\d{6}$/.test(compact)) continue;
-    if(/^\d{8}$/.test(compact)){
-      var maybeDate = normalizeDate(compact.slice(0,2)+'/'+compact.slice(2,4)+'/'+compact.slice(4,8));
-      if(maybeDate) continue;
-    }
-    var normalized = normalizeDactilar(compact, cedula);
-    if(normalized) out.push(normalized);
-  }
-  return out;
+  if(!/^[A-Z0-9]{8,12}$/.test(raw) || !/[A-Z]/.test(raw) || (raw.match(/\d/g)||[]).length < 4) return [];
+  if(raw === cedula) return [];
+  var value = normalizeDactilar(raw, cedula);
+  return value ? [value] : [];
 }
 function findStructuredDactilar(lines, cedula){
+  // Un código sin etiqueta es sólo una sugerencia para revisión, aunque esté arriba.
   var candidates = [];
-  var topLimit = Math.min(lines.length, 10);
-  for(var i=0; i<topLimit; i++){
-    var raw = trimUpper(lines[i]);
-    var lineCandidates = extractDactilarCandidatesFromLine(lines[i], cedula);
-    if(!lineCandidates.length) continue;
-    for(var j=0; j<lineCandidates.length; j++){
-      var candidate = lineCandidates[j];
-      var score = 0;
-      if(i < 4) score += 8;
-      else if(i < 7) score += 5;
-      else score += 2;
-      if(raw === candidate) score += 5;
-      if(raw.indexOf(candidate) >= 0) score += 4;
-      if(/[A-Z]/.test(candidate)) score += 3;
-      if(/^[A-Z0-9]{8,12}$/.test(candidate)) score += 2;
-      if(/\b(HUELLA|DACTILAR)\b/.test(trimUpper((lines[i-1]||'')+' '+raw+' '+(lines[i+1]||'')))) score += 4;
-      if(/\b(BACHILLERATO|ESTUDIANTE|INSTRUCCION|PROFESION|OCUPACION)\b/.test(raw)) score += 3;
-      if((raw.match(/\s+/g)||[]).length <= 4) score += 1;
-      candidates.push({ value:candidate, score:score, index:i });
-    }
-  }
-  candidates.sort(function(a,b){
-    if(b.score !== a.score) return b.score - a.score;
-    return a.index - b.index;
+  lines.forEach(function(line){
+    extractDactilarCandidatesFromLine(line, cedula).forEach(function(value){
+      if(candidates.indexOf(value)<0) candidates.push(value);
+    });
   });
-  return candidates.length ? candidates[0].value : '';
+  return candidates.length === 1 ? candidates[0] : '';
 }
 function parseCedulaFrontal(texto){
   var lines = splitCedulaLines(texto);
   var d = { _reviewKeys:[] };
   var block = findCedulaBlockNames(lines);
-  d.apellidos = block.apellidos || findLabeledCedulaText(lines, /\bAPELLIDOS\b/i, getCedulaCandidateName, { maxOffset:2 }) || '';
-  d.nombres = block.nombres || findLabeledCedulaText(lines, /\bNOMBRES\b/i, getCedulaCandidateName, { maxOffset:2 }) || '';
+  d.apellidos = block.apellidos || findLabeledCedulaText(lines, /^APELLIDOS?\b(?!\s+Y\s+NOMBRES?)(?!\s+(?:DE(?:L| LA)?\s+)?(?:PADRE|MADRE|CONYUGE))/i, getCedulaCandidateName) || '';
+  d.nombres = block.nombres || findLabeledCedulaText(lines, /^NOMBRES?\b(?!\s+(?:DE(?:L| LA)?\s+)?(?:PADRE|MADRE|CONYUGE))/i, getCedulaCandidateName) || '';
   d.numeroCedula = findCedulaNumeroFront(lines);
-  d.nacionalidad = findLabeledCedulaText(lines, /\bNACIONALIDAD\b/i, normalizeNacionalidad, { maxOffset:2 }) || '';
-  d.estadoCivil = findLabeledCedulaText(lines, /\bESTADO CIVIL\b/i, normalizeEstadoCivil, { maxOffset:2 }) || '';
-  d.fechaExpiracion = findLabeledCedulaText(lines, /\b(FECHA DE EXPIRACION|FECHA DE VENCIMIENTO|CADUCIDAD)\b/i, normalizeDate, { maxOffset:3 }) || '';
-  d._reviewKeys = (block.reviewKeys || []).slice();
+  d.nacionalidad = findLabeledCedulaText(lines, /^NACIONALIDAD\b/i, normalizeNacionalidad) || '';
+  d.estadoCivil = findLabeledCedulaText(lines, /^ESTADO\s+CIVIL\b/i, normalizeEstadoCivil) || '';
+  d.fechaExpiracion = findLabeledCedulaText(lines, /^(?:(?:FECHA\s+(?:DE\s+)?)?(?:EXPIRACION|VENCIMIENTO|CADUCIDAD)|VALIDA?\s+HASTA)\b/i, normalizeDate) || '';
+  d._reviewKeys = (block.reviewKeys || []).filter(function(key){ return !d[key]; });
+  ['apellidos','nombres','numeroCedula','fechaExpiracion','estadoCivil','nacionalidad'].forEach(function(key){
+    if(!d[key] && d._reviewKeys.indexOf(key)<0) d._reviewKeys.push(key);
+  });
   if(d.apellidos && d.nombres && cedulaNamesLookMixed(d.apellidos, d.nombres)){
     d._reviewKeys.push('apellidos','nombres');
   }
@@ -5696,27 +5006,25 @@ function parseCedulaFrontal(texto){
 function parseCedulaReverso(texto){
   var lines = splitCedulaLines(texto);
   var d = { _reviewKeys:[] };
-  d.codigoDactilar = findLabeledCedulaText(lines, /\b(CODIGO DACTILAR|COD DACTILAR|COD\. DACTILAR)\b/i, function(v){
-    return normalizeDactilar(v);
-  }, { maxOffset:3 }) || '';
+  d.numeroCedula = findCedulaNumeroFront(lines);
+  d.codigoDactilar = findLabeledCedulaText(lines, /^(?:COD(?:IGO)?\.?\s+DACTILAR|DACTILAR)\b/i, function(v){
+    return normalizeDactilar(v, d.numeroCedula);
+  }) || '';
   if(!d.codigoDactilar){
-    d.codigoDactilar = findStructuredDactilar(lines, d.numeroCedula || '');
-  }
-  d.fechaExpiracion = findLabeledCedulaText(lines, /\b(FECHA DE EXPIRACION|FECHA DE VENCIMIENTO|CADUCIDAD)\b/i, normalizeDate, { maxOffset:3 }) || '';
-  d.estadoCivil = findLabeledCedulaText(lines, /\bESTADO CIVIL\b/i, normalizeEstadoCivil, { maxOffset:2 }) || '';
-  if(!d.codigoDactilar && (lines.some(function(line){ return /\b(CODIGO DACTILAR|COD DACTILAR|COD\. DACTILAR)\b/i.test(trimUpper(line)); }) || lines.length>=3)){
+    d.codigoDactilar = findStructuredDactilar(lines, d.numeroCedula);
     d._reviewKeys.push('codigoDactilar');
   }
+  d.fechaExpiracion = findLabeledCedulaText(lines, /^(?:(?:FECHA\s+(?:DE\s+)?)?(?:EXPIRACION|VENCIMIENTO|CADUCIDAD)|VALIDA?\s+HASTA)\b/i, normalizeDate) || '';
+  d.estadoCivil = findLabeledCedulaText(lines, /^ESTADO\s+CIVIL\b/i, normalizeEstadoCivil) || '';
   return d;
 }
 function cedulaNamesLookMixed(apellidos, nombres){
   var ap = trimUpper(apellidos);
   var nm = trimUpper(nombres);
   if(!ap || !nm) return false;
-  if(/\b(PADRE|MADRE)\b/.test(ap+' '+nm)) return true;
-  if(ap === nm) return true;
-  if(ap.indexOf(nm) >= 0 || nm.indexOf(ap) >= 0) return true;
-  return false;
+  if(/\b(PADRE|MADRE|CONYUGE)\b/.test(ap+' '+nm)) return true;
+  // Comparar palabras completas evita falsos positivos como ANA / MARIANA.
+  return (' '+ap+' ').indexOf(' '+nm+' ') >= 0 || (' '+nm+' ').indexOf(' '+ap+' ') >= 0;
 }
 
 function geminiCandidateModels(){
@@ -5852,159 +5160,16 @@ if(document.readyState === 'loading'){
   setTimeout(function(){ window.initializeAIState(); }, 50);
 }
 
-async function analizarConGemini(tipo, dataUrl){
-  const prompt = PROMPTS_IA[tipo];
-  if(!prompt) throw new Error('Tipo no soportado por IA: '+tipo);
-
-  spinnerMsg('Analizando con Gemini...');
-  setSpinnerBar(40);
-
-  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
-  if(!m) throw new Error('Imagen inválida');
-  const mimeType = m[1], b64Data = m[2];
-
-  const body = {
-    contents: [{ parts: [
-      { text: prompt },
-      { inline_data: { mime_type: mimeType, data: b64Data } }
-    ]}],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      temperature: 0,
-      maxOutputTokens: 2000
-    }
-  };
-
-  const result = await geminiGenerateWithFallback(body);
-  setSpinnerBar(85);
-  const json = result.json;
-  if(json.promptFeedback && json.promptFeedback.blockReason){
-    throw new Error('Gemini bloqueó la petición: '+json.promptFeedback.blockReason);
-  }
-  const cand = json.candidates && json.candidates[0];
-  const content = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
-  if(!content) throw new Error('Respuesta vacía de Gemini');
-
-  let parsed;
-  try{ parsed = JSON.parse(content); }
-  catch(e){
-    const j = content.match(/\{[\s\S]*\}/);
-    if(!j) throw new Error('Gemini no devolvió JSON válido');
-    parsed = JSON.parse(j[0]);
-  }
-  return parsed;
-}
-
 async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
   if(!missingKeys || missingKeys.length===0) return {};
-  const descs = FIELD_DESCRIPTIONS[tipo];
-  if(!descs) throw new Error('Tipo no soportado: '+tipo);
-  extraOpts = extraOpts || {};
-
-  const isArrayField = function(k){ return tipo==='notaria' && (k==='compradores'||k==='vendedores'); };
-  const fieldList = missingKeys.map(function(k){ return '- '+k+': '+(descs[k]||k); }).join('\n');
-  const schemaBits = missingKeys.map(function(k){
-    if(isArrayField(k)) return '"'+k+'":[{"tipoId":"","identificacion":"","nombre":""}]';
-    return '"'+k+'":""';
-  }).join(',\n  ');
-
-  var contextoCedula = '';
-  var contextoMatricula = '';
-  var contextoNotaria = '';
-  if(tipo==='cedula'){
-    contextoCedula =
-      '\nCONTEXTO DE CEDULA ECUATORIANA:\n'+
-      'Existen dos formatos. Identifica cuál es.\n'+
-      '• CEDULA NUEVA: frente con "APELLIDOS Y NOMBRES"; reverso con "CODIGO DACTILAR".\n'+
-      '• CEDULA ANTIGUA: frente con "APELLIDOS" y "NOMBRES"; reverso con "CODIGO DACTILAR".\n'+
-      'El código dactilar es diferente del número de cédula.\n'+
-      'Los apellidos y nombres son campos separados.\n\n';
-    if(extraOpts.cedulaSide === 'front'){
-      contextoCedula +=
-        'ESTAS VIENDO SOLO EL FRONTAL DE LA CEDULA.\n'+
-        'Solo puedes devolver apellidos, nombres, numeroCedula, nacionalidad, estadoCivil y fechaExpiracion si realmente aparecen.\n'+
-        'No uses datos del padre ni de la madre.\n'+
-        'No devuelvas codigoDactilar desde el frontal.\n\n';
-    } else if(extraOpts.cedulaSide === 'back'){
-      contextoCedula +=
-        'ESTAS VIENDO SOLO EL REVERSO DE LA CEDULA.\n'+
-        'Solo puedes devolver codigoDactilar y, si aparecen claramente, fechaExpiracion o estadoCivil.\n'+
-        'No devuelvas apellidos ni nombres del titular.\n'+
-        'No uses nombres del padre ni de la madre.\n\n';
-    }
-  } else if(tipo==='matricula'){
-    contextoMatricula =
-      '\nCONTEXTO DE MATRICULA VEHICULAR ECUATORIANA:\n'+
-      'La cedulaRuc debe ser la cedula del propietario: exactamente 10 digitos y vinculada a etiquetas como CEDULA, IDENTIFICACION, CI, RUC, PROPIETARIO o DOCUMENTO DE IDENTIDAD.\n'+
-      'No uses numeros cercanos a TELEFONO, CELULAR, CONTACTO, MOVIL, TEL. o CONVENCIONAL.\n'+
-      'Si solo ves un numero de 10 digitos sin etiqueta clara de identidad, devuelve "".\n'+
-      'Chasis y motor deben copiarse completos; si falta un caracter, devuelve lo visible y no lo corrijas.\n\n';
-  } else if(tipo==='notaria'){
-    contextoNotaria =
-      '\nCONTEXTO DE PRINT NOTARIA / FICHA VEHICULO:\n'+
-      'Debes analizar una ficha vehicular notarial ecuatoriana.\n'+
-      'Extrae los campos del vehiculo, del propietario y, si existe, de la seccion ULTIMO CONTRATO.\n'+
-      'Busca datos en tablas y bloques: FICHA VEHICULO, PROPIETARIO, ULTIMO CONTRATO, COMPRADORES y VENDEDORES.\n'+
-      'Si existe ULTIMO CONTRATO, extrae valorContrato, fechaContrato, tipoTransferencia y el estado real de transferencia.\n'+
-      'NO mezcles datos del propietario con compradores o vendedores.\n'+
-      'Para compradores y vendedores devuelve arreglos con todos los registros visibles, usando objetos {tipoId, identificacion, nombre}.\n'+
-      'Si no existe una seccion o el dato no se ve, deja "" o [] segun corresponda.\n\n';
-  }
-
-  const prompt =
-    'Analiza la imagen del documento y completa SOLAMENTE estos campos faltantes:\n\n'+
-    fieldList+'\n'+
-    contextoCedula+
-    contextoMatricula+
-    contextoNotaria+
-    'Reglas estrictas:\n'+
-    '- Si no ves el dato con claridad, devuelve "" o [] según corresponda.\n'+
-    '- No inventes datos.\n'+
-    '- No devuelvas etiquetas del documento como valores.\n'+
-    '- Para fechas usa formato DD/MM/YYYY.\n'+
-    '- Para apellidos devuelve solo apellidos.\n'+
-    '- Para nombres devuelve solo nombres.\n'+
-    '- Devuelve exclusivamente JSON válido con esta estructura:\n\n'+
-    '{\n  '+schemaBits+'\n}';
-
-  spinnerMsg('IA completando '+missingKeys.length+' campo(s) faltante(s)...');
-  setSpinnerBar(70);
-
-  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
-  if(!m) throw new Error('Imagen inválida');
-  const mimeType = m[1], b64Data = m[2];
-
-  const body = {
-    contents: [{ parts: [
-      { text: prompt },
-      { inline_data: { mime_type: mimeType, data: b64Data } }
-    ]}],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      temperature: 0,
-      maxOutputTokens: 1500
-    }
-  };
-
+  const body = AutoCorDocumentExtraction.buildRequest(tipo, dataUrl, missingKeys, extraOpts || {});
+  spinnerMsg('IA identificando campos de '+tipo+'...');
+  setSpinnerBar(40);
   const result = await geminiGenerateWithFallback(body);
-  setSpinnerBar(90);
-  const json = result.json;
-  if(json.promptFeedback && json.promptFeedback.blockReason){
-    throw new Error('Gemini bloqueó la petición: '+json.promptFeedback.blockReason);
-  }
-  const cand = json.candidates && json.candidates[0];
-  const content = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
-  if(!content) throw new Error('Respuesta vacía de Gemini');
-
-  let parsed;
-  try{ parsed = JSON.parse(content); }
-  catch(e){
-    const j = content.match(/\{[\s\S]*\}/);
-    if(!j) throw new Error('Gemini no devolvió JSON válido');
-    parsed = JSON.parse(j[0]);
-  }
-  return parsed;
+  setSpinnerBar(55);
+  return AutoCorDocumentExtraction.parseResponse(result.json, missingKeys);
 }
+
 function validDate(v){ return !!normalizeDate(v); }
 function validCed10(v){ return !!normalizeCedula10(v); }
 /* Sanitización mínima para datos CUV: solo limpia NULL/whitespace.
@@ -6035,8 +5200,8 @@ function sanitizeDetectedData(d, fields){
    ══════════════════════════════════════════════════════════════ */
 function camposCedula(){
   return [
-    { key:'apellidos',      label:'Apellidos',           validate:function(v){ return normalizeHumanName(v,4)?'ok':'warn'; }},
-    { key:'nombres',        label:'Nombres',             validate:function(v){ return normalizeHumanName(v,5)?'ok':'warn'; }},
+    { key:'apellidos',      label:'Apellidos',           validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }},
+    { key:'nombres',        label:'Nombres',             validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }},
     { key:'numeroCedula',   label:'Número de cédula',   validate:function(v){ return validCed10(v)?'ok':'warn'; }},
     { key:'codigoDactilar', label:'Código dactilar',    validate:function(v){ return normalizeDactilar(v)?'ok':'warn'; }},
     { key:'fechaExpiracion',label:'Fecha de expiración',validate:function(v){ return validDate(v)?'ok':'warn'; }},
@@ -6069,14 +5234,14 @@ function camposCuv(){
     { key:'color',       label:'Color',       validate:function(v){ return normalizeColor(v)?'ok':'warn'; }},
     { key:'chasis',      label:'Chasis',      validate:function(v){ return normalizeChasis(v)?'ok':'warn'; }},
     { key:'motor',       label:'Motor',       validate:function(v){ return normalizeMotor(v)?'ok':'warn'; }},
-    { key:'propietario', label:'Propietario', validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }}
+    { key:'propietario', label:'Propietario', validate:function(v){ return normalizeOwnerName(v)?'ok':'warn'; }}
   ];
 }
 
 function camposMatricula(){
   return [
     { key:'placa',       label:'Placa',                        validate:function(v){ return normalizePlaca(v)?'ok':'warn'; }},
-    { key:'propietario', label:'Propietario',                  validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }},
+    { key:'propietario', label:'Propietario',                  validate:function(v){ return normalizeOwnerName(v)?'ok':'warn'; }},
     { key:'cedulaRuc',   label:'Identificación propietario', validate:function(v){ return normalizeIdentificacion(v)?'ok':'warn'; }},
     { key:'marca',       label:'Marca',                        validate:function(v){ return normalizeMarca(v)?'ok':'warn'; }},
     { key:'modelo',      label:'Modelo',                       validate:function(v){ return normalizeModelo(v)?'ok':'warn'; }},
@@ -6097,12 +5262,12 @@ function camposNotaria(){
     { key:'serialChasis',              label:'Chasis',                 validate:function(v){ return normalizeChasis(v)?'ok':'warn'; }},
     { key:'tipoIdPropietario',         label:'Tipo identificación propietario', validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
     { key:'numeroMotor',               label:'Motor',                  validate:function(v){ return normalizeMotor(v)?'ok':'warn'; }},
-    { key:'nombrePropietario',         label:'Propietario',            validate:function(v){ return normalizeHumanName(v,8)?'ok':'warn'; }},
+    { key:'nombrePropietario',         label:'Propietario',            validate:function(v){ return normalizeOwnerName(v)?'ok':'warn'; }},
     { key:'medidaCautelar',            label:'Medida cautelar',        validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
-    { key:'identificacionPropietario', label:'Identificación propietario', validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
+    { key:'identificacionPropietario', label:'Identificación propietario', validate:function(v){ return normalizeIdentificacion(v) ? 'ok' : 'warn'; }},
     { key:'estadoTransferencia',       label:'Estado transferencia dominio', validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
     { key:'valorContrato',             label:'Valor contrato',         validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
-    { key:'fechaContrato',             label:'Fecha contrato',         validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
+    { key:'fechaContrato',             label:'Fecha contrato',         validate:function(v){ return normalizeDate(v) ? 'ok' : 'warn'; }},
     { key:'tipoTransferencia',         label:'Tipo de transferencia',  validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
     { key:'compradores',               label:'Compradores',            multiline:true, wide:true, validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }},
     { key:'vendedores',                label:'Vendedores',             multiline:true, wide:true, validate:function(v){ return String(v||'').trim() ? 'ok' : 'warn'; }}
@@ -6199,7 +5364,7 @@ function _refreshValidateAllBar(){
 
   // En persona jurídica, CUV y Print de Notaría son opcionales.
   var OBLIGATORIOS = flujoContrato.tipoPersona === 'juridica'
-    ? ['ruc', 'cedula-prop', 'papeleta-prop', 'matricula']
+    ? ['ruc', 'cedula-prop', 'matricula']
     : (_flujoEsConyugal() ? ['cedula-prop', 'cedula-cony', 'matricula'] : ['cedula-prop', 'matricula']);
 
   // Un doc está "cubierto" si ya fue procesado O tiene imagen pegada pendiente de procesar
@@ -6216,7 +5381,7 @@ function _refreshValidateAllBar(){
     var labels = faltantes.map(function(t){ return tipoLabel(t); });
     if(faltantes.length === OBLIGATORIOS.length){
       sub.textContent = flujoContrato.tipoPersona === 'juridica'
-        ? 'Carga o pega los documentos obligatorios: RUC, Cédula del representante, Papeleta y Matrícula. CUV y Print de Notaría son opcionales.'
+        ? 'Carga o pega los documentos obligatorios: RUC, Cédula del representante y Matrícula. Papeleta, CUV y Print de Notaría son opcionales.'
         : (_flujoEsConyugal()
           ? 'Carga o pega los documentos obligatorios: Cédula titular, Cédula del cónyuge y Matrícula.'
           : 'Carga o pega los documentos obligatorios: Cédula titular y Matrícula.');
@@ -6561,7 +5726,7 @@ async function validarTodoEnConjunto(){
       var el = document.getElementById(id);
       if(el && id !== 'genDomicilio') el.value = '';
     });
-    document.getElementById('genDomicilio').value = 'QUITO';
+    document.getElementById('genDomicilio').value = '';
     document.getElementById('genValorHint').textContent = '';
     document.getElementById('genError').style.display = 'none';
 
@@ -6623,7 +5788,7 @@ async function validarTodoEnConjunto(){
     var extra = {
       telefonoProp: (document.getElementById('genTelefonoProp').value||'').trim(),
       emailProp:    (document.getElementById('genEmailProp').value||'').trim(),
-      domicilio:    (document.getElementById('genDomicilio').value||'QUITO').trim(),
+      domicilio:    (document.getElementById('genDomicilio').value||'').trim(),
       telefonoCony: (document.getElementById('genTelefonoCony').value||'').trim(),
       emailCony:    (document.getElementById('genEmailCony').value||'').trim(),
       km:           km,
@@ -6868,7 +6033,7 @@ async function validarTodoEnConjunto(){
       // Datos de contacto / toma
       telefonoProp:   extra.telefonoProp   || '',
       emailProp:      extra.emailProp      || '',
-      domicilio:      extra.domicilio      || 'QUITO',
+      domicilio:      extra.domicilio      || '',
       telefonoCony:   extra.telefonoCony   || '',
       emailCony:      extra.emailCony      || '',
       km:             extra.km             || '',
@@ -6978,7 +6143,7 @@ async function validarTodoEnConjunto(){
       if(el) el.value = '';
     });
     var dom = document.getElementById('gpDomicilio');
-    if(dom) dom.value = 'QUITO';
+    if(dom) dom.value = '';
     var obs = document.getElementById('gpObservaciones');
     if(obs) obs.value = '';
 
@@ -7019,7 +6184,7 @@ async function validarTodoEnConjunto(){
     var extra = {
       telefonoProp:  (document.getElementById('gpTelefonoProp').value||'').trim(),
       emailProp:     (document.getElementById('gpEmailProp').value||'').trim(),
-      domicilio:     (document.getElementById('gpDomicilio').value||'QUITO').trim(),
+      domicilio:     (document.getElementById('gpDomicilio').value||'').trim(),
       telefonoCony:  (document.getElementById('gpTelefonoCony').value||'').trim(),
       emailCony:     (document.getElementById('gpEmailCony').value||'').trim(),
       km:            (document.getElementById('gpKm').value||'').trim(),

@@ -179,3 +179,27 @@ El campo `details[].transport` del diagnostico debe indicar `google.script.run`.
 ### Correccion del arranque del canal
 
 La version `20260915-respaldo-1` de `apps-script-transport.js` elimina el bloqueo obligatorio por falta de canal. Espera como maximo 1,5 segundos para aprovechar el canal que se precarga; si no esta listo, devuelve el control al transporte HTTP. Un canal fallido no se vuelve a abrir continuamente durante 60 segundos. El respaldo solo ocurre antes de enviar la operacion: una solicitud ya enviada por RPC no se repite automaticamente por HTTP. Esta correccion necesita publicar los HTML y `js/apps-script-transport.js`; no requiere otra implementacion de Apps Script. El respaldo evita la nueva interrupcion, pero no garantiza resolver la latencia previa del transporte HTTP.
+
+## Extracción y validación de Contratos — 17 de septiembre de 2026
+
+Publicar juntos `contratos.html` y el nuevo `js/document-extraction.js` (versión `20260917-criterios-1`), manteniendo la carpeta `js`. Este cambio se aplica sobre los archivos actuales del sitio y no requiere actualizar Apps Script. Después, recargar Contratos con Ctrl+F5. El paquete `entrega/AUTOCOR-contratos-IA-20260917.zip` contiene estos dos archivos.
+
+- RUC, cédula, matrícula, notaría y papeleta intentan primero IA. El OCR completa campos faltantes o dudosos y respalda fallos de IA. CUV mantiene su lector/parser local, sin IA.
+- Los criterios y el esquema de respuesta se comparten en `document-extraction.js`: separan contribuyente y representante, propietario y partes del último contrato, identificación y teléfono, chasis y motor, y fechas según su etiqueta. Las respuestas incompletas o con tipos incorrectos no se aceptan como resultados confirmados.
+- Los nombres cortos/compuestos ya no se descartan por contener fragmentos como NAN. Los propietarios admiten razones sociales y RUC de 13 dígitos. No se reparten nombres por cantidad de palabras ni se cambian letras de códigos alfanuméricos a números.
+- Frente y reverso se envían juntos como imágenes separadas. Los PDF de hasta seis páginas se envían completos, en orden; si superan ese límite, se avisa antes de procesar para seleccionar las páginas relevantes. El respaldo OCR de PDF escaneado también cubre hasta seis páginas.
+- Papeleta incorpora respaldo OCR y campos editables, incluido el nombre completo cuando no hay separación de apellidos/nombres. Se extrae la fecha realmente impresa. La regla comercial existente de fecha esperada permanece separada y ya no sustituye el valor leído por una fecha sugerida fija.
+- Una lectura marcada para revisión conserva ese estado en las comparaciones, aunque otros documentos tengan el mismo valor. Nombres parciales y modelos que difieren en un dígito ya no aparecen como coincidencias completas.
+
+Pruebas sin dependencias adicionales:
+
+```powershell
+node tests/regression.cjs
+node tests/document-extraction.cjs
+node tests/contract-normalization.cjs
+node tests/contract-pipeline.cjs
+node tests/cedula-ocr.cjs
+node tests/matricula-ocr.cjs
+```
+
+Estas pruebas usan documentos sintéticos y respuestas de IA simuladas. La exactitud con fotografías reales, plantillas específicas y el servicio Gemini debe comprobarse con los documentos del usuario después de publicar; no se midió una tasa de acierto real ni una mejora de latencia en producción.
