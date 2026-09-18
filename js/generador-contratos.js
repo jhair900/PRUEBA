@@ -153,7 +153,7 @@
       CI_PROP:              ciProp     || '___________',
       ESTADO_CIVIL_PROP:    estadoCivil|| '___________',
       NACIONALIDAD_PROP:    nacionalidad,
-      DOMICILIO_PROP:       normalizarNombre(extra.domicilio || ''),
+      DOMICILIO_PROP:       String(extra.domicilio || '').trim(),
       TELEFONO_PROP:        extra.telefonoProp || '___________',
       EMAIL_PROP:           extra.emailProp    || '___________',
 

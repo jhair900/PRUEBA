@@ -1330,15 +1330,19 @@
       <div class="gen-form-grid">
         <div class="gen-field">
           <label class="gen-label">Teléfono propietario</label>
-          <input id="genTelefonoProp" type="text" class="gen-input" placeholder="0987654321" autocomplete="off">
+          <input id="genTelefonoProp" required type="text" class="gen-input" placeholder="0987654321" autocomplete="off">
         </div>
         <div class="gen-field">
           <label class="gen-label">Email propietario</label>
-          <input id="genEmailProp" type="email" class="gen-input" placeholder="correo@ejemplo.com" autocomplete="off">
+          <input id="genEmailProp" required type="email" class="gen-input" placeholder="correo@ejemplo.com" autocomplete="off">
         </div>
         <div class="gen-field">
           <label class="gen-label">Domicilio</label>
-          <input id="genDomicilio" type="text" class="gen-input" value="" autocomplete="off">
+          <select id="genDomicilio" required class="gen-input" aria-label="Ciudad de domicilio">
+            <option value="" selected disabled>Selecciona una ciudad</option>
+            <option value="QUITO">QUITO</option>
+            <option value="GUAYAQUIL">GUAYAQUIL</option>
+          </select>
         </div>
       </div>
 
@@ -1426,15 +1430,19 @@
       <div class="gp-form-grid">
         <div class="gp-field">
           <label class="gp-label">Teléfono propietario</label>
-          <input id="gpTelefonoProp" type="text" class="gp-input" placeholder="0987654321" autocomplete="off">
+          <input id="gpTelefonoProp" required type="text" class="gp-input" placeholder="0987654321" autocomplete="off">
         </div>
         <div class="gp-field">
           <label class="gp-label">Email propietario</label>
-          <input id="gpEmailProp" type="email" class="gp-input" placeholder="correo@ejemplo.com" autocomplete="off">
+          <input id="gpEmailProp" required type="email" class="gp-input" placeholder="correo@ejemplo.com" autocomplete="off">
         </div>
         <div class="gp-field">
           <label class="gp-label">Domicilio</label>
-          <input id="gpDomicilio" type="text" class="gp-input" value="" autocomplete="off">
+          <select id="gpDomicilio" required class="gp-input" aria-label="Ciudad de domicilio">
+            <option value="" selected disabled>Selecciona una ciudad</option>
+            <option value="QUITO">QUITO</option>
+            <option value="GUAYAQUIL">GUAYAQUIL</option>
+          </select>
         </div>
       </div>
 
@@ -1521,7 +1529,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
 <script src="js/contrato-templates.js?v=20260909-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20260917-domicilio-1"></script>
+<script src="js/generador-contratos.js?v=20260918-direccion-1"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1560,6 +1568,61 @@ let cuvDatosCompleto = null; // full CUV object for detail modal
 // Exponer datos en window para que generador-contratos.js pueda accederlos
 window._contratosData = datos;
 window._contratosValidacionCompletada = false;
+
+// Una sola dirección manual para guardar y generar el contrato del mismo vehículo.
+let domicilioContratoPlaca = null;
+function prepararDomicilioContrato(placa){
+  const clave = String(placa || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(domicilioContratoPlaca === clave) return;
+  domicilioContratoPlaca = clave;
+  ['genDomicilio','gpDomicilio'].forEach(function(id){
+    const input = document.getElementById(id);
+    if(input) input.value = '';
+  });
+}
+['genDomicilio','gpDomicilio'].forEach(function(id){
+  const input = document.getElementById(id);
+  if(!input) return;
+  input.addEventListener('input', function(){
+    const otro = document.getElementById(id === 'genDomicilio' ? 'gpDomicilio' : 'genDomicilio');
+    if(otro) otro.value = input.value;
+  });
+});
+
+function configurarContactosContrato(prefijo, conConyuge){
+  document.getElementById(prefijo+'SeccionConyuge').style.display = conConyuge ? 'block' : 'none';
+  ['TelefonoProp','EmailProp','Domicilio','TelefonoCony','EmailCony'].forEach(function(campo){
+    const input = document.getElementById(prefijo+campo);
+    input.required = campo.endsWith('Cony') ? conConyuge : true;
+    const label = input.parentElement.querySelector('label');
+    if(label){
+      label.textContent = label.textContent.replace(/\s*\(obligatorio\)$/, '') + (input.required ? ' (obligatorio)' : '');
+    }
+  });
+}
+function validarContactosContrato(prefijo, errorEl){
+  const campos = [
+    ['TelefonoProp','El teléfono del propietario'],
+    ['EmailProp','El correo del propietario'],
+    ['Domicilio','La dirección'],
+    ['TelefonoCony','El teléfono del cónyuge'],
+    ['EmailCony','El correo del cónyuge']
+  ];
+  for(const [campo, nombre] of campos){
+    const input = document.getElementById(prefijo+campo);
+    if(!input.required) continue;
+    input.value = input.value.trim();
+    const mensaje = !input.value ? nombre+' es obligatorio.' :
+      (input.type === 'email' && !input.checkValidity() ? nombre+' debe tener un formato válido.' : '');
+    if(mensaje){
+      errorEl.textContent = mensaje;
+      errorEl.style.display = 'block';
+      input.focus();
+      return false;
+    }
+  }
+  return true;
+}
 
 function _actualizarAccionesPostValidacion(){
   var mostrar = window._contratosValidacionCompletada === true;
@@ -5713,7 +5776,7 @@ async function validarTodoEnConjunto(){
     }).join('');
 
     // Mostrar/ocultar sección cónyuge
-    document.getElementById('genSeccionConyuge').style.display = esCasado ? 'block' : 'none';
+    configurarContactosContrato('gen', esCasado);
 
     // Prefill fecha
     var hoy = new Date();
@@ -5726,7 +5789,7 @@ async function validarTodoEnConjunto(){
       var el = document.getElementById(id);
       if(el && id !== 'genDomicilio') el.value = '';
     });
-    document.getElementById('genDomicilio').value = '';
+    prepararDomicilioContrato(placa);
     document.getElementById('genValorHint').textContent = '';
     document.getElementById('genError').style.display = 'none';
 
@@ -5766,6 +5829,8 @@ async function validarTodoEnConjunto(){
   async function ejecutarGenerarContratos(){
     var errorEl = document.getElementById('genError');
     errorEl.style.display = 'none';
+
+    if(!validarContactosContrato('gen', errorEl)) return;
 
     var km        = (document.getElementById('genKm').value||'').trim();
     var valorNum  = (document.getElementById('genValorNum').value||'').trim();
@@ -6104,9 +6169,9 @@ async function validarTodoEnConjunto(){
     var chasis = _pick('chasis') || _pick('serialChasis') || _pick('vin');
     var motor  = _pick('motor')  || _pick('numeroMotor');
     var vc     = _getValidacionResumen();
-    var esCasado = estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
+    var esCasado = flujoContrato.tipoPersona !== 'juridica' && (estadoCivil === 'CASADO' || estadoCivil === 'CASADA'
                 || estadoCivil === 'UNION LIBRE' || estadoCivil === 'UNIÓN LIBRE'
-                || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO';
+                || estadoCivil === 'UNION DE HECHO' || estadoCivil === 'UNIÓN DE HECHO');
 
     // Campos readonly
     var roItems = [
@@ -6135,15 +6200,14 @@ async function validarTodoEnConjunto(){
         +'</div>';
     }).join('');
 
-    document.getElementById('gpSeccionConyuge').style.display = esCasado ? 'block' : 'none';
+    configurarContactosContrato('gp', esCasado);
 
     // Limpiar campos
     ['gpTelefonoProp','gpEmailProp','gpTelefonoCony','gpEmailCony','gpKm','gpValorNum'].forEach(function(id){
       var el = document.getElementById(id);
       if(el) el.value = '';
     });
-    var dom = document.getElementById('gpDomicilio');
-    if(dom) dom.value = '';
+    prepararDomicilioContrato(placa);
     var obs = document.getElementById('gpObservaciones');
     if(obs) obs.value = '';
 
@@ -6191,6 +6255,8 @@ async function validarTodoEnConjunto(){
       valorNum:      (document.getElementById('gpValorNum').value||'').trim(),
       observaciones: (document.getElementById('gpObservaciones').value||'').trim()
     };
+
+    if(!validarContactosContrato('gp', errEl)) return;
 
     var payload = _construirPayload(extra);
 
