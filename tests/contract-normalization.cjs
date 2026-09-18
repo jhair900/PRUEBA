@@ -132,3 +132,17 @@ test('Compradores y vendedores conservan filas separadas al normalizar', () => {
   assert.equal(context.normalizeFieldValue('vendedores', rows.replace(/\n/g,'\r\n'), {}), rows);
 });
 console.log(count+' comprobaciones de normalización y validación superadas.');
+
+
+test('La Ñ se conserva desde IA y OCR, también en Unicode descompuesto', () => {
+  for(const name of ['MUÑOZ PEÑA', 'muñoz peña', 'MUN\u0303OZ PEN\u0303A']) {
+    assert.equal(context.normalizeHumanName(name, 8), 'MUÑOZ PEÑA');
+    assert.equal(context.normalizeFieldValue('apellidos', name, {}), 'MUÑOZ PEÑA');
+    assert.equal(context.normalizeForParsing(name), 'MUÑOZ PEÑA');
+  }
+  assert.equal(context.normalizeCompanyName('COMPAÑÍA PEÑA S.A.'), 'COMPAÑIA PEÑA S.A.');
+  assert.equal(context.normalizeOwnerName('MUÑOZ PEÑA ANA'), 'MUÑOZ PEÑA ANA');
+  assert.equal(context.normalizeHumanName('MUNOZ PENA', 8), 'MUNOZ PENA');
+  assert.equal(context.nombresEquivalentes('MUÑOZ PEÑA ANA', 'MUNOZ PENA ANA'), false);
+  assert.equal(context.normalizeNacionalidad('española'), 'ESPAÑOLA');
+});

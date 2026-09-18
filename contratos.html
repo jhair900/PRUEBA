@@ -889,7 +889,7 @@
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
 <script src="js/api-client.js?v=20260915-directo-1"></script>
 <script src="js/gemini-client.js?v=20260915-directo-1"></script>
-<script src="js/document-extraction.js?v=20260917-criterios-1"></script>
+<script src="js/document-extraction.js?v=20260918-enie-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
@@ -1532,7 +1532,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
 <script src="js/contrato-templates.js?v=20260909-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20260918-direccion-1"></script>
+<script src="js/generador-contratos.js?v=20260918-enie-1"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -2069,8 +2069,8 @@ function normalizeOcrText(text){
 
 function normalizeForParsing(text){
   return normalizeOcrText(text)
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/Ã‘/g,'N').replace(/Ã/g,'N')
+    .normalize('NFD').replace(/N\u0303/g,'Ñ').replace(/n\u0303/g,'ñ').replace(/[\u0300-\u036f]/g,'')
+    .replace(/Ã‘/g,'Ñ').replace(/Ã/g,'Ñ')
     .replace(/Ã/g,'A')
     .toUpperCase();
 }
@@ -2675,7 +2675,7 @@ const KEYWORDS_CED_EXACT = [
   'DACTILAR','DACTIL','CODIGO','BIOMETR'
 ];
 function isKeyword(s){
-  const u = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  const u = s.toUpperCase().normalize('NFD').replace(/N\u0303/g,'Ñ').replace(/n\u0303/g,'ñ').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^A-Z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
   if(!u) return true;
   // Exact fragment match (truncated labels from OCR)
@@ -2707,7 +2707,7 @@ function parseMatricula(texto){
   d.cedulaRuc = findMatriculaCedulaContextual(lines);
   read('marca', ['MARCA']);
   read('modelo', ['MODELO']);
-  read('anio', ['ANO(?:\\s+(?:DE\\s+FABRICACION|MODELO|MOD))?'], function(v){ return /^(?:19|20)\d{2}$/.test(v) ? v : ''; });
+  read('anio', ['A[ÑN]O(?:\\s+(?:DE\\s+FABRICACION|MODELO|MOD))?'], function(v){ return /^(?:19|20)\d{2}$/.test(v) ? v : ''; });
   read('color', ['COLOR(?:\\s+(?:PRINCIPAL|1))?']);
   read('chasis', ['(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?(?:CHASIS|VIN|SERIE)']);
   read('motor', ['(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?MOTOR']);
@@ -2724,7 +2724,7 @@ function etqMatr(texto, etiquetas, opts){
     'NOMBRES?\\s+Y\\s+APELLIDOS', 'NOMBRES?\\s+(?:DEL?\\s+)?PROPIETARIO', 'RAZON\\s+SOCIAL',
     '(?:NUMERO\\s+(?:DE\\s+)?)?PLACA(?:\\s+(?:ACTUAL|ANTERIOR))?',
     '(?:NUM(?:ERO)?\\.?\\s*(?:DE\\s+)?|N[Oº°]\\.?\\s*)?(?:CHASIS|VIN|SERIE|MOTOR)',
-    'ANO(?:\\s+(?:DE\\s+FABRICACION|DE\\s+MATRICULACION|DE\\s+EMISION|MATRICULA|MODELO|MOD))?',
+    'A[ÑN]O(?:\\s+(?:DE\\s+FABRICACION|DE\\s+MATRICULACION|DE\\s+EMISION|MATRICULA|MODELO|MOD))?',
     '(?:FECHA\\s+(?:DE\\s+)?)?(?:CADUCIDAD|VENCIMIENTO|EXPIRACION|EMISION|EXPEDICION|INICIO|NACIMIENTO)',
     'VIGENCIA(?:\\s+HASTA)?', 'VALID[OA]\\s+HASTA',
     '(?:CEDULA\\s*[/\\-]\\s*RUC|CEDULA|RUC|IDENTIFICACION)(?:\\s+(?:DEL?\\s+)?PROPIETARIO)?',
@@ -2914,7 +2914,7 @@ function parsePrintNotaria(texto){
   const linesVeh = idxUC>0 ? lines.slice(0,idxUC) : lines;
   const flatVeh  = linesVeh.join(' ');
 
-  d.anio    = etq(flatVeh,['AÑO','ANO\\s+DE\\s+FABRICACI[OÓ]N','AÑO\\s+MODELO']) || '';
+  d.anio    = etq(flatVeh,['AÑO','A[ÑN]O\\s+DE\\s+FABRICACI[OÓ]N','AÑO\\s+MODELO']) || '';
   d.modelo  = etq(flatVeh,['MODELO']) || '';
   d.pais    = etq(flatVeh,['PA[IÍ]S\\s+DE\\s+ORIGEN','PA[IÍ]S\\s+DE\\s+FABRIC','PA[IÍ]S']) || '';
   d.serialChasis = etq(flatVeh,['SERIAL\\s+CHASIS','N[ÚU]MERO\\s+CHASIS','CHASIS','VIN']) || '';
@@ -3993,8 +3993,8 @@ function normalizarValor(v){
   return String(v)
     .trim()
     .toUpperCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g,'')   // remover diacríticos
-    .replace(/[^A-Z0-9\s\-\/]/g,' ')                    // alfanum + guiones
+    .normalize('NFD').replace(/N\u0303/g,'Ñ').replace(/[̀-ͯ]/g,'')   // remover diacríticos
+    .replace(/[^A-ZÑ0-9\s\-\/]/g,' ')                    // alfanum + guiones
     .replace(/\s+/g,' ')
     .trim();
 }
@@ -4794,10 +4794,10 @@ const NACIONALIDADES_VALIDAS = {
   'PERUANA':'PERUANA','PERUANO':'PERUANA',
   'VENEZOLANA':'VENEZOLANA','VENEZOLANO':'VENEZOLANA',
   'ESTADOUNIDENSE':'ESTADOUNIDENSE',
-  'ESPANOLA':'ESPANOLA','ESPANOL':'ESPANOLA'
+  'ESPANOLA':'ESPAÑOLA','ESPANOL':'ESPAÑOLA','ESPAÑOLA':'ESPAÑOLA','ESPAÑOL':'ESPAÑOLA'
 };
 function trimUpper(v){
-  return String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+  return String(v||'').trim().toUpperCase().normalize('NFD').replace(/N\u0303/g,'Ñ').replace(/n\u0303/g,'ñ').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
 }
 function normalizeHumanName(v, maxWords){
   let t = trimUpper(v)
@@ -4964,7 +4964,7 @@ function normalizeOcrDigits(v){
 }
 function splitCedulaLines(texto){
   // Los códigos alfanuméricos conservan B/S/O; no son errores OCR por definición.
-  return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()
+  return String(texto || '').normalize('NFD').replace(/N\u0303/g,'Ñ').replace(/n\u0303/g,'ñ').replace(/[\u0300-\u036f]/g,'').toUpperCase()
     .replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n')
     .map(function(l){ return l.replace(/[ \t]+/g,' ').trim(); }).filter(Boolean);
 }

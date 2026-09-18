@@ -61,7 +61,7 @@
   }
 
   function normalizarNombre(nombre){
-    return String(nombre||'').toUpperCase().trim();
+    return String(nombre||'').normalize('NFC').toUpperCase().trim();
   }
 
   function normalizarEstadoCivil(estadoCivil){

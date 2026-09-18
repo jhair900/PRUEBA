@@ -104,7 +104,7 @@
       'No intercambiar O/0, I/1 u otros caracteres por intuición. Conserva ceros iniciales. No completar ni recortar identificaciones.\n' +
       'Para campos ausentes devuelve "" (o [] para listas). Para lectura ambigua, parcial o valores contradictorios devuelve "" o [] y añade el campo a _reviewKeys. ' +
       'No elegir el dato de otra persona ni mezclar filas para llenar un campo. No confundir datos del titular con sus familiares. ' +
-      'Fechas visibles a DD/MM/YYYY, sin calcular ni inventar día, mes o año. Nombres completos sin abreviar ni dividir por número de palabras.\n' +
+      'Fechas visibles a DD/MM/YYYY, sin calcular ni inventar día, mes o año. Nombres completos sin abreviar ni dividir por número de palabras. Conserva la Ñ/ñ exactamente como aparece en nombres, apellidos y razones sociales (ej.: MUÑOZ, PEÑA, COMPAÑÍA); nunca la sustituyas por N ni inventes una Ñ. Prioriza el nombre impreso sobre la zona MRZ, que puede omitir la Ñ. Si la letra no es legible, marca el campo en _reviewKeys.\n' +
       (tipo === 'cedula' ? 'Frente y reverso se complementan; no supongas que un dato está siempre en una cara. Lee solo el titular identificado en la cédula.\n' : '') +
       (tipo === 'notaria' ? 'Distingue tres roles: propietario registrado, compradores y vendedores del último contrato. No son intercambiables.\n' : '') +
       (options.cedulaSide === 'front' ? 'Esta imagen corresponde al frente; extrae solo lo que realmente muestra.\n' : options.cedulaSide === 'back' ? 'Esta imagen corresponde al reverso; extrae solo lo que realmente muestra.\n' : '') +

@@ -113,3 +113,10 @@ test('Etiquetas al final de la misma línea no contaminan el nombre', () => {
   assert.equal(d.nombres, 'ANA');
 });
 console.log(passed + ' pruebas de OCR cédula aprobadas.');
+
+
+test('Cédula OCR conserva Ñ en apellidos del titular', () => {
+  const d = ctx.parseCedula('APELLIDOS: MUÑOZ PEÑA\nNOMBRES: ANA\nNUI: '+id+'\nNACIONALIDAD: ECUATORIANA\nESTADO CIVIL: SOLTERA');
+  assert.equal(d.apellidos, 'MUÑOZ PEÑA');
+  assert.equal(d.nombres, 'ANA');
+});
