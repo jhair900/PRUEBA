@@ -23,6 +23,8 @@
 
   function api(action, payload){
     var body = Object.assign({ action: action }, payload || {});
+    var auth = getAuth();
+    if(action !== 'login' && auth && auth.token) body.sessionToken = auth.token;
     return global.AutoCorApi.postJson(GAS_URL, body, { context: action });
   }
 
@@ -79,7 +81,10 @@
     var style = document.createElement('style');
     style.id = 'authUiStyles';
     style.textContent = [
-      '.auth-ui-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}',
+      '.auth-ui-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;box-sizing:border-box}',
+      '.toolbar-wrap>.auth-ui-bar{border-top:1px solid #d1d5db;padding-top:10px;margin-top:2px}',
+      '#autocorAccountControls{padding:12px 24px;background:#fff;border-bottom:1px solid #e5e7eb}',
+      '@media print{.auth-ui-bar,#autocorAccountControls,.auth-ui-modal-backdrop{display:none!important}}',
       '.auth-ui-spacer{flex:1 1 auto}',
       '.auth-ui-user{font-size:12px;font-weight:800;color:#374151;background:#f3f4f6;border:1px solid #d1d5db;border-radius:999px;padding:8px 12px;white-space:nowrap}',
       '.auth-ui-btn{border:1px solid #d1d5db;background:#fff;color:#111827;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:800;cursor:pointer}',
@@ -107,20 +112,29 @@
 
   function mountBar(){
     if($('authUiBar')) return;
-    var host = document.querySelector('.toolbar-wrap') || document.querySelector('.header-user') || document.querySelector('.topbar-right') || document.body;
+    var host = $('autocorAccountControls') || document.querySelector('.toolbar-wrap') || document.querySelector('.header-user') || document.querySelector('.topbar-right') || document.body;
     var bar = document.createElement('div');
     bar.id = 'authUiBar';
     bar.className = 'auth-ui-bar';
     bar.innerHTML =
-      '<button type="button" id="authUiLogin" class="'+buttonClass()+'">Iniciar sesion</button>' +
-      '<button type="button" id="authUiLogout" class="'+buttonClass()+'" style="display:none">Cerrar sesion</button>' +
-      '<button type="button" id="authUiChange" class="'+buttonClass()+'" style="display:none">Cambiar contrasena</button>' +
-      '<button type="button" id="authUiAdmin" class="'+buttonClass()+'" style="display:none">Administrar usuarios</button>';
+      '<span id="authUiCurrentUser" class="auth-ui-user"></span>' +
+      '<button type="button" id="authUiLogin" class="'+buttonClass()+'">Iniciar sesión</button>' +
+      '<button type="button" id="authUiLogout" class="'+buttonClass()+'" style="display:none">Cerrar sesión</button>' +
+      '<button type="button" id="authUiSwitch" class="'+buttonClass()+'" style="display:none">Cambiar usuario</button>' +
+      '<button type="button" id="authUiChange" class="'+buttonClass()+'" style="display:none">Cambiar clave</button>' +
+      '<button type="button" id="authUiAdmin" class="'+buttonClass()+'" style="display:none">Admin usuarios</button>';
     host.appendChild(bar);
     hideLegacyButtons();
 
     $('authUiLogin').addEventListener('click', function(){ openModal('authUiLoginModal'); });
     $('authUiLogout').addEventListener('click', logout);
+    $('authUiSwitch').addEventListener('click', function(){
+      setAuth(null);
+      $('authUiUsername').value = '';
+      $('authUiPassword').value = '';
+      openModal('authUiLoginModal');
+      $('authUiUsername').focus();
+    });
     $('authUiChange').addEventListener('click', function(){ openChangePassword(); });
     $('authUiAdmin').addEventListener('click', function(){ openAdminUsers(); });
   }
@@ -188,6 +202,8 @@
     hideLegacyButtons();
     scrubUserAutofill();
     if($('authUiLogin')) $('authUiLogin').style.display = logged ? 'none' : 'inline-block';
+    if($('authUiSwitch')) $('authUiSwitch').style.display = logged ? 'inline-block' : 'none';
+    if($('authUiCurrentUser')) $('authUiCurrentUser').textContent = logged ? (auth.displayName || auth.user || 'Usuario') : 'Sin sesión';
     if($('authUiLogout')) $('authUiLogout').style.display = logged ? 'inline-block' : 'none';
     if($('authUiChange')) $('authUiChange').style.display = logged ? 'inline-block' : 'none';
     if($('authUiAdmin')) $('authUiAdmin').style.display = logged && auth.isAdmin ? 'inline-block' : 'none';
@@ -209,7 +225,7 @@
       $('authUiUsername').value = '';
       $('authUiPassword').value = '';
       closeModal('authUiLoginModal');
-      if(typeof global.setStatus === 'function') global.setStatus('SESION INICIADA', false, true);
+      if(typeof global.saveAuthState === 'function' && typeof global.setStatus === 'function') global.setStatus('SESIÓN INICIADA', false, true);
       if(resp.user && resp.user.mustChangePassword){
         alert('Debes cambiar tu clave ahora.');
         openChangePassword();
@@ -318,6 +334,11 @@
 
   function init(){
     if(!global.AutoCorApi) return;
+    if(typeof global.saveAuthState === 'function' && !global.saveAuthState._authUiWrapped){
+      var originalSave = global.saveAuthState;
+      global.saveAuthState = function(auth){ var result = originalSave(auth); render(); return result; };
+      global.saveAuthState._authUiWrapped = true;
+    }
     mountStyles();
     mountBar();
     mountModals();

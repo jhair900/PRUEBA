@@ -390,6 +390,7 @@
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
 <script src="js/api-client.js?v=20260915-directo-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
+<link rel="stylesheet" href="js/navigation.css?v=20260918-1">
 </head>
 <body>
 
@@ -406,6 +407,10 @@
 
 <!-- TOOLBAR -->
 <div class="toolbar-wrap">
+  <a href="index.html" class="autocor-home" aria-label="Inicio" title="Inicio">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    <span>Inicio</span>
+  </a>
   <button type="button" class="btn-primary" onclick="guardarYExportarTodo()">💾 Guardar + Exportar</button>
   <button type="button" class="btn-secondary" onclick="buscarPorPlacaPrompt()">🔍 Buscar Placa</button>
   <button type="button" class="btn-secondary" onclick="agregarFilaDocumento()">+ Documento</button>
@@ -1619,5 +1624,6 @@ function setColor(thId, colorClass){
   });
 })();
 </script>
+<script src="js/auth-ui.js?v=20260918-botones-1"></script>
 </body>
 </html>

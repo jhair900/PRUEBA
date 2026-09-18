@@ -379,11 +379,17 @@
   .cbtn{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;display:inline-block;margin-left:4px;vertical-align:middle;transition:border-color .15s,transform .15s;}
   .cbtn:hover,.cbtn.on{border-color:#fff;transform:scale(1.3);}
   @media print{.cbtn{display:none!important;}}
+  .tercero-identidad{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:center}
+  .tercero-parentesco-label{display:flex;gap:8px;align-items:center;font-weight:700}
+  .tercero-parentesco-label input{min-width:0;flex:1}
+  #riskTitle{font-size:12px;font-weight:800}
+  #riskVal .cbtn{padding:0;min-width:14px;min-height:14px}
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
 <script src="js/api-client.js?v=20260915-directo-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
+<link rel="stylesheet" href="js/navigation.css?v=20260918-1">
 </head>
 <body>
 
@@ -400,6 +406,10 @@
 
 <!-- TOOLBAR -->
 <div class="toolbar-wrap">
+  <a href="index.html" class="autocor-home" aria-label="Inicio" title="Inicio">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    <span>Inicio</span>
+  </a>
   <button type="button" class="btn-primary" onclick="guardarYExportarTodo()">💾 Guardar + Exportar</button>
   <button type="button" class="btn-secondary" onclick="buscarPorPlacaPrompt()">🔍 Buscar Placa</button>
   <button type="button" class="btn-secondary" onclick="agregarFilaDocumento()">+ Documento</button>
@@ -458,13 +468,11 @@
         </tr>
         <tr>
           <td class="dictamen-label">CLASIFICACIÓN DE RIESGO:</td>
-          <td colspan="3" class="dictamen-value" id="riskVal">
-            <input id="riskTitle" class="center" type="text" autocomplete="off" value="BAJO - SIN NOVEDADES">
+          <td colspan="3" class="dictamen-value row-verde" id="riskVal">
+            <input id="riskTitle" class="center" type="text" autocomplete="off" readonly value="RIESGO BAJO (SIN NOVEDAD)">
             <span style="display:inline-flex;align-items:center;margin-left:8px;">
-              <span class="cbtn on" style="background:#374151;" onclick="setColor2('')"></span>
-              <span class="cbtn" style="background:#16a34a;" onclick="setColor2('row-verde')"></span>
-              <span class="cbtn" style="background:#ca8a04;" onclick="setColor2('row-amarillo')"></span>
-              <span class="cbtn" style="background:#dc2626;" onclick="setColor2('row-rojo')"></span>
+              <button type="button" class="cbtn on" style="background:#16a34a;" onclick="setColor2('row-verde')" aria-label="Riesgo bajo (sin novedad)" title="Riesgo bajo (sin novedad)"></button>
+              <button type="button" class="cbtn" style="background:#dc2626;" onclick="setColor2('row-rojo')" aria-label="ROS (REPORTE DE OPERACIONES SOSPECHOSAS)" title="ROS (REPORTE DE OPERACIONES SOSPECHOSAS)"></button>
             </span>
           </td>
         </tr>
@@ -910,7 +918,12 @@ function renderUnTercero(t, num){
         <tr class="pag-doc-inforow">
           <td class="label">Nombre Tercero:</td>
           <td colspan="3" class="value">
-            <input type="text" class="tercero-nombre" placeholder="NOMBRE DEL TERCERO" autocomplete="off">
+            <div class="tercero-identidad">
+              <input type="text" class="tercero-nombre" aria-label="Nombre del tercero" placeholder="NOMBRE DEL TERCERO" autocomplete="off">
+              <label class="tercero-parentesco-label">Parentesco:
+                <input type="text" class="tercero-parentesco" placeholder="PARENTESCO" autocomplete="off">
+              </label>
+            </div>
           </td>
         </tr>
         <tr><th colspan="4" class="section-tercero">DOCUMENTOS TERCERA PERSONA</th></tr>
@@ -1144,6 +1157,7 @@ function obtenerDatosVenta(){
     return {
       idx: idx + 1,
       nombre: sheetEl?.querySelector('.tercero-nombre')?.value || '',
+      parentesco: sheetEl?.querySelector('.tercero-parentesco')?.value || '',
       docs: tableRowsToDataDocs(`tbodyT_${t.id}`)
     };
   });
@@ -1153,7 +1167,7 @@ function obtenerDatosVenta(){
     riskTitle: document.getElementById('riskTitle').value,
     dictColor: (['dict-verde','dict-amarillo','dict-rojo'].find(c =>
       document.getElementById('dictamenVal').classList.contains(c)) || ''),
-    riskColor: (['row-verde','row-amarillo','row-rojo'].find(c =>
+    riskColor: (['row-verde','row-rojo'].find(c =>
       document.getElementById('riskVal').classList.contains(c)) || ''),
     placaValue: document.getElementById('placaValue').value,
     responsableValue: document.getElementById('responsableValue').value,
@@ -1169,6 +1183,9 @@ function obtenerDatosVenta(){
 
 // ── Guardar en línea ─────────────────────────────────────────────
 async function guardarCuadroEnLinea(){
+  if(!['row-verde','row-rojo'].some(c => document.getElementById('riskVal').classList.contains(c))){
+    throw new Error('Selecciona Riesgo bajo o ROS antes de guardar.');
+  }
   requireUser();
   const placa = normalizeValue(document.getElementById('placaValue').value);
   if(!placa) throw new Error('Debes ingresar la placa antes de guardar.');
@@ -1187,9 +1204,9 @@ async function guardarCuadroEnLinea(){
 // ── Cargar formulario desde datos ────────────────────────────────
 function cargarFormularioVenta(data){
   document.getElementById('depTitle').value     = data.depTitle || document.getElementById('depTitle').value;
-  document.getElementById('riskTitle').value    = data.riskTitle || document.getElementById('riskTitle').value;
   if(data.dictColor !== undefined) setColor3(data.dictColor);
-  if(data.riskColor !== undefined) setColor2(data.riskColor);
+  // El antiguo amarillo requiere una nueva selección; no se convierte en riesgo bajo.
+  setColor2(data.riskColor || (/ROS|ALTA/i.test(data.riskTitle || '') ? 'row-rojo' : /BAJO/i.test(data.riskTitle || '') ? 'row-verde' : ''));
   document.getElementById('placaValue').value      = data.placaValue || '';
   document.getElementById('responsableValue').value = data.responsableValue || '';
   document.getElementById('clienteValue').value    = data.clienteValue || '';
@@ -1216,6 +1233,8 @@ function cargarFormularioVenta(data){
     (td.docs || []).forEach(x => addDocRow([x.a, x.b, x.c], `tbodyT_${t.id}`));
     const nombreEl = document.getElementById(`sheetT_${t.id}`)?.querySelector('.tercero-nombre');
     if(nombreEl){ nombreEl.value = td.nombre || ''; toUpperInPlace(nombreEl); }
+    const parentescoEl = document.getElementById(`sheetT_${t.id}`)?.querySelector('.tercero-parentesco');
+    if(parentescoEl){ parentescoEl.value = td.parentesco || ''; toUpperInPlace(parentescoEl); }
   });
 
   sincronizarPlacaTerceros();
@@ -1307,8 +1326,7 @@ function fillBase(){
 function restablecerBase(){
   if(!confirm('¿Restablecer el cuadro base?')) return;
   document.getElementById('depTitle').value       = 'DEPARTAMENTO DE VENTAS - AUTOCOR';
-  document.getElementById('riskTitle').value      = 'BAJO - SIN NOVEDADES';
-  setColor2(''); setColor3('');
+  setColor2('row-verde'); setColor3('');
   document.getElementById('placaValue').value     = '';
   document.getElementById('responsableValue').value = '';
   document.getElementById('clienteValue').value   = '';
@@ -1357,19 +1375,16 @@ function setColor3(colorClass){
 function setColor2(colorClass){
   const el = document.getElementById('riskVal');
   if(!el) return;
+  const selected = ['row-verde','row-rojo'].includes(colorClass) ? colorClass : '';
   el.classList.remove('row-verde','row-amarillo','row-rojo');
-  if(colorClass) el.classList.add(colorClass);
-  const input = document.getElementById('riskTitle');
-  if(input){
-    if(colorClass==='row-verde')    input.value = 'BAJO - SIN NOVEDADES';
-    else if(colorClass==='row-amarillo') input.value = 'MEDIA - SIN NOVEDADES';
-    else if(colorClass==='row-rojo')    input.value = 'ALTA - SIN NOVEDADES';
-    else input.value = 'BAJO - SIN NOVEDADES';
-  }
+  if(selected) el.classList.add(selected);
+  document.getElementById('riskTitle').value = selected === 'row-verde'
+    ? 'RIESGO BAJO (SIN NOVEDAD)' : selected === 'row-rojo'
+    ? 'ROS (REPORTE DE OPERACIONES SOSPECHOSAS)' : 'SELECCIONA RIESGO BAJO O ROS';
   el.querySelectorAll('.cbtn').forEach(btn => {
-    const oc = btn.getAttribute('onclick') || '';
-    const active = colorClass ? oc.includes("'"+colorClass+"'") : oc.includes("''");
+    const active = !!selected && (btn.getAttribute('onclick') || '').includes("'"+selected+"'");
     btn.classList.toggle('on', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
 }
 
@@ -1428,5 +1443,6 @@ try{
   });
 })();
 </script>
+<script src="js/auth-ui.js?v=20260918-botones-1"></script>
 </body>
 </html>
