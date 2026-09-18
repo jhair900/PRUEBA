@@ -891,19 +891,21 @@
 <script src="js/gemini-client.js?v=20260915-directo-1"></script>
 <script src="js/document-extraction.js?v=20260917-criterios-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
+<link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
 <body>
 
 <!-- ── Header ──────────────────────────────────────────────────── -->
-<header class="header">
+<header class="header autocor-topbar">
   <div class="header-brand">
     <img src="assets/logo.png" alt="AUTOCOR" onerror="this.style.display='none'">
     <div class="header-sep"></div>
     <div class="header-title">Contratos</div>
   </div>
   <div class="header-user">
+    <nav id="autocorAccountControls" aria-label="Cuenta de usuario"></nav>
     <span id="headerName" class="header-name"></span>
-    <button type="button" class="btn-back" onclick="window.location.href='index.html'" aria-label="Inicio" title="Inicio">
+    <button type="button" class="btn-back autocor-home" onclick="window.location.href='index.html'" aria-label="Inicio" title="Inicio">
       <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
       <span class="btn-label">Inicio</span>
     </button>
@@ -913,7 +915,7 @@
     </button>
   </div>
 </header>
-<nav id="autocorAccountControls" aria-label="Cuenta de usuario"></nav>
+<div class="toolbar-wrap autocor-contract-toolbar" aria-label="Usuario actual"></div>
 
 <!-- ── Main ────────────────────────────────────────────────────── -->
 <main class="main">
@@ -6550,6 +6552,6 @@ async function validarTodoEnConjunto(){
   });
 })();
 </script>
-<script src="js/auth-ui.js?v=20260918-botones-1"></script>
+<script src="js/auth-ui.js?v=20260918-barra-2"></script>
 </body>
 </html>

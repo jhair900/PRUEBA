@@ -82,8 +82,6 @@
     style.id = 'authUiStyles';
     style.textContent = [
       '.auth-ui-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;box-sizing:border-box}',
-      '.toolbar-wrap>.auth-ui-bar{border-top:1px solid #d1d5db;padding-top:10px;margin-top:2px}',
-      '#autocorAccountControls{padding:12px 24px;background:#fff;border-bottom:1px solid #e5e7eb}',
       '@media print{.auth-ui-bar,#autocorAccountControls,.auth-ui-modal-backdrop{display:none!important}}',
       '.auth-ui-spacer{flex:1 1 auto}',
       '.auth-ui-user{font-size:12px;font-weight:800;color:#374151;background:#f3f4f6;border:1px solid #d1d5db;border-radius:999px;padding:8px 12px;white-space:nowrap}',
@@ -105,7 +103,7 @@
       '.auth-ui-table{width:100%;border-collapse:collapse;font-size:12px}',
       '.auth-ui-table th,.auth-ui-table td{border-bottom:1px solid #e5e7eb;padding:9px;text-align:left}',
       '.auth-ui-table th{font-size:11px;text-transform:uppercase;color:#4b5563;background:#f9fafb}',
-      '@media(max-width:720px){.auth-ui-field{grid-template-columns:1fr}.auth-ui-user{width:100%;text-align:center}}'
+      '@media(max-width:720px){.auth-ui-field{grid-template-columns:1fr}}'
     ].join('\n');
     document.head.appendChild(style);
   }
@@ -124,6 +122,8 @@
       '<button type="button" id="authUiChange" class="'+buttonClass()+'" style="display:none">Cambiar clave</button>' +
       '<button type="button" id="authUiAdmin" class="'+buttonClass()+'" style="display:none">Admin usuarios</button>';
     host.appendChild(bar);
+    var userHost = document.querySelector('.toolbar-wrap');
+    if(userHost) userHost.prepend($('authUiCurrentUser'));
     hideLegacyButtons();
 
     $('authUiLogin').addEventListener('click', function(){ openModal('authUiLoginModal'); });
