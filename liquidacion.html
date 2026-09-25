@@ -631,7 +631,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
-<script src="js/api-client.js?v=20260915-directo-1"></script>
+<script src="js/api-client.js?v=20260924-2"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
@@ -1489,17 +1489,17 @@ let currentDocIsExisting = false;
 
 function nsKey(s){return "autocor_" + currentUser + "_" + s;}
 
-function saveAuthState(obj){
+function saveAuthState(obj, persist = true){
   authState = obj || null;
   currentUser = authState?.user || "";
   currentDisplayName = authState?.displayName || "";
   currentIsAdmin = !!authState?.isAdmin;
   authToken = authState?.token || "";
-  if(authState){
+  if(persist && authState){
     // Guardar con timestamp de login para expirar en 4 horas
     const toSave = {...authState, loginAt: authState.loginAt || Date.now()};
     localStorage.setItem("autocor_auth", JSON.stringify(toSave));
-  } else {
+  } else if(persist) {
     localStorage.removeItem("autocor_auth");
   }
   renderAuthUI();
@@ -2330,14 +2330,17 @@ async function buscarPlaca(placaRaw){
     return;
   }
 
+  const searchId = window.__liquidacionPlateSearchId = (window.__liquidacionPlateSearchId || 0) + 1;
   setStatus('BUSCANDO PLACA ' + placa + '...');
   let resp;
   try {
     resp = await apiCall("getByPlaca", { placa }, { auth:true, silent:true });
   } catch(e){
+    if(searchId !== window.__liquidacionPlateSearchId) return false;
     if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
     resp = { data: null };
   }
+  if(searchId !== window.__liquidacionPlateSearchId) return false;
   window.__loadedRecord = resp.data || null;
   if(resp.data){
     cargarFormularioDesdeData(resp.data, placa);
@@ -3117,11 +3120,12 @@ async function preparePrint(){
   const btnGuardar = document.getElementById('btnGuardarImprimir');
   if(btnGuardar) btnGuardar.disabled = true;
   let registroGuardado = false;
+  let placa = "";
   try{
     if(!requireUser()) return;
 
     const data = obtenerDatos();
-    const placa = upperTrim(data.placa);
+    placa = upperTrim(data.placa);
 
     if(!placa){
       alert("Debe ingresar la PLACA antes de generar los PDFs.");
@@ -3147,6 +3151,7 @@ async function preparePrint(){
     syncPrintValues();
     syncAutoBox();
 
+    if(window.AutoCorWork) window.AutoCorWork.assertSnapshot();
     // ── 1. PDF Saneamiento (solo si hay prints cargados) ──
     if(supportPrints.length > 0){
       try{
@@ -3164,14 +3169,16 @@ async function preparePrint(){
 
     // ── 2. PDF Liquidación (diálogo de impresión del navegador) ──
     setStatus('ABRIENDO DIÁLOGO DE IMPRESIÓN...');
-    __clearAfterPrint = true;
+    // Conservar el formulario incluso si el usuario cancela la impresión.
+    __clearAfterPrint = false;
     document.title = `LIQUIDACION (${placa})`;
-    renderQr(function(){
-      setTimeout(function(){
-        forceQrForPdf(function(){
-          window.print();
-        });
-      }, 400);
+    await new Promise(function(resolve, reject){
+      renderQr(function(){
+        setTimeout(function(){
+          try { forceQrForPdf(function(){ try { window.print(); resolve(); } catch(e){ reject(e); } }); }
+          catch(e){ reject(e); }
+        }, 400);
+      });
     });
   }catch(e){
     __clearAfterPrint = false;
@@ -3186,13 +3193,7 @@ async function preparePrint(){
         setStatus('ABRIENDO DIÁLOGO DE IMPRESIÓN...');
         __clearAfterPrint = false;
         document.title = `LIQUIDACION (${placa})`;
-        renderQr(function(){
-          setTimeout(function(){
-            forceQrForPdf(function(){
-              window.print();
-            });
-          }, 400);
-        });
+        await new Promise(function(resolve){ renderQr(function(){ setTimeout(function(){ forceQrForPdf(function(){ window.print(); resolve(); }); },400); }); });
       }
     }
   }finally{
@@ -4724,7 +4725,7 @@ document.addEventListener('paste', function(e){
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-weight:600;font-size:12px;">${label}</td>
-        <td style="font-family:monospace;font-size:12px;word-break:break-all;">${val || '<em style="color:#9ca3af;">sin dato</em>'}</td>
+        <td style="font-family:monospace;font-size:12px;word-break:break-all;">${escapeHtml(val) || '<em style="color:#9ca3af;">sin dato</em>'}</td>
         <td style="font-size:11.5px;color:${estadoColor};">${estado}</td>`;
       tbody.appendChild(tr);
     });
@@ -4739,7 +4740,7 @@ document.addEventListener('paste', function(e){
       const tr  = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-weight:600;font-size:12px;color:#374151;">${label}</td>
-        <td colspan="2" style="font-size:12px;color:${val?'#111827':'#9ca3af'};">${val || '<em>sin dato</em>'}</td>`;
+        <td colspan="2" style="font-size:12px;color:${val?'#111827':'#9ca3af'};">${escapeHtml(val) || '<em>sin dato</em>'}</td>`;
       tbody.appendChild(tr);
     });
 
@@ -4752,7 +4753,7 @@ document.addEventListener('paste', function(e){
         resumen.style.background = '#dcfce7';
         resumen.style.border     = '1px solid #86efac';
         resumen.style.color      = '#166534';
-        resumen.innerHTML = `✅ <strong>CUV leído correctamente</strong> — Placa: <strong>${placa}</strong> | Propietario: <strong>${prop}</strong><br><span style="font-size:11px;">Se detectaron <strong>${detectados}</strong> campo(s). Los campos vacíos del formulario serán completados.</span>`;
+        resumen.innerHTML = `✅ <strong>CUV leído correctamente</strong> — Placa: <strong>${escapeHtml(placa)}</strong> | Propietario: <strong>${escapeHtml(prop)}</strong><br><span style="font-size:11px;">Se detectaron <strong>${detectados}</strong> campo(s). Los campos vacíos del formulario serán completados.</span>`;
       } else {
         resumen.style.background = '#fef3c7';
         resumen.style.border     = '1px solid #fcd34d';
@@ -4835,23 +4836,9 @@ document.addEventListener('paste', function(e){
 })();
 </script>
 
-<script>
-/* ── Sincronización de sesión entre pestañas ──────────────────────
-   Si en otra pestaña se inicia o cierra sesión (cambia autocor_auth
-   en localStorage), esta pestaña se sincroniza recargando. Solo actúa
-   en transiciones login↔logout, no en renovaciones de token. */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){
-      // login o logout en otra pestaña → reflejar el cambio aquí
-      location.reload();
-    }
-  });
-})();
-</script>
+
+<script src="js/session-sync.js?v=20260924-2"></script>
+<script src="js/workflow.js?v=20260925-gris-2"></script>
+<script src="js/workflow-adapters.js?v=20260924-2"></script>
 </body>
 </html>

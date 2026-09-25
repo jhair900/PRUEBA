@@ -11,6 +11,8 @@
   }
 
   function setAuth(auth){
+    var previous = getAuth();
+    if(global.AutoCorWork && previous && (!auth || previous.user !== auth.user)) global.AutoCorWork.forget();
     if(typeof global.saveAuthState === 'function'){
       global.saveAuthState(auth || null);
     } else if(auth){
@@ -197,6 +199,7 @@
   }
 
   function render(){
+    if(global.AutoCorWork)global.AutoCorWork.refreshControls();
     var auth = getAuth();
     var logged = !!(auth && auth.token);
     hideLegacyButtons();
@@ -336,7 +339,7 @@
     if(!global.AutoCorApi) return;
     if(typeof global.saveAuthState === 'function' && !global.saveAuthState._authUiWrapped){
       var originalSave = global.saveAuthState;
-      global.saveAuthState = function(auth){ var result = originalSave(auth); render(); return result; };
+      global.saveAuthState = function(auth, persist){ var result = originalSave(auth, persist); render(); return result; };
       global.saveAuthState._authUiWrapped = true;
     }
     mountStyles();

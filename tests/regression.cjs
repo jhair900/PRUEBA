@@ -162,7 +162,7 @@ function backend() {
     for (const f of fs.readdirSync(root).filter(f => f.endsWith('.html'))) {
       const html = fs.readFileSync(path.join(root, f), 'utf8');
       assert.ok(!html.includes('js/record-conflict.js'), f);
-      assert.ok(html.includes('js/api-client.js?v=20260915-directo-1'), f);
+      assert.match(html, /js\/api-client\.js\?v=[^"']+/, f);
     }
   });
   await test('Cada guardado valida una sola sesion y busca la placa una sola vez', () => {

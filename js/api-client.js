@@ -166,18 +166,31 @@
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : defaultTimeout;
     let lastError;
     const requestStartedAt = Date.now();
+    // Un único presupuesto incluye intentos, pausas y confirmación de escritura.
+    const totalTimeoutMs = Number.isFinite(options.totalTimeoutMs) ? Math.max(1, options.totalTimeoutMs) : saving ? 90000 : Math.max(timeoutMs, 60000);
+    const remainingMs = function(){ return Math.max(0, totalTimeoutMs - (Date.now() - requestStartedAt)); };
+    function progress(message, done){
+      if(saving && global.dispatchEvent && typeof CustomEvent === 'function'){
+        global.dispatchEvent(new CustomEvent('autocor-save-progress', {detail:{message:message, done:!!done}}));
+      }
+    }
     const traces = [];
     function recordTiming(outcome, json){
+      progress('', true);
       const timing = {action:body.action, elapsedMs:Date.now()-requestStartedAt,
         attempts:traces.filter(function(t){ return t.kind === 'request'; }).length,
         outcome:outcome, server:json && json.timing || null, details:traces};
       global.AutoCorApi.lastTiming = timing;
       if(saving) global.AutoCorApi.lastSaveTiming = timing;
+      if(global.dispatchEvent && typeof CustomEvent === 'function') global.dispatchEvent(new CustomEvent('autocor-timing',{detail:timing}));
       if(global.console) global.console.info('[AUTOCOR tiempo]', timing);
     }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const trace = {kind:'request', attempt:attempt+1, timeoutMs:timeoutMs};
+      if(remainingMs() <= 0) break;
+      progress(attempt ? 'Reintentando el guardado…' : 'Guardando los datos…');
+      const attemptTimeout = Math.min(timeoutMs, remainingMs());
+      const trace = {kind:'request', attempt:attempt+1, timeoutMs:attemptTimeout};
       traces.push(trace);
       try {
         const resp = await fetchWithTimeout(freshRequestUrl(url, attempt), {
@@ -187,7 +200,7 @@
           cache: 'no-store',
           credentials: 'omit',
           redirect: 'follow'
-        }, timeoutMs, trace);
+        }, attemptTimeout, trace);
         const json = await parseJsonResponse(resp, options.context, options);
         trace.server = json && json.timing || null;
         recordTiming(json && json.ok === false ? 'api_error' : 'success', json);
@@ -202,13 +215,14 @@
 
         // Una respuesta perdida no implica que Sheets no haya guardado.
         // Confirmar el identificador antes de repetir la escritura.
-        if(saving && !(err && (err.isApiError || err.isNonRetryable))){
+        if(saving && remainingMs() > 0 && !(err && (err.isApiError || err.isNonRetryable))){
+          progress('Verificando si el servidor ya guardó los datos…');
           const readAction = {save:'getByPlaca', savePago:'getPagoByPlaca', saveVenta:'getVentaByPlaca', saveContrato:'getContratoByPlaca'}[body.action];
           const verification = {kind:'verification', elapsedMs:0, confirmed:false};
           traces.push(verification);
           const verificationStarted = Date.now();
           try {
-            const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:30000, throwOnApiError:false});
+            const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:Math.min(30000, remainingMs()), totalTimeoutMs:remainingMs(), throwOnApiError:false});
             verification.elapsedMs = Date.now()-verificationStarted;
             verification.server = check && check.timing || null;
             verification.details = global.AutoCorApi.lastTiming && global.AutoCorApi.lastTiming.details || [];
@@ -224,9 +238,10 @@
         }
         if (err && (err.isApiError || err.isNonRetryable)) break;
         if (attempt >= retries) break;
+        if (remainingMs() <= 0) break;
 
         const backoffMs = 700 * Math.pow(2, attempt); // 700ms, 1400ms, 2800ms...
-        await new Promise(function(resolve){ setTimeout(resolve, backoffMs); });
+        await new Promise(function(resolve){ setTimeout(resolve, Math.min(backoffMs, remainingMs())); });
       }
     }
 
@@ -236,6 +251,9 @@
     }
 
     recordTiming('failed', null);
+    if(saving && lastError && !lastError.isApiError && !lastError.isNonRetryable){
+      lastError.message = (options.context ? options.context + ': ' : '') + 'No se pudo confirmar el guardado. El servidor podría haberlo completado. Conserva el formulario y verifica la placa antes de volver a guardar.';
+    }
     throw lastError;
   }
 

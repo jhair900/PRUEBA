@@ -387,7 +387,7 @@
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
-<script src="js/api-client.js?v=20260915-directo-1"></script>
+<script src="js/api-client.js?v=20260924-2"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
@@ -661,12 +661,12 @@ function renderAuthUI(){
   actualizarInfoHeader();
 }
 
-function saveAuthState(obj){
+function saveAuthState(obj, persist = true){
   authState = obj || null;
   currentUser = authState?.user || "";
   authToken   = authState?.token || "";
-  if(authState) localStorage.setItem("autocor_auth", JSON.stringify(authState));
-  else localStorage.removeItem("autocor_auth");
+  if(persist && authState) localStorage.setItem("autocor_auth", JSON.stringify(authState));
+  else if(persist) localStorage.removeItem("autocor_auth");
   renderAuthUI();
 }
 
@@ -1248,13 +1248,16 @@ async function buscarPorPlaca(placa){
   requireUser();
   const placaNorm = normalizeValue(placa);
   if(!placaNorm) return;
+  const searchId = window.__ventasPlateSearchId = (window.__ventasPlateSearchId || 0) + 1;
   setStatus('BUSCANDO CUADRO POR PLACA...');
   let resp;
   try { resp = await apiCall('getVentaByPlaca', { placa: placaNorm }); }
   catch(e){
+    if(searchId !== window.__ventasPlateSearchId) return false;
     if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
     resp = { data: null };
   }
+  if(searchId !== window.__ventasPlateSearchId) return false;
   if(resp.data){
     cargarFormularioVenta(resp.data);
     setStatus('CUADRO CARGADO', false, true);
@@ -1305,6 +1308,7 @@ async function guardarYExportarTodo(){
     const conPrints   = supportPrints.length > 0;
     const conTerceros = terceros.length > 0;
     setStatus('CUADRO GUARDADO. PREPARANDO IMÁGENES...');
+    if(window.AutoCorWork) window.AutoCorWork.assertSnapshot();
     await exportarImagenes(placa);
     setStatus(
       (conPrints || conTerceros)
@@ -1427,24 +1431,10 @@ try{
   }
 }catch(_){}
 </script>
-<script>
-/* ── Sincronización de sesión entre pestañas ──────────────────────
-   Si en otra pestaña se inicia o cierra sesión (cambia autocor_auth
-   en localStorage), esta pestaña se sincroniza recargando. Solo actúa
-   en transiciones login↔logout, no en renovaciones de token. */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){
-      // login o logout en otra pestaña → reflejar el cambio aquí
-      location.reload();
-    }
-  });
-})();
-</script>
-<script src="js/auth-ui.js?v=20260918-barra-2"></script>
+
+<script src="js/auth-ui.js?v=20260925-admin-1"></script>
+<script src="js/session-sync.js?v=20260924-2"></script>
+<script src="js/workflow.js?v=20260925-gris-2"></script>
+<script src="js/workflow-adapters.js?v=20260924-2"></script>
 </body>
 </html>

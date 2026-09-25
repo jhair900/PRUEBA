@@ -388,7 +388,7 @@
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
-<script src="js/api-client.js?v=20260915-directo-1"></script>
+<script src="js/api-client.js?v=20260924-2"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
@@ -669,12 +669,12 @@ function renderAuthUI(){
   actualizarInfoHeader();
 }
 
-function saveAuthState(obj){
+function saveAuthState(obj, persist = true){
   authState = obj || null;
   currentUser = authState?.user || "";
   authToken = authState?.token || "";
-  if(authState) localStorage.setItem("autocor_auth", JSON.stringify(authState));
-  else localStorage.removeItem("autocor_auth");
+  if(persist && authState) localStorage.setItem("autocor_auth", JSON.stringify(authState));
+  else if(persist) localStorage.removeItem("autocor_auth");
   renderAuthUI();
 }
 
@@ -1031,13 +1031,16 @@ async function buscarPorPlaca(placa){
   requireUser();
   const placaNormalizada = normalizeValue(placa);
   if(!placaNormalizada) return;
+  const searchId = window.__pagosPlateSearchId = (window.__pagosPlateSearchId || 0) + 1;
   setStatus('BUSCANDO CUADRO POR PLACA...');
   let resp;
   try { resp = await apiCall('getPagoByPlaca', { placa: placaNormalizada }); }
   catch(e){
+    if(searchId !== window.__pagosPlateSearchId) return false;
     if(!/no existe registro/i.test(String(e && e.message || ''))) throw e;
     resp = { data: null };
   }
+  if(searchId !== window.__pagosPlateSearchId) return false;
   if(resp.data){
     cargarFormularioPago(resp.data);
     setStatus('CUADRO CARGADO', false, true);
@@ -1468,6 +1471,7 @@ async function guardarYExportarTodo(){
     const placa = await guardarCuadroEnLinea();
     const conPrints = supportPrints.length > 0;
     setStatus(conPrints ? 'CUADRO GUARDADO. PREPARANDO ZIP...' : 'CUADRO GUARDADO. PREPARANDO IMAGEN...');
+    if(window.AutoCorWork) window.AutoCorWork.assertSnapshot();
     await exportarImagenes(placa);
     setStatus(
       conPrints
@@ -1614,18 +1618,10 @@ function setColor(thId, colorClass){
   </div>
 </div>
 
-<script>
-/* Sincronización de sesión entre pestañas */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){ location.reload(); }
-  });
-})();
-</script>
-<script src="js/auth-ui.js?v=20260918-barra-2"></script>
+
+<script src="js/auth-ui.js?v=20260925-admin-1"></script>
+<script src="js/session-sync.js?v=20260924-2"></script>
+<script src="js/workflow.js?v=20260925-gris-2"></script>
+<script src="js/workflow-adapters.js?v=20260924-2"></script>
 </body>
 </html>

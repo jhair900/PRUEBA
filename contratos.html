@@ -887,10 +887,11 @@
 </style>
 <script src="js/api-config.js?v=20260904-2"></script>
 <script src="js/apps-script-transport.js?v=20260915-respaldo-1"></script>
-<script src="js/api-client.js?v=20260915-directo-1"></script>
+<script src="js/api-client.js?v=20260924-2"></script>
 <script src="js/gemini-client.js?v=20260915-directo-1"></script>
 <script src="js/document-extraction.js?v=20260918-enie-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
+<style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}</style>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
 </head>
 <body>
@@ -1532,7 +1533,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js"></script>
 <script src="js/contrato-templates.js?v=20260909-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20260918-enie-1"></script>
+<script src="js/generador-contratos.js?v=20260924-2"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1785,8 +1786,9 @@ async function getTesseractWorker(){
 }
 
 /* ── Spinner helpers ──────────────────────────────────────────── */
-function showSpinner(msg){ document.getElementById('spinnerOverlay').classList.add('open'); spinnerMsg(msg||'Procesando...'); setSpinnerBar(0); }
-function hideSpinner(){ document.getElementById('spinnerOverlay').classList.remove('open'); setSpinnerBar(0); }
+let documentReadStarted = null;
+function showSpinner(msg){ documentReadStarted=performance.now(); document.getElementById('spinnerOverlay').classList.add('open'); spinnerMsg(msg||'Procesando...'); setSpinnerBar(0); }
+function hideSpinner(){ document.getElementById('spinnerOverlay').classList.remove('open'); setSpinnerBar(0); if(documentReadStarted!==null){window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'Lectura y validación de documento (IA/OCR/PDF)',elapsedMs:Math.round(performance.now()-documentReadStarted),local:true}}));documentReadStarted=null;} }
 function spinnerMsg(t){ const el=document.getElementById('spinnerText'); if(el) el.textContent=t; }
 function setSpinnerBar(pct){ const el=document.getElementById('spinnerBar'); if(el) el.style.width=Math.min(100,pct)+'%'; }
 
@@ -3971,6 +3973,7 @@ function renderResultsSection(){
 
   // ── Validación cruzada entre documentos ──
   renderValidacionCruzada();
+  window.dispatchEvent(new Event('autocor-draft-changed'));
 }
 
 function countDetected(d, fields){
@@ -4502,7 +4505,7 @@ function renderValidacionCruzada(){
     if(r.estado === 'pending' && r.valores.length === 0 && r.noDetectados.length === 0) continue;
 
     html += '<div class="vc-row">';
-    html += '<div class="vc-row-field">'+escHtml(r.label)+'</div>';
+    html += '<div class="vc-row-field">'+escHtml(r.label)+(r.estado==='diff'||r.estado==='majority'?' · Revisa los campos señalados':'')+'</div>';
     html += '<div class="vc-sources">';
 
     const coinSet = new Set(r.coincidentes || []);
@@ -4558,6 +4561,24 @@ function renderValidacionCruzada(){
 
   html += '</div>';
   cont.innerHTML = html;
+  // Señalar solo los campos que requieren revisión, sin aceptar automáticamente la mayoría.
+  const aliases = {
+    propietario:['propietario','nombrePropietario','apellidos','nombres','nombreCompleto','razonSocial'],
+    identificacionPropietario:['numeroRuc','cedulaRuc','identificacionPropietario','cedula','numeroCedula'],
+    representanteLegal:['representanteLegal','apellidos','nombres'],
+    cedulaRepresentante:['cedulaRepresentante','numeroCedula'],cedulaConyuge:['numeroCedula'],
+    fechaSufragioProp:['fechaSufragio'],fechaSufragioCony:['fechaSufragio'],
+    chasis:['chasis','serialChasis'],motor:['motor','numeroMotor']
+  };
+  const inputs = [...document.querySelectorAll('.f-input[data-tipo],.f-textarea[data-tipo]')];
+  inputs.forEach(function(input){input.closest('.f-item').classList.remove('vc-needs-review');});
+  resultados.filter(function(r){return r.estado==='diff'||r.estado==='majority';}).forEach(function(r){
+    const keys=aliases[r.campo]||[r.campo];
+    inputs.filter(function(input){return (r.sospechosos||[]).includes(input.dataset.tipo)&&keys.includes(input.dataset.key);}).forEach(function(input){
+      const item=input.closest('.f-item');item.classList.add('vc-needs-review');
+      input.title='Revisar '+r.label+': '+r.mensaje;
+    });
+  });
 }
 
 function buildBlock(cfg, d){
@@ -4670,6 +4691,13 @@ function buildBlock(cfg, d){
           '</div>';
       }
 
+      const evidence = document.createElement('button');
+      evidence.type = 'button';
+      evidence.textContent = state === 'warn' || !val ? 'Revisar este dato en el documento' : 'Ver documento de respaldo';
+      evidence.style.cssText = 'border:0;background:transparent;color:#1d4ed8;font-size:11px;cursor:pointer;text-align:left;padding:6px 0';
+      evidence.onclick = function(){ window.verRespaldoContrato(cfg.tipo, f.key, f.label); };
+      item.appendChild(evidence);
+      if(state === 'warn') item.style.background = '#fff7ed';
       grid.appendChild(item);
     }
     body.appendChild(grid);
@@ -5872,8 +5900,8 @@ async function validarTodoEnConjunto(){
     btn.innerHTML = '⏳ Generando...';
 
     try{
-      // 1️⃣ Generar y descargar los .docx
-      var generationResult = generarContratos(extra);
+      // Preparar los documentos en memoria; descargar después de confirmar el guardado.
+      var generationResult = generarContratos(extra, {download:false});
 
       // 2️⃣ Guardar automáticamente en la hoja de cálculo (2x1)
       btn.innerHTML = '💾 Guardando en hoja...';
@@ -5881,6 +5909,11 @@ async function validarTodoEnConjunto(){
       if(typeof window._autoGuardarConContrato === 'function'){
         saveResult = await window._autoGuardarConContrato(extra);
       }
+      if(!saveResult || !saveResult.ok){
+        throw new Error('No se descargaron los contratos porque no se confirmó el guardado. '+((saveResult && saveResult.message)||'Verifica tu sesión.'));
+      }
+      if(window.AutoCorWork) window.AutoCorWork.assertSnapshot();
+      window.descargarContratosGenerados(generationResult);
 
       // 2.5️⃣ Subir expediente físico a Drive (cédulas, matrícula,
       // notaría, CUV y contratos generados como PDF)
@@ -5891,6 +5924,7 @@ async function validarTodoEnConjunto(){
           driveResult = await window._subirExpedienteADrive(saveResult.placa);
         } catch(eDrive){
           console.warn('[Drive] error subiendo expediente:', eDrive);
+          driveResult = {ok:false, message:eDrive.message || 'No se pudo confirmar la subida a Drive.'};
         }
       }
 
@@ -5904,16 +5938,20 @@ async function validarTodoEnConjunto(){
         if(driveResult && driveResult.ok && driveResult.folderUrl){
           var oks = (driveResult.archivos||[]).filter(function(a){ return a.ok; }).length;
           driveLine = '<div style="margin-top:8px;font-size:12px">📁 '+oks+' archivo(s) subidos a Drive · '
-            + '<a href="'+driveResult.folderUrl+'" target="_blank" style="color:#166534;font-weight:700;text-decoration:underline">'
+            + '<a href="'+escHtml(driveResult.folderUrl)+'" target="_blank" rel="noopener noreferrer" style="color:#166534;font-weight:700;text-decoration:underline">'
             + 'Ver carpeta del expediente</a></div>';
+          var fallidos = (driveResult.archivos||[]).filter(function(a){ return !a.ok; });
+          if(fallidos.length){
+            driveLine += '<div style="margin-top:8px;font-size:12px;color:#92400e">⚠ Drive: '+fallidos.length+' archivo(s) no se subieron. Revisa: '+fallidos.map(function(a){ return escHtml(a.nombre||'archivo'); }).join(', ')+'.</div>';
+          }
         } else if(driveResult && !driveResult.ok){
-          driveLine = '<div style="margin-top:8px;font-size:12px;color:#92400e">⚠ Drive: '+(driveResult.message||'no se pudo subir')+'</div>';
+          driveLine = '<div style="margin-top:8px;font-size:12px;color:#92400e">⚠ Drive: '+escHtml(driveResult.message||'no se pudo subir')+'</div>';
         }
         var generationLine = generationResult && generationResult.pendienteEncargoJuridico
           ? '<div style="margin-top:8px;font-size:12px;color:#92400e">Pendiente: falta suministrar el formato de Encargo Fiduciario para persona jurídica.</div>'
           : '';
         var totalGenerados = generationResult && generationResult.generados ? generationResult.generados.length : 0;
-        errorEl.innerHTML = '✓ '+totalGenerados+' documento(s) descargado(s) y datos guardados (placa '+saveResult.placa+').'
+        errorEl.innerHTML = '✓ '+totalGenerados+' documento(s) descargado(s) y datos guardados (placa '+escHtml(saveResult.placa)+').'
           + generationLine
           + driveLine
           + '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
@@ -5946,20 +5984,6 @@ async function validarTodoEnConjunto(){
           errorEl.removeAttribute('style');
           errorEl.style.display = 'none';
         };
-      } else {
-        // Descarga OK pero guardado falló (o sin sesión)
-        var msg = (saveResult && saveResult.message) || 'sesión no detectada';
-        errorEl.className = 'gen-error';
-        errorEl.style.background = '#fef3c7';
-        errorEl.style.borderColor = '#fbbf24';
-        errorEl.style.color = '#92400e';
-        errorEl.textContent = '⚠ Contratos descargados, pero NO se guardó en la hoja ('+msg+').';
-        errorEl.style.display = 'block';
-        setTimeout(function(){
-          cerrarModalGenerarContratos();
-          errorEl.removeAttribute('style');
-          errorEl.style.display = 'none';
-        }, 2800);
       }
     }catch(err){
       errorEl.textContent = err.message || 'Error al generar los contratos.';
@@ -6379,6 +6403,30 @@ async function validarTodoEnConjunto(){
 
 })();
 
+// Interfaz explícita para recuperar borradores sin exponer el estado interno mutable.
+window.AutoCorContractDraft = {
+  label: function(tipo){ return TIPO_LABEL_VC[tipo] || tipo; },
+  capture: function(){ return {data:structuredClone(datos),flow:structuredClone(flujoContrato),images:structuredClone(pastedImages),cuv:cuvDatosCompleto,cuvOriginal:window._cuvOriginalBase64||''}; },
+  restore: function(s){
+    Object.keys(pastedImages).forEach(function(tipo){ ['frontal','reverso'].forEach(function(lado){
+      if(s.images && s.images[tipo] && s.images[tipo][lado]) _setPasteImage(tipo,lado,s.images[tipo][lado]);
+      else _removePaste(tipo,lado);
+    }); });
+    Object.keys(datos).forEach(function(k){datos[k]=s.data[k]||null;});
+    Object.assign(flujoContrato,s.flow);
+    cuvDatosCompleto=s.cuv||null;window._cuvOriginalBase64=s.cuvOriginal||'';
+    document.querySelectorAll('[data-flow-field]').forEach(function(button){
+      var active=flujoContrato[button.dataset.flowField]===button.dataset.flowValue;
+      button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
+    });
+    _actualizarInicioFlujo();
+    if(s.flow.operacion && s.flow.tipoPersona)document.getElementById('flowStart').click();
+    _aplicarFlujoDocumental();renderResultsSection();
+    domicilioContratoPlaca=String((s.data.cuv||{}).placa || (s.data.matricula||{}).placa || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    window._contratosValidacionCompletada=false;
+  }
+};
+
 })();
 
 /* ══════════════════════════════════════════════════════════════════
@@ -6515,6 +6563,8 @@ async function validarTodoEnConjunto(){
 
     if(archivos.length === 0) return { ok:false, message:'sin archivos para subir' };
 
+    if(window.AutoCorWork) return window.AutoCorWork.sendDrive(placa, archivos);
+
     var GAS_URL = AutoCorConfig.apiUrl;
     try {
       var json = await AutoCorApi.postJson(GAS_URL, {
@@ -6534,24 +6584,10 @@ async function validarTodoEnConjunto(){
   };
 })();
 </script>
-<script>
-/* ── Sincronización de sesión entre pestañas ──────────────────────
-   Si en otra pestaña se inicia o cierra sesión (cambia autocor_auth
-   en localStorage), esta pestaña se sincroniza recargando. Solo actúa
-   en transiciones login↔logout, no en renovaciones de token. */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){
-      // login o logout en otra pestaña → reflejar el cambio aquí
-      location.reload();
-    }
-  });
-})();
-</script>
-<script src="js/auth-ui.js?v=20260918-barra-2"></script>
+
+<script src="js/auth-ui.js?v=20260925-admin-1"></script>
+<script src="js/session-sync.js?v=20260924-2"></script>
+<script src="js/workflow.js?v=20260925-gris-2"></script>
+<script src="js/workflow-adapters.js?v=20260924-2"></script>
 </body>
 </html>

@@ -249,7 +249,8 @@
 
   /* ── Función principal ───────────────────────────────────────── */
 
-  function generarContratos(extra){
+  function generarContratos(extra, options){
+    options = options || {};
     var templates = global.CONTRATO_TEMPLATES;
     if(!templates){
       throw new Error('Plantillas no cargadas. Asegúrate de incluir contrato-templates.js.');
@@ -285,14 +286,14 @@
     if(templates[encKey]){
       var bufEnc = generarDocx(templates[encKey], vars);
       var nomEnc = 'Encargo_Fiduciario_'+placa+'_'+fecha+'.docx';
-      descargarDocx(bufEnc, nomEnc);
+      if(options.download !== false) descargarDocx(bufEnc, nomEnc);
       generados.push({ tipo:'encargo', nombre: nomEnc, buffer: bufEnc, casado: casado });
     }
 
     // 2. Contrato Prestación de Servicios
     var bufPre = generarDocx(templates[preKey], vars);
     var nomPre = 'Prestacion_Servicios_'+placa+'_'+fecha+'.docx';
-    descargarDocx(bufPre, nomPre);
+    if(options.download !== false) descargarDocx(bufPre, nomPre);
     generados.push({ tipo:'prestacion', nombre: nomPre, buffer: bufPre });
 
     // Exponer los buffers para que contratos.html pueda subirlos a Drive
@@ -320,6 +321,7 @@
 
   /* ── Exponer ─────────────────────────────────────────────────── */
   global.generarContratos     = generarContratos;
+  global.descargarContratosGenerados = function(result){ (result.generados || []).forEach(function(g){ descargarDocx(g.buffer, g.nombre); }); };
   global._valorATextoHelper   = valorATexto;
   global._docxBufferToBase64  = bufferToBase64;
 
