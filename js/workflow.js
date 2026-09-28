@@ -159,7 +159,27 @@
       const row=document.createElement('p');
       const server=t.server && t.server.serverMs;
       row.textContent=t.action+': '+(t.elapsedMs/1000).toFixed(1)+' s'+(server!=null?' · servidor: '+(server/1000).toFixed(2)+' s':'')+(t.attempts?' · intentos: '+t.attempts:'')+(t.outcome?' · '+t.outcome:'');host.appendChild(row);
-      if(t.details){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Ver etapas';details.appendChild(summary);t.details.forEach(d=>{const p=document.createElement('p');p.textContent=(d.kind==='verification'?'Verificación':'Solicitud')+': conexión/respuesta '+seconds(d.headersMs)+'; lectura '+seconds(d.bodyMs)+'; bloqueo servidor '+seconds(d.server&&d.server.lockWaitMs)+'; proceso '+seconds(d.server&&d.server.processingMs)+'; escritura '+seconds(d.server&&d.server.flushMs)+(d.errorType?' · '+d.errorType:'');details.appendChild(p);});host.appendChild(details);}
+      if(t.details){
+        const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Ver etapas';details.appendChild(summary);
+        function addTrace(d, nested){
+          const p=document.createElement('p');
+          p.textContent=(nested?'↳ ':'')+(d.kind==='verification'?'Verificación':'Solicitud')+': conexión/respuesta '+seconds(d.headersMs)+'; lectura '+seconds(d.bodyMs)+'; bloqueo servidor '+seconds(d.server&&d.server.lockWaitMs)+'; proceso '+seconds(d.server&&d.server.processingMs)+'; escritura '+seconds(d.server&&d.server.flushMs);
+          details.appendChild(p);
+          const technical=[];
+          if(d.transport)technical.push('Canal: '+d.transport);
+          if(d.httpStatus!=null)technical.push('HTTP: '+d.httpStatus);
+          if(d.failedStage)technical.push('Etapa del fallo: '+d.failedStage);
+          if(d.timedOut)technical.push('Se agotó el tiempo de espera.');
+          if(d.error)technical.push(d.error.name+(d.error.code!=null?' (código '+d.error.code+')':'')+': '+d.error.message);
+          else if(d.errorType)technical.push(d.errorType);
+          if(d.bridgeError)technical.push('Apertura del canal: '+d.bridgeError.message);
+          if(d.bridgeUnavailable)technical.push('Canal directo no disponible; respaldo HTTP.');
+          if(d.channelRecovery)technical.push(d.channelRecovery);
+          if(technical.length){const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f9;padding:8px';pre.textContent=technical.join('\n');details.appendChild(pre);}
+          (d.details||[]).forEach(child=>addTrace(child,true));
+        }
+        t.details.forEach(d=>addTrace(d,false));host.appendChild(details);
+      }
     });
   }
   async function sendDrive(plate, files){

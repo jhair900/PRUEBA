@@ -18,6 +18,17 @@
   function shortPreview(text){
     return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 180);
   }
+  function errorDetails(error, body){
+    const original=error && error.cause || error || {};
+    let message=String(original.message || error && error.message || 'Error sin mensaje');
+    ['sessionToken','password','currentPassword','newPassword'].forEach(function(key){
+      const secret=body && body[key];
+      if(secret)message=message.split(String(secret)).join('[oculto]');
+    });
+    message=message.replace(/(Bearer\s+)[^\s"'<>]+/gi,'$1[oculto]')
+      .replace(/([?&](?:key|token|sessionToken|password)=)[^&\s"'<>]+/gi,'$1[oculto]');
+    return {name:original.name || 'Error',code:original.code == null ? null : original.code,message:message.slice(0,1200)};
+  }
 
   function freshRequestUrl(url, attempt){
     const separator = String(url).indexOf('?') >= 0 ? '&' : '?';
@@ -183,7 +194,11 @@
       global.AutoCorApi.lastTiming = timing;
       if(saving) global.AutoCorApi.lastSaveTiming = timing;
       if(global.dispatchEvent && typeof CustomEvent === 'function') global.dispatchEvent(new CustomEvent('autocor-timing',{detail:timing}));
-      if(global.console) global.console.info('[AUTOCOR tiempo]', timing);
+      if(global.console){
+        let admin=false;try{admin=!!JSON.parse(global.localStorage.getItem('autocor_auth')||'null')?.isAdmin;}catch(_){}
+        global.console.info('[AUTOCOR tiempo]', admin ? timing : {action:timing.action,elapsedMs:timing.elapsedMs,outcome:timing.outcome});
+      }
+      return timing;
     }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -203,12 +218,16 @@
         }, attemptTimeout, trace);
         const json = await parseJsonResponse(resp, options.context, options);
         trace.server = json && json.timing || null;
+        if(json && json.ok===false)trace.error=errorDetails({name:'ApiError',code:json.code,message:json.message},body);
         recordTiming(json && json.ok === false ? 'api_error' : 'success', json);
         return json;
       } catch (err) {
         // Error de red (nunca llego respuesta) vs. error ya identificado
         // por parseJsonResponse (isApiError / isNonRetryable).
-        trace.errorType = err.code || err.name || 'Error';
+        trace.error=errorDetails(err,body);
+        trace.errorType = trace.error.name;
+        if(err.response && err.response.timing)trace.server=err.response.timing;
+        trace.failedStage=trace.failedStage || 'response';
         trace.serviceUnavailable = !!err.isServiceUnavailable;
         const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
         lastError = isKnown ? err : wrapNetworkError(err, options.context, url, saving);
@@ -233,7 +252,9 @@
             }
           } catch (verifyError) {
             verification.elapsedMs = Date.now()-verificationStarted;
-            verification.errorType = verifyError.code || verifyError.name || 'Error';
+            verification.error=errorDetails(verifyError,body);
+            verification.errorType = verification.error.name;
+            verification.details=verifyError.timing && verifyError.timing.details || [];
           }
         }
         if (err && (err.isApiError || err.isNonRetryable)) break;
@@ -250,9 +271,12 @@
       lastServiceError = lastError;
     }
 
-    recordTiming('failed', null);
+    const failedTiming=recordTiming('failed', lastError && lastError.response);
+    if(lastError)lastError.timing=failedTiming;
     if(saving && lastError && !lastError.isApiError && !lastError.isNonRetryable){
       lastError.message = (options.context ? options.context + ': ' : '') + 'No se pudo confirmar el guardado. El servidor podría haberlo completado. Conserva el formulario y verifica la placa antes de volver a guardar.';
+    }else if(lastError && !lastError.isApiError){
+      lastError.message='No se pudo completar la consulta. Revisa tu conexión e intenta de nuevo. Si persiste, informa al administrador.';
     }
     throw lastError;
   }
