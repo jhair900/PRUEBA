@@ -2287,12 +2287,16 @@ async function ocrFileSimpleLegacy(file, tipo){
  * consultado el 2026-05-08. Se separa:
  * - catálogo amplio de modelos visibles en la API
  * - cola real para documentos solo con modelos compatibles con imagen+texto */
+// RPD de referencia del proyecto (captura del usuario); listModels no informa cuota restante.
 const GEMINI_MODEL_CATALOG = [
-  { id:'gemini-3.1-flash-lite', label:'Gemini 3.1 Flash Lite', kind:'doc-vision', priority:10 },
+  { id:'gemini-3.5-flash-lite', label:'Gemini 3.5 Flash Lite', kind:'doc-vision', rpd:500, priority:5 },
+  { id:'gemini-3.5-flash', label:'Gemini 3.5 Flash', kind:'doc-vision', rpd:20, priority:25 },
+  { id:'gemini-3.8-flash', label:'Gemini 3.8 Flash', kind:'doc-vision', rpd:20, priority:26 },
+  { id:'gemini-3.1-flash-lite', label:'Gemini 3.1 Flash Lite', kind:'doc-vision', rpd:500, priority:10 },
   { id:'gemini-3.1-flash-lite-preview', label:'Gemini 3.1 Flash Lite Preview', kind:'doc-vision', priority:20 },
-  { id:'gemini-3-flash-preview', label:'Gemini 3 Flash Preview', kind:'doc-vision', priority:30 },
-  { id:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash Lite', kind:'doc-vision', priority:40 },
-  { id:'gemini-2.5-flash', label:'Gemini 2.5 Flash', kind:'doc-vision', priority:50 },
+  { id:'gemini-3-flash-preview', label:'Gemini 3 Flash Preview', kind:'doc-vision', rpd:20, priority:30 },
+  { id:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash Lite', kind:'doc-vision', rpd:20, priority:40 },
+  { id:'gemini-2.5-flash', label:'Gemini 2.5 Flash', kind:'doc-vision', rpd:20, priority:50 },
   { id:'gemini-2.0-flash-lite', label:'Gemini 2.0 Flash-Lite', kind:'doc-vision', priority:60 },
   { id:'gemini-2.0-flash', label:'Gemini 2.0 Flash', kind:'doc-vision', priority:70 },
   { id:'gemini-2.5-flash-lite-preview-09-2025', label:'Gemini 2.5 Flash Lite Preview 09-2025', kind:'doc-vision', priority:80 },
@@ -2317,7 +2321,7 @@ const GEMINI_MODEL_CATALOG = [
 const GEMINI_MODELS_ALL = GEMINI_MODEL_CATALOG.map(function(entry){ return entry.id; });
 const GEMINI_MODELS_FALLBACK = GEMINI_MODEL_CATALOG
   .filter(function(entry){ return entry.kind === 'doc-vision'; })
-  .sort(function(a,b){ return a.priority - b.priority; })
+  .sort(function(a,b){ return (b.rpd || 0) - (a.rpd || 0) || a.priority - b.priority; })
   .map(function(entry){ return entry.id; });
 let   GEMINI_MODEL_ACTIVE = GEMINI_MODELS_FALLBACK[0];
 let   GEMINI_LAST_OK_MODEL = '';
@@ -2344,7 +2348,8 @@ function geminiFetch(url, init){
 }
 
 function renderAIBannerModel(model){
-  return String(model||'').trim() || 'IA';
+  var entry = GEMINI_MODEL_CATALOG.find(function(item){ return item.id === model; });
+  return entry ? entry.label : (String(model||'').trim() || 'IA');
 }
 async function refreshGeminiModelAvailability(){
   try{
@@ -5130,17 +5135,9 @@ function geminiCandidateModels(){
     if(cooldownUntil && cooldownUntil <= now) GEMINI_MODEL_COOLDOWNS.delete(model);
     return GEMINI_AVAILABLE_MODELS.has(model) && supportsGenerate && cooldownUntil <= now;
   });
-  var pool = availableVision.length ? availableVision : GEMINI_MODELS_FALLBACK.filter(function(model){
-    return Number(GEMINI_MODEL_COOLDOWNS.get(model) || 0) <= now;
-  });
-  var preferred = pool.indexOf(GEMINI_MODEL_ACTIVE) >= 0 ? GEMINI_MODEL_ACTIVE : '';
-  var ordered = [preferred].concat(pool);
-  var seen = new Set();
-  return ordered.filter(function(model){
-    if(!model || seen.has(model) || Number(GEMINI_MODEL_COOLDOWNS.get(model) || 0) > now) return false;
-    seen.add(model);
-    return true;
-  });
+  // La caché del último modelo no debe desplazar a los de mayor RPD.
+  // Si listModels respondió, no reintroducir modelos ausentes o sin generateContent.
+  return availableVision;
 }
 function registerGeminiModelFailure(model, status, detail){
   var message = String(detail || '').toUpperCase();
@@ -5159,7 +5156,7 @@ function setGeminiReadyModel(model){
   GEMINI_MODEL_ACTIVE = model;
   GEMINI_LAST_OK_MODEL = model;
   aiAvailable = true;
-  setAIBanner('ok', 'IA lista: procesará los documentos con '+renderAIBannerModel(model));
+  setAIBanner('ok', 'Última lectura realizada con '+renderAIBannerModel(model)+'.');
   try{
     sessionStorage.setItem(GEMINI_SESSION_KEY, JSON.stringify({ model:model, savedAt:Date.now() }));
   }catch(_){ }
@@ -5175,6 +5172,7 @@ async function geminiGenerateWithFallback(body, opts){
   var models = geminiCandidateModels();
   for(var i=0; i<models.length; i++){
     var model = models[i];
+    setAIBanner('checking', (i ? 'Cambiando de IA: ' : 'Procesando documento con ') + renderAIBannerModel(model) + (i ? '. El modelo anterior no pudo responder.' : '...'));
     try{
       var resp = await geminiFetch(geminiUrl(model), {
         method:'POST',
@@ -5218,7 +5216,7 @@ window.testAIConnection = function(){
       if(!candidates.length) throw new Error('No hay modelos de IA disponibles en este momento.');
       GEMINI_MODEL_ACTIVE = candidates[0];
       aiAvailable = true;
-      setAIBanner('ok', 'IA habilitada. La respuesta se comprobara al procesar el documento.');
+      setAIBanner('ok', 'IA seleccionada: '+renderAIBannerModel(GEMINI_MODEL_ACTIVE)+'. La cuota se comprobará al procesar.');
     }catch(err){
       setGeminiUnavailable();
       setAIBanner('err', '✗ Error de conexión con IA (' + (err.message || 'Sin respuesta') + '). Reintenta o se usará OCR.');
@@ -5236,11 +5234,11 @@ window.initializeAIState = function(){
   try{ cached = JSON.parse(sessionStorage.getItem(GEMINI_SESSION_KEY) || 'null'); }catch(_){ }
   if(cached && GEMINI_MODELS_FALLBACK.indexOf(cached.model) >= 0 &&
      Date.now() - Number(cached.savedAt || 0) <= GEMINI_SESSION_TTL_MS){
-    GEMINI_MODEL_ACTIVE = cached.model;
+    GEMINI_MODEL_ACTIVE = geminiCandidateModels()[0] || GEMINI_MODELS_FALLBACK[0];
     GEMINI_LAST_OK_MODEL = cached.model;
     aiAvailable = true;
     aiAvailabilityChecked = true;
-    setAIBanner('ok', 'IA habilitada con el modelo utilizado recientemente.');
+    setAIBanner('ok', 'IA seleccionada: '+renderAIBannerModel(GEMINI_MODEL_ACTIVE)+'. Prioridad por cuota diaria configurada.');
     return Promise.resolve();
   }
   aiAvailable = false;

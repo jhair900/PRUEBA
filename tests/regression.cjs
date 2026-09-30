@@ -330,7 +330,7 @@ function backend() {
         GEMINI_MODEL_ACTIVE:'',GEMINI_LAST_OK_MODEL:'',
         sessionStorage:{getItem:()=>cached ? JSON.stringify({model:'model',savedAt:Date.now()}) : null},
         refreshGeminiModelAvailability:async()=>{listings++;return 1;},geminiCandidateModels:()=>['model'],
-        geminiGenerateWithFallback:()=>{throw new Error('No debe generar un pong');},setAIBanner(){},setGeminiUnavailable(){}
+        renderAIBannerModel:model=>model,geminiGenerateWithFallback:()=>{throw new Error('No debe generar un pong');},setAIBanner(){},setGeminiUnavailable(){}
       });
       vm.runInContext(html.slice(start,end),context);
       await context.window.initializeAIState();
