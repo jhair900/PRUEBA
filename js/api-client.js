@@ -120,6 +120,12 @@
     } catch(err) {
       trace.failedStage = stage;
       trace.errorType = err && err.name || 'Error';
+      if(trace.timedOut){
+        const timeoutError = new Error('Se agotó el límite de '+timeoutMs+' ms esperando '+(stage === 'body' ? 'la lectura de la respuesta' : 'la conexión/respuesta')+' por '+(trace.transport || 'apertura del canal')+'.');
+        timeoutError.name = 'AbortError';
+        timeoutError.code = 'CLIENT_TIMEOUT';
+        throw timeoutError;
+      }
       throw err;
     } finally {
       trace.elapsedMs = Date.now() - started;
@@ -204,7 +210,10 @@
     for (let attempt = 0; attempt <= retries; attempt++) {
       if(remainingMs() <= 0) break;
       progress(attempt ? 'Reintentando el guardado…' : 'Guardando los datos…');
-      const attemptTimeout = Math.min(timeoutMs, remainingMs());
+      const availableMs = remainingMs();
+      // Cada escritura debe dejar margen para confirmar su ID si pierde la respuesta.
+      const verificationReserveMs = saving ? Math.min(30000, Math.floor(availableMs / 3)) : 0;
+      const attemptTimeout = Math.max(1, Math.min(timeoutMs, availableMs - verificationReserveMs));
       const trace = {kind:'request', attempt:attempt+1, timeoutMs:attemptTimeout};
       traces.push(trace);
       try {

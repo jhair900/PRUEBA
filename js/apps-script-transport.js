@@ -75,8 +75,8 @@
       const readyTimer = setTimeout(function(){
         global.removeEventListener('message', receive); iframe.remove();
         unavailableUntil = Date.now() + 60000;
-        reject(new Error('El canal directo no esta disponible temporalmente.'));
-      }, 12000);
+        reject(new Error('El canal directo no confirmó su apertura en 45 s; se mantiene el respaldo HTTP.'));
+      }, 45000);
       iframe.src = url.toString();
       document.body.appendChild(iframe);
     });
