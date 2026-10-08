@@ -281,7 +281,12 @@
   .spinner-progress{
     width:220px;height:6px;background:rgba(255,255,255,.20);border-radius:999px;overflow:hidden;
   }
-  .spinner-bar{height:100%;background:#fff;border-radius:999px;width:0;transition:width .4s ease}
+  .spinner-bar{height:100%;background:#fff;border-radius:999px;width:0}
+  .spinner-overlay.open .spinner-bar{animation:extractionFill 2s ease-out forwards,extractionPulse 1.4s ease-in-out 2s infinite}
+  .spinner-note{color:#fff;font-size:12px;max-width:310px;text-align:center;line-height:1.5;margin:0 18px}
+  @keyframes extractionFill{from{width:0}to{width:95%}}
+  @keyframes extractionPulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @media(prefers-reduced-motion:reduce){.spinner-overlay.open .spinner-bar{animation:none;width:95%}.spinner{animation:none}}
 
   /* ─── CUV Modal ──────────────────────────────────────────────── */
   .cuv-overlay{
@@ -1504,8 +1509,9 @@
 <!-- ── Spinner ──────────────────────────────────────────────────── -->
 <div id="spinnerOverlay" class="spinner-overlay">
   <div class="spinner"></div>
-  <div class="spinner-text" id="spinnerText">Procesando documento...</div>
-  <div class="spinner-progress"><div class="spinner-bar" id="spinnerBar"></div></div>
+  <div class="spinner-text" id="spinnerText" role="status" aria-live="polite">Procesando documento...</div>
+  <div class="spinner-progress" aria-hidden="true"><div class="spinner-bar" id="spinnerBar"></div></div>
+  <p class="spinner-note">Por favor, espera y mantén esta página abierta.<br>La barra indica actividad, no el porcentaje real de avance.</p>
 </div>
 
 <!-- ── CUV Detail Modal ─────────────────────────────────────────── -->
@@ -1787,10 +1793,18 @@ async function getTesseractWorker(){
 
 /* ── Spinner helpers ──────────────────────────────────────────── */
 let documentReadStarted = null;
-function showSpinner(msg){ documentReadStarted=performance.now(); document.getElementById('spinnerOverlay').classList.add('open'); spinnerMsg(msg||'Procesando...'); setSpinnerBar(0); }
+let extractionUsesAI = true;
+function showSpinner(msg){ extractionUsesAI = !/CUV|certificado.*vehicular/i.test(msg || ''); documentReadStarted=performance.now(); document.getElementById('spinnerOverlay').classList.add('open'); spinnerMsg(msg||'Procesando...'); setSpinnerBar(0); }
 function hideSpinner(){ document.getElementById('spinnerOverlay').classList.remove('open'); setSpinnerBar(0); if(documentReadStarted!==null){window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'Lectura y validación de documento (IA/OCR/PDF)',elapsedMs:Math.round(performance.now()-documentReadStarted),local:true}}));documentReadStarted=null;} }
-function spinnerMsg(t){ const el=document.getElementById('spinnerText'); if(el) el.textContent=t; }
-function setSpinnerBar(pct){ const el=document.getElementById('spinnerBar'); if(el) el.style.width=Math.min(100,pct)+'%'; }
+function spinnerMsg(t){
+  if(/\bOCR\b|\bCUV\b/i.test(t || '')) extractionUsesAI=false;
+  else if(/\bIA\b/.test(t || '')) extractionUsesAI=true;
+  const el=document.getElementById('spinnerText');
+  const message=extractionUsesAI ? 'Se está extrayendo la información con la IA. Por favor, espera.' : 'Se está extrayendo y verificando la información del documento. Por favor, espera.';
+  if(el && el.textContent!==message) el.textContent=message;
+}
+// La animación es decorativa; las llamadas técnicas no representan progreso global.
+function setSpinnerBar(pct){}
 
 /* ── PDF text extraction (Y-coordinate, reuses leerPdfTexto) ──── */
 async function extractPdfText(file){
@@ -1847,7 +1861,7 @@ function cloneCanvas(canvas){
 function resizeCanvasForOcr(canvas){
   const width = canvas.width || 1;
   const target = clamp(width, OCR_MIN_WIDTH, OCR_MAX_WIDTH);
-  const k = target / width;
+  const k = Math.min(target / width, Math.sqrt(8000000 / (width * Math.max(1, canvas.height))));
   if(Math.abs(k - 1) < 0.04) return canvas;
   const out = document.createElement('canvas');
   out.width = Math.round(canvas.width * k);
@@ -2011,26 +2025,46 @@ function pipelineAvanzado(canvas){
   return applyOtsuBinarization(sharp);
 }
 
-function buildOcrCanvases(canvas, tipo){
-  const base = resizeCanvasForOcr(cropCanvasMargins(canvas));
-  // Variantes generales — siempre se intentan
-  const variants = [
-    { name:'original', canvas:base },
-    { name:'contraste', canvas:applyImageFilter(base,{contrast:1.55, brightness:4}) },
-    { name:'binario',   canvas:applyImageFilter(base,{contrast:1.25, threshold:172}) },
-    { name:'otsu',      canvas:applyOtsuBinarization(base) }
+function* buildOcrCanvases(canvas, tipo){
+  // Preparar una sola variante a la vez: no retener todos los mapas de píxeles.
+  const resized = resizeCanvasForOcr(canvas);
+  const base = cropCanvasMargins(resized);
+  if(resized !== canvas && resized !== base){resized.width=0;resized.height=0;}
+  const filters = [
+    ['original', function(){return base;}],
+    ['contraste', function(){return applyImageFilter(base,{contrast:1.55,brightness:4});}],
+    ['binario', function(){return applyImageFilter(base,{contrast:1.25,threshold:172});}],
+    ['otsu', function(){return applyOtsuBinarization(base);}]
   ];
-  // Variantes adicionales para documentos con texto pequeño / fondo ruidoso
-  if(tipo==='ruc' || tipo==='cedula-prop' || tipo==='cedula-cony' || tipo==='matricula'){
-    variants.push({ name:'nitido',  canvas:sharpenCanvas(applyImageFilter(base,{contrast:1.35, brightness:8})) });
-    variants.push({ name:'unsharp', canvas:unsharpMaskCanvas(applyImageFilter(base,{contrast:1.30, brightness:4}), 0.7, 1.4) });
-    variants.push({ name:'pipeline-pro', canvas:pipelineAvanzado(base) });
+  if(['ruc','cedula-prop','cedula-cony','matricula','notaria'].includes(tipo)){
+    filters.push(['nitido', function(){
+      const filtered=applyImageFilter(base,{contrast:1.25,brightness:4});
+      try{return sharpenCanvas(filtered);}finally{filtered.width=0;filtered.height=0;}
+    }]);
   }
-  // Notaría: layout de tabla, mejor con Otsu y unsharp
-  if(tipo==='notaria'){
-    variants.push({ name:'unsharp-notaria', canvas:unsharpMaskCanvas(applyImageFilter(base,{contrast:1.20, brightness:2}), 0.55, 1.2) });
-  }
-  return variants;
+  try{
+    for(const filter of filters){
+      const variant=filter[1]();
+      try{yield {name:filter[0],canvas:variant};}
+      finally{if(variant !== base){variant.width=0;variant.height=0;}}
+    }
+  }finally{if(base !== canvas){base.width=0;base.height=0;}}
+}
+
+async function limitarPrintPegado(dataUrl){
+  const img = new Image();
+  await new Promise(function(resolve,reject){img.onload=resolve;img.onerror=function(){reject(new Error('No se pudo leer el print.'));};img.src=dataUrl;});
+  const pixels=img.naturalWidth*img.naturalHeight;
+  if(pixels<=8000000 && Math.max(img.naturalWidth,img.naturalHeight)<=12000) return dataUrl;
+  const scale=Math.min(1,Math.sqrt(8000000/pixels),12000/Math.max(img.naturalWidth,img.naturalHeight));
+  const canvas=document.createElement('canvas');
+  try{
+    canvas.width=Math.max(1,Math.floor(img.naturalWidth*scale));
+    canvas.height=Math.max(1,Math.floor(img.naturalHeight*scale));
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    return canvas.toDataURL('image/png');
+  }finally{canvas.width=0;canvas.height=0;img.src='';}
 }
 
 async function imageFileToCanvas(file){
@@ -2105,10 +2139,10 @@ async function recognizeBestFromCanvas(canvas, tipo, pageLabel){
   const variants = buildOcrCanvases(canvas, tipo);
   const attempts = [];
   let best = { text:'', confidence:0, score:-1, label:'' };
-  for(let vi=0; vi<variants.length; vi++){
+  for(const variant of variants){
     for(let pi=0; pi<profile.psms.length; pi++){
       const psm = profile.psms[pi];
-      const label = pageLabel+' / '+variants[vi].name+' / psm '+psm;
+      const label = pageLabel+' / '+variant.name+' / psm '+psm;
       spinnerMsg('OCR '+label+'...');
       try{
         const params = {
@@ -2118,7 +2152,7 @@ async function recognizeBestFromCanvas(canvas, tipo, pageLabel){
         };
         await worker.setParameters(params);
       }catch(e){ console.warn('[OCR] setParameters fallback:', e); }
-      const result = await worker.recognize(variants[vi].canvas);
+      const result = await worker.recognize(variant.canvas);
       const text = normalizeOcrText(result.data.text || '');
       const confidence = Number(result.data.confidence || 0);
       const score = scoreOcrText(text, tipo, confidence);
@@ -2178,8 +2212,10 @@ async function ocrFilePotenciado(file, tipo){
   const texts = [];
   for(let i=0;i<pages.length;i++){
     setSpinnerBar(30 + Math.round((i/pages.length)*55));
-    const text = await recognizeBestFromCanvas(pages[i].canvas, tipo, pages[i].label);
-    if(text) texts.push(text);
+    try{
+      const text = await recognizeBestFromCanvas(pages[i].canvas, tipo, pages[i].label);
+      if(text) texts.push(text);
+    }finally{pages[i].canvas.width=0;pages[i].canvas.height=0;}
   }
   setSpinnerBar(95);
   const finalText = normalizeOcrText(texts.join('\n\n'));
@@ -3584,8 +3620,11 @@ async function _procesarNotariaPaste(){
         var capTipo = _activePaste.tipo;
         var capLado = _activePaste.lado;
         var reader = new FileReader();
-        reader.onload = function(ev){
-          _setPasteImage(capTipo, capLado, ev.target.result);
+        reader.onload = async function(ev){
+          try{
+            const safeImage = await limitarPrintPegado(ev.target.result);
+            _setPasteImage(capTipo, capLado, safeImage);
+          }catch(err){alert('No se pudo cargar el print. Intenta con una captura más pequeña.');return;}
           /* Auto-avanzar: frontal → reverso */
           if(capLado === 'frontal'){
             var next = document.getElementById('paste-'+capTipo+'-reverso');
