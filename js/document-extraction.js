@@ -73,6 +73,33 @@
       numeroCertificado: 'Número expresamente asociado a CERTIFICADO, distinto de la cédula. No copiar un número sin etiqueta ni el número de junta.'
     }
   };
+  const readingRules = {
+    ruc: 'Localiza primero el contribuyente y después la matriz. Separa columnas de estado y régimen. Una dirección puede continuar varias líneas: conserva calle, número, intersección y referencia dentro del mismo bloque. No incorpores la dirección de otro establecimiento.',
+    cedula: 'Localiza el bloque del titular antes de leer nombres. Revisa frente y reverso para completar etiquetas, sin mezclar titulares. NUI y código dactilar son campos diferentes. Distingue nacimiento, emisión y expiración por sus etiquetas, no por cuál fecha es más reciente.',
+    matricula: 'Lee cada par etiqueta-valor en su fila y columna. MODELO puede ocupar varias palabras o líneas. Verifica por separado PLACA, MOTOR y CHASIS; no intercambies códigos aunque tengan longitud similar. No uses fecha de matriculación como año del vehículo.',
+    notaria: 'Identifica límites de cada sección y cada contrato antes de extraer. Si una tabla continúa en otra página, conserva las filas y su rol. No arrastres una identificación a la fila siguiente. Una fila incompleta no autoriza a completar datos usando otra persona.',
+    papeleta: 'Distingue cédula, número de certificado, junta y fecha electoral por sus etiquetas. No confundas la fecha de emisión del certificado con el día del proceso electoral. Conserva el nombre completo cuando no haya separación inequívoca entre nombres y apellidos.'
+  };
+  function pdfItemsToText(items) {
+    const rows = [];
+    (items || []).filter(item => item && typeof item.str === 'string' && item.str.trim()).forEach(item => {
+      const t = item.transform || [1,0,0,1,0,0];
+      const height = Math.max(1, Math.abs(Number(item.height) || Number(t[3]) || 10));
+      const x = Number(t[4]) || 0, y = Number(t[5]) || 0;
+      let row = rows.find(row => Math.abs(row.y-y) <= Math.min(row.height,height)*0.35);
+      if (!row) { row = {y,height,items:[]}; rows.push(row); }
+      row.items.push({x,text:item.str.normalize('NFC')});
+    });
+    return rows.sort((a,b)=>b.y-a.y).map(row => row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join(' ')).join('\n');
+  }
+  function usablePdfText(text) {
+    text = String(text || '');
+    const compact = text.replace(/\s/g,'');
+    if (compact.length < 80 || (text.match(/[\uFFFD\u0000-\u0008]/g)||[]).length > compact.length*0.01) return false;
+    // Un encabezado o un pie de página no basta para omitir OCR de una página escaneada.
+    const labels = text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().match(/\b(?:CEDULA|NUI|APELLIDOS|NOMBRES|NACIONALIDAD|EXPIRACION|RUC|RAZON|CONTRIBUYENTE|DOMICILIO|PLACA|PROPIETARIO|MARCA|MODELO|CHASIS|MOTOR|COMPRADORES|VENDEDORES|TRANSFERENCIA|CERTIFICADO|SUFRAGIO|PROVINCIA|CANTON|PARROQUIA)\b/g) || [];
+    return new Set(labels).size >= 2;
+  }
   const personKeys = ['tipoId', 'identificacion', 'nombre'];
   const isPeople = key => key === 'compradores' || key === 'vendedores';
   const allKeys = new Set(Object.values(fields).flatMap(Object.keys));
@@ -108,6 +135,8 @@
       (tipo === 'cedula' ? 'Frente y reverso se complementan; no supongas que un dato está siempre en una cara. Lee solo el titular identificado en la cédula.\n' : '') +
       (tipo === 'notaria' ? 'Distingue tres roles: propietario registrado, compradores y vendedores del último contrato. No son intercambiables.\n' : '') +
       (options.cedulaSide === 'front' ? 'Esta imagen corresponde al frente; extrae solo lo que realmente muestra.\n' : options.cedulaSide === 'back' ? 'Esta imagen corresponde al reverso; extrae solo lo que realmente muestra.\n' : '') +
+      'Método de lectura: identifica secciones y etiquetas; asocia cada valor con su fila/columna; revisa cada campo contra la imagen antes de responder. No mezcles valores de columnas vecinas ni encabezados repetidos.\n' +
+      readingRules[tipo] + '\n' +
       keys.map(key => key + ': ' + fields[tipo][key]).join('\n') + '\nDevuelve únicamente el JSON del esquema, sin explicaciones.';
     const parts = [{ text: prompt }];
     const inputs = Array.isArray(attachments) ? attachments : [attachments];
@@ -144,7 +173,7 @@
         clean[key] = valid ? value.map(person => Object.fromEntries(personKeys.map(name => [name, (person[name] || '').trim()]))).filter(person => personKeys.some(name => person[name])) : [];
         if (!valid && value !== undefined && value !== null) review.add(key);
       } else {
-        clean[key] = typeof value === 'string' ? value.trim() : '';
+        clean[key] = typeof value === 'string' ? value.normalize('NFC').trim() : '';
         if (value !== undefined && value !== null && typeof value !== 'string') review.add(key);
       }
       // Un valor con asociación dudosa nunca se acepta como dato confirmado.
@@ -176,7 +205,7 @@
   function parsePapeleta(rawText) {
     const output = Object.fromEntries(Object.keys(fields.papeleta).map(key => [key, '']));
     const review = new Set();
-    const lines = String(rawText || '').split(/\r?\n/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const lines = String(rawText || '').normalize('NFC').split(/\r?\n/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
     const rules = [
       ['nombreCompleto', /^(?:APELLIDOS\s+Y\s+NOMBRES|NOMBRES\s+Y\s+APELLIDOS|NOMBRE\s+COMPLETO)\s*[:.\-]?\s*/i],
       ['apellidos', /^APELLIDOS\b\s*[:.\-]?\s*/i], ['nombres', /^NOMBRES\b\s*[:.\-]?\s*/i],
@@ -230,5 +259,5 @@
     output._reviewKeys = [...review];
     return output;
   }
-  return { fields, buildRequest, parseResponse, parsePapeleta };
+  return { fields, buildRequest, parseResponse, parsePapeleta, pdfItemsToText, usablePdfText };
 });

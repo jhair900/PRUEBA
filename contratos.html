@@ -889,7 +889,7 @@
 <script src="js/apps-script-transport.js?v=20261001-confirmacion-1"></script>
 <script src="js/api-client.js?v=20261001-confirmacion-1"></script>
 <script src="js/gemini-client.js?v=20260915-directo-1"></script>
-<script src="js/document-extraction.js?v=20260918-enie-1"></script>
+<script src="js/document-extraction.js?v=20261008-lectura-1"></script>
 <script src="js/expediente.js?v=20260915-1"></script>
 <style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}</style>
 <link rel="stylesheet" href="js/navigation.css?v=20260918-barra-2">
@@ -2015,6 +2015,7 @@ function buildOcrCanvases(canvas, tipo){
   const base = resizeCanvasForOcr(cropCanvasMargins(canvas));
   // Variantes generales — siempre se intentan
   const variants = [
+    { name:'original', canvas:base },
     { name:'contraste', canvas:applyImageFilter(base,{contrast:1.55, brightness:4}) },
     { name:'binario',   canvas:applyImageFilter(base,{contrast:1.25, threshold:172}) },
     { name:'otsu',      canvas:applyOtsuBinarization(base) }
@@ -2058,7 +2059,7 @@ async function getPdfPageCount(file){
 
 function normalizeOcrText(text){
   if(!text) return '';
-  let t = String(text)
+  let t = String(text).normalize('NFC')
     .replace(/\r\n/g,'\n')
     .replace(/\r/g,'\n')
     .replace(/[“”]/g,'"')
@@ -2124,9 +2125,9 @@ async function recognizeBestFromCanvas(canvas, tipo, pageLabel){
       attempts.push({ label, confidence, score, chars:text.length });
       if(score > best.score) best = { text, confidence, score, label };
       // Early stop: si tenemos un resultado muy bueno, no probar más PSMs/variantes
-      if(score >= 90 && text.replace(/\s/g,'').length > 100) break;
+      if(confidence >= 85 && score >= 130 && text.replace(/\s/g,'').length > 100) break;
     }
-    if(best.score >= 90 && best.text.replace(/\s/g,'').length > 100) break;
+    if(best.confidence >= 85 && best.score >= 130 && best.text.replace(/\s/g,'').length > 100) break;
   }
   console.table(attempts);
   console.log('[OCR] Mejor intento '+best.label+' score='+Math.round(best.score)+' conf='+Math.round(best.confidence));
@@ -2136,32 +2137,43 @@ async function recognizeBestFromCanvas(canvas, tipo, pageLabel){
 async function ocrFilePotenciado(file, tipo){
   const isPdf = file.name.toLowerCase().endsWith('.pdf');
   if(isPdf){
-    spinnerMsg('Extrayendo texto del PDF...');
-    setSpinnerBar(8);
-    const textoPdf = normalizeOcrText(await extractPdfText(file));
-    if(textoPdf && textoPdf.replace(/\s/g,'').length > 60){
-      setSpinnerBar(85);
-      console.log('[OCR] PDF tiene capa de texto ('+textoPdf.length+' chars)');
-      return textoPdf;
-    }
-    spinnerMsg('PDF escaneado: preparando OCR...');
-    setSpinnerBar(15);
+    spinnerMsg('Revisando texto y páginas escaneadas del PDF...');
+    const pdf = await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    const texts = [];
+    try{
+      const count = Math.min(pdf.numPages, OCR_MAX_PDF_PAGES[tipo] || OCR_MAX_PDF_PAGES.default);
+      if(pdf.numPages > count) throw new Error('El PDF tiene '+pdf.numPages+' páginas. Divide el documento en archivos de hasta '+count+' páginas para leerlo completo.');
+      for(let p=1;p<=count;p++){
+        const page = await pdf.getPage(p);
+        let canvas;
+        try{
+          let nativeText = '';
+          try{
+            const content = await page.getTextContent();
+            nativeText = normalizeOcrText(AutoCorDocumentExtraction.pdfItemsToText(content.items));
+          }catch(err){ console.warn('[OCR] Capa de texto ilegible, se leerá la imagen:',err); }
+          if(AutoCorDocumentExtraction.usablePdfText(nativeText)) texts.push(nativeText);
+          else{
+            const viewport = page.getViewport({scale:3.6});
+            canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+            await page.render({canvasContext:canvas.getContext('2d'),viewport:viewport,background:'#fff'}).promise;
+            const recognized = await recognizeBestFromCanvas(canvas,tipo,'página '+p+' de '+count);
+            texts.push(recognized || nativeText);
+          }
+          setSpinnerBar(20+Math.round(p/count*75));
+        }finally{
+          if(canvas){canvas.width=0;canvas.height=0;}
+          if(page.cleanup) page.cleanup();
+        }
+      }
+      return normalizeOcrText(texts.join('\n\n'));
+    }finally{ if(pdf.destroy) await pdf.destroy(); }
   }
 
-  const pages = [];
-  if(isPdf){
-    const pageCount = await getPdfPageCount(file);
-    const maxPages = Math.min(pageCount, OCR_MAX_PDF_PAGES[tipo] || OCR_MAX_PDF_PAGES.default);
-    for(let p=1; p<=maxPages; p++){
-      spinnerMsg('Renderizando PDF pagina '+p+' de '+maxPages+'...');
-      pages.push({ label:'pagina '+p, canvas:await pdfPageToCanvas(file,p,3.6) });
-      setSpinnerBar(20 + Math.round((p/maxPages)*12));
-    }
-  }else{
-    spinnerMsg('Preparando imagen...');
-    pages.push({ label:'imagen', canvas:await imageFileToCanvas(file) });
-    setSpinnerBar(25);
-  }
+  spinnerMsg('Preparando imagen...');
+  const pages = [{label:'imagen',canvas:await imageFileToCanvas(file)}];
+  setSpinnerBar(25);
 
   const texts = [];
   for(let i=0;i<pages.length;i++){
