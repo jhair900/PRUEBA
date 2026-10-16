@@ -3,11 +3,11 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../contratos.html'), 'utf8');
-function setup(responses = []) {
+function setup(responses = [], storage = new Map()) {
   const calls = [], banners = [];
   const ctx = vm.createContext({ console: {warn(){},error(){}}, Date, Map, Set, Promise,
     window: {}, AutoCorConfig: {apiUrl:'https://example.test'},
-    sessionStorage: {getItem:()=>JSON.stringify({model:'gemini-2.5-flash',savedAt:Date.now()}),setItem(){}},
+    sessionStorage: {getItem:key=>storage.get(key) || (key==='autocor_gemini_model' ? JSON.stringify({model:'gemini-2.5-flash',savedAt:Date.now()}) : null),setItem:(key,value)=>storage.set(key,value)},
     aiAvailable:false,aiAvailabilityChecked:false,aiCheckPromise:null,
     setAIBanner:(state,message)=>banners.push({state,message}),
     AutoCorGemini: {async fetch(url) {
@@ -18,7 +18,7 @@ function setup(responses = []) {
     }}
   });
   vm.runInContext(html.slice(html.indexOf('const GEMINI_MODEL_CATALOG'),html.indexOf('/* Los criterios de extracción')),ctx);
-  vm.runInContext(html.slice(html.indexOf('function geminiCandidateModels'),html.indexOf('// Disparar verificación de IA')),ctx);
+  vm.runInContext(html.slice(html.indexOf('function restoreGeminiCooldowns'),html.indexOf('// Disparar verificación de IA')),ctx);
   return {ctx,calls,banners,run:code=>vm.runInContext(code,ctx)};
 }
 (async()=>{
@@ -46,4 +46,12 @@ function setup(responses = []) {
   t.run("GEMINI_MODEL_COOLDOWNS.set('gemini-3.5-flash-lite',Date.now()-1)");
   assert.equal(t.run('geminiCandidateModels()[0]'),'gemini-3.5-flash-lite');
   console.log('OK: 429 cambia modelo, muestra intento y resultado, cooldown y recuperacion de prioridad');
+  const storage=new Map();
+  t=setup([],storage);
+  t.ctx.registerGeminiModelFailure('gemini-3.5-flash-lite',429,'RESOURCE_EXHAUSTED');
+  const reloaded=setup([],storage);
+  assert.equal(reloaded.run('geminiCandidateModels()[0]'),'gemini-3.1-flash-lite');
+  storage.set('autocor_gemini_cooldowns_v1',JSON.stringify({endpoint:'https://otro.test',models:[['gemini-3.5-flash-lite',Date.now()+60000]]}));
+  assert.equal(setup([],storage).run('geminiCandidateModels()[0]'),'gemini-3.5-flash-lite');
+  console.log('OK: recargar conserva exclusión temporal por cuota, aislada por backend');
 })().catch(e=>{console.error(e);process.exitCode=1;});

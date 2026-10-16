@@ -157,7 +157,11 @@
     keys = checkKeys(keys, allKeys);
     if (!response || response.error || response.promptFeedback && response.promptFeedback.blockReason) throw new Error('La IA no pudo analizar el documento; se utilizará OCR.');
     const candidate = response.candidates && response.candidates[0];
-    if (!candidate || candidate.finishReason && candidate.finishReason !== 'STOP') throw new Error('La IA devolvió una respuesta incompleta o bloqueada; se utilizará OCR.');
+    if (!candidate || candidate.finishReason && candidate.finishReason !== 'STOP') {
+      const error=new Error('La IA devolvió una respuesta incompleta o bloqueada; se utilizará OCR.');
+      error.code='AI_RESPONSE_INCOMPLETE';error.finishReason=candidate && candidate.finishReason || 'MISSING_CANDIDATE';
+      throw error;
+    }
     const parts = candidate.content && candidate.content.parts;
     const text = Array.isArray(parts) ? parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('').trim() : '';
     let result;

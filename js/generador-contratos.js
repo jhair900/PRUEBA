@@ -21,7 +21,7 @@
   }
 
   function numeroATexto(n){
-    // Convierte número entero a texto en español (hasta 999 999)
+    // Convierte un entero validado a texto en español (hasta 999 999 999).
     var unidades = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
                     'diez','once','doce','trece','catorce','quince','dieciséis','diecisiete',
                     'dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés',
@@ -40,24 +40,55 @@
       var c=Math.floor(x/100), r=x%100;
       return centenas[c]+(r>0?' '+menorMil(r):'');
     }
-    n = Math.round(n);
-    if(n===0) return 'cero';
-    var miles = Math.floor(n/1000), resto = n%1000;
-    var txt = '';
-    if(miles===1) txt = 'mil';
-    else if(miles>1) txt = menorMil(miles)+' mil';
-    if(resto>0) txt += (txt?' ':'')+menorMil(resto);
-    return txt.toUpperCase();
+    function apocopar(txt){
+      return txt.replace(/veintiuno$/, 'veintiún').replace(/uno$/, 'un');
+    }
+    function menorMillon(x){
+      var miles = Math.floor(x/1000), resto = x%1000;
+      var txt = miles===1 ? 'mil' : (miles>1 ? apocopar(menorMil(miles))+' mil' : '');
+      if(resto>0) txt += (txt?' ':'')+menorMil(resto);
+      return txt;
+    }
+    if(!Number.isSafeInteger(n) || n<0 || n>999999999){
+      throw new Error('El valor estimado debe ser menor a 1.000.000.000.');
+    }
+    if(n===0) return 'CERO';
+    var millones = Math.floor(n/1000000), resto = n%1000000;
+    var txt = millones===1 ? 'un millón' : (millones>1 ? apocopar(menorMil(millones))+' millones' : '');
+    if(resto>0) txt += (txt?' ':'')+menorMillon(resto);
+    return apocopar(txt).toUpperCase();
   }
 
-  function valorATexto(valorStr){
-    // "19040,00" → "DIECINUEVE MIL CUARENTA"
-    var partes = String(valorStr).replace(/\./g,'').replace(',','.').split('.');
-    var entero = parseInt(partes[0]||0, 10);
-    var cents  = parseInt((partes[1]||'00').substring(0,2), 10);
-    var txt = numeroATexto(entero);
-    if(cents>0) txt += ' CON '+String(cents).padStart(2,'0')+'/100';
+  function interpretarValorContrato(valor){
+    var errorFormato = 'Revisa el valor estimado. Usa, por ejemplo, 19599,65 o 19.599,65, con máximo dos decimales.';
+    var raw = String(valor == null ? '' : valor).trim();
+    if(typeof valor === 'number'){
+      // Un número ya tiene decimal de JavaScript: nunca tratarlo como miles.
+      if(!Number.isFinite(valor) || valor<0 || valor>=1000000000) throw new Error(errorFormato);
+      if(Math.abs(valor*100-Math.round(valor*100))>0.00001) throw new Error(errorFormato);
+      raw = valor.toFixed(2);
+    }
+    // Aceptar coma o punto decimal y agrupaciones de miles consistentes.
+    // Separar dólares y centavos como dígitos evita perder o redondear decimales.
+    var partes = raw.match(/^(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/)
+      || raw.match(/^(\d+|\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/);
+    if(!partes) throw new Error(errorFormato);
+    var entero = Number(partes[1].replace(/[.,]/g,''));
+    if(!Number.isSafeInteger(entero) || entero>999999999){
+      throw new Error('El valor estimado debe ser menor a 1.000.000.000.');
+    }
+    var centavos = (partes[2] || '').padEnd(2,'0');
+    return {entero:entero, centavos:centavos, numero:String(entero)+','+centavos};
+  }
+
+  function valorInterpretadoATexto(valor){
+    var txt = numeroATexto(valor.entero);
+    if(valor.centavos!=='00') txt += ' CON '+valor.centavos+'/100';
     return txt;
+  }
+
+  function valorATexto(valor){
+    return valorInterpretadoATexto(interpretarValorContrato(valor));
   }
 
   function normalizarNombre(nombre){
@@ -75,6 +106,13 @@
   /* ── Recopilar datos validados ───────────────────────────────── */
 
   function recopilarDatos(extra){
+    var ciudadContrato = String(extra.domicilio || '').trim().toUpperCase();
+    var firmaIntermediario = ciudadContrato === 'GUAYAQUIL'
+      ? 'AUTOCOR-AUTOPLAZA S.A.S.'
+      : ciudadContrato === 'QUITO' ? 'AUTOCOR AUTOEVOLUCION S.A.S.' : '';
+    if(!firmaIntermediario){
+      throw new Error('Selecciona Quito o Guayaquil para asignar el pie de firma del intermediario.');
+    }
     var datos = global._contratosData || {};
     var flujo = global._contratosFlujo || {};
     var esJuridica = flujo.tipoPersona === 'juridica';
@@ -139,10 +177,11 @@
 
     var fecha = fechaHoy();
 
-    // Valor en texto
-    var valorNum  = (extra.valorNum  || '').replace(/\./g,'').replace(',','.');
-    var valorText = valorNum ? valorATexto(parseFloat(valorNum)||0) : '';
-    var valorDisp = (extra.valorNum  || '').replace('.',','); // mostrar con coma decimal
+    // La cifra y las letras provienen del mismo valor, interpretado una sola vez.
+    var valor = String(extra.valorNum == null ? '' : extra.valorNum).trim()
+      ? interpretarValorContrato(extra.valorNum) : null;
+    var valorText = valor ? valorInterpretadoATexto(valor) : '';
+    var valorDisp = valor ? valor.numero : '';
 
     var representanteLegal = nombreProp || ruc.representanteLegal || '';
     var razonSocial = normalizarNombre(ruc.razonSocial || ruc.nombreComercial || '');
@@ -154,6 +193,7 @@
       ESTADO_CIVIL_PROP:    estadoCivil|| '___________',
       NACIONALIDAD_PROP:    nacionalidad,
       DOMICILIO_PROP:       String(extra.domicilio || '').trim(),
+      INTERMEDIARIO_FIRMA:  firmaIntermediario,
       TELEFONO_PROP:        extra.telefonoProp || '___________',
       EMAIL_PROP:           extra.emailProp    || '___________',
 

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261008T223143Z">
-<script src="js/auto-update.js?v=20261008T223143Z"></script>
+<meta name="autocor-version" content="20261016T175623162611Z">
+<script src="js/auto-update.js?v=20261016T175623162611Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Contratos</title>
@@ -285,7 +285,6 @@
   }
   .spinner-bar{height:100%;background:#fff;border-radius:999px;width:0}
   .spinner-overlay.open .spinner-bar{animation:extractionFill 2s ease-out forwards,extractionPulse 1.4s ease-in-out 2s infinite}
-  .spinner-note{color:#fff;font-size:12px;max-width:310px;text-align:center;line-height:1.5;margin:0 18px}
   @keyframes extractionFill{from{width:0}to{width:95%}}
   @keyframes extractionPulse{0%,100%{opacity:1}50%{opacity:.45}}
   @media(prefers-reduced-motion:reduce){.spinner-overlay.open .spinner-bar{animation:none;width:95%}.spinner{animation:none}}
@@ -370,7 +369,7 @@
     display:flex;align-items:center;justify-content:center;
     font-size:20px;
   }
-  .vc-info{flex:1}
+  .vc-info{flex:1;min-width:0}
   .vc-title{font-size:16px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
   .vc-sub{font-size:13px;margin-top:3px;font-weight:500;opacity:.85}
   .vc-summary{
@@ -396,25 +395,28 @@
   .vc-body{padding:0 24px 22px;background:#fff}
   .vc-row{
     display:grid;
-    grid-template-columns:180px 1fr auto;
+    grid-template-columns:180px minmax(0,1fr);
     gap:14px;padding:12px 0;
     border-top:1px solid #eef0f3;
     align-items:start;
   }
   .vc-row:first-child{border-top:none}
   .vc-row-field{
+    min-width:0;
     font-size:12px;font-weight:800;letter-spacing:.4px;
     text-transform:uppercase;color:var(--dark);padding-top:4px;
   }
   .vc-sources{
+    min-width:0;
     display:flex;flex-direction:column;gap:5px;
     font-size:12px;
   }
   .vc-source-line{
-    display:flex;align-items:center;gap:8px;
+    display:grid;grid-template-columns:140px minmax(0,1fr);align-items:start;gap:4px 10px;
+    min-width:0;
   }
   .vc-source-doc{
-    display:inline-block;min-width:140px;
+    display:inline-block;min-width:0;
     padding:2px 8px;border-radius:6px;
     font-size:10px;font-weight:800;letter-spacing:.3px;
     text-transform:uppercase;
@@ -422,15 +424,18 @@
   }
   .vc-source-val{
     font-family:Consolas,Monaco,monospace;
-    font-size:12px;color:var(--dark);
-    word-break:break-word;
+    font-size:12px;color:var(--dark);min-width:0;
+    overflow-wrap:anywhere;word-break:normal;
   }
+  .vc-source-note{grid-column:2;font-size:11px;color:#9ca3af;overflow-wrap:anywhere}
+  .vc-source-val.date-mismatch{color:#b91c1c;font-weight:700}
   .vc-source-val.empty{color:#c0c4cc;font-style:italic;font-family:inherit}
   .vc-source-line.match    .vc-source-doc{background:#d1fae5;color:var(--green-txt)}
   .vc-source-line.diff     .vc-source-doc{background:#fee2e2;color:var(--red-txt)}
   .vc-source-line.pending  .vc-source-doc{background:#f3f4f6;color:#9ca3af}
 
   .vc-status{
+    grid-column:2;justify-self:start;min-width:0;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;
     font-size:11px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
     padding:3px 10px;border-radius:999px;flex-shrink:0;align-self:flex-start;margin-top:3px;
   }
@@ -441,8 +446,16 @@
 
   @media(max-width:700px){
     .vc-row{grid-template-columns:1fr;gap:6px}
-    .vc-source-doc{min-width:100px}
+    .vc-source-line{grid-template-columns:110px minmax(0,1fr)}
+    .vc-status{grid-column:1}
   }
+  @media(max-width:450px){
+    .vc-source-line{grid-template-columns:minmax(0,1fr)}
+    .vc-source-note{grid-column:1}
+  }
+  .f-item.papeleta-date-error{background:#fff1f2!important;outline-color:#ef4444!important}
+  .papeleta-date-error .f-label,.papeleta-date-error .f-input{color:#b91c1c}
+  .papeleta-date-error .f-input{border-color:#ef4444;background:#fff1f2}
 
   /* ─── Per-field origin badge (OCR / IA / MANUAL / NO DETECTADO) ─ */
   .f-origin{
@@ -892,14 +905,15 @@
     .validate-toast.visible{transform:translate(0,0)}
   }
 </style>
-<script src="js/api-config.js?v=20261008T223143Z"></script>
-<script src="js/apps-script-transport.js?v=20261008T223143Z"></script>
-<script src="js/api-client.js?v=20261008T223143Z"></script>
-<script src="js/gemini-client.js?v=20261008T223143Z"></script>
-<script src="js/document-extraction.js?v=20261008T223143Z"></script>
-<script src="js/expediente.js?v=20261008T223143Z"></script>
+<script src="js/api-config.js?v=20261016T175623162611Z"></script>
+<script src="js/apps-script-transport.js?v=20261016T175623162611Z"></script>
+<script src="js/api-client.js?v=20261016T175623162611Z"></script>
+<script src="js/gemini-client.js?v=20261016T175623162611Z"></script>
+<script src="js/document-extraction.js?v=20261016T175623162611Z"></script>
+<script src="js/document-analysis.js?v=20261016T175623162611Z"></script>
+<script src="js/expediente.js?v=20261016T175623162611Z"></script>
 <style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}</style>
-<link rel="stylesheet" href="js/navigation.css?v=20261008T223143Z">
+<link rel="stylesheet" href="js/navigation.css?v=20261016T175623162611Z">
 </head>
 <body>
 
@@ -1513,7 +1527,6 @@
   <div class="spinner"></div>
   <div class="spinner-text" id="spinnerText" role="status" aria-live="polite">Procesando documento...</div>
   <div class="spinner-progress" aria-hidden="true"><div class="spinner-bar" id="spinnerBar"></div></div>
-  <p class="spinner-note">Por favor, espera y mantén esta página abierta.<br>La barra indica actividad, no el porcentaje real de avance.</p>
 </div>
 
 <!-- ── CUV Detail Modal ─────────────────────────────────────────── -->
@@ -1539,9 +1552,9 @@
 <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/cuv-parser.js?v=20261008T223143Z"></script>
-<script src="js/contrato-templates.js?v=20261008T223143Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20261008T223143Z"></script>
+<script src="js/cuv-parser.js?v=20261016T175623162611Z"></script>
+<script src="js/contrato-templates.js?v=20261016T175623162611Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20261016T175623162611Z"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -2171,6 +2184,15 @@ async function recognizeBestFromCanvas(canvas, tipo, pageLabel){
 }
 
 async function ocrFilePotenciado(file, tipo){
+  const started=Date.now();
+  try{return await ocrFilePorPaginas(file,tipo);}
+  finally{
+    if(typeof window!=='undefined' && window.dispatchEvent && typeof CustomEvent==='function'){
+      window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'OCR ('+tipo+')',elapsedMs:Date.now()-started,local:true}}));
+    }
+  }
+}
+async function ocrFilePorPaginas(file, tipo){
   const isPdf = file.name.toLowerCase().endsWith('.pdf');
   if(isPdf){
     spinnerMsg('Revisando texto y páginas escaneadas del PDF...');
@@ -2378,12 +2400,15 @@ let   GEMINI_LAST_OK_MODEL = '';
 let   GEMINI_AVAILABLE_MODELS = new Set(GEMINI_MODELS_ALL);
 let   GEMINI_AVAILABLE_METHODS = {};
 const GEMINI_MODEL_COOLDOWNS = new Map();
+const GEMINI_QUOTA_COOLDOWNS = new Map();
 const GEMINI_FETCH_TIMEOUT_MS = 60000;
 const GEMINI_SESSION_KEY = 'autocor_gemini_model';
 const GEMINI_SESSION_TTL_MS = 5 * 60 * 1000;
 const GEMINI_QUOTA_COOLDOWN_MS = 10 * 60 * 1000;
 const GEMINI_ERROR_COOLDOWN_MS = 60 * 1000;
 const GEMINI_PROXY_URL = AutoCorConfig.apiUrl;
+const GEMINI_COOLDOWN_KEY = 'autocor_gemini_cooldowns_v1';
+let GEMINI_COOLDOWNS_LOADED = false;
 function geminiModelsUrl(){
   return GEMINI_PROXY_URL+'?action=geminiProxy&op=models';
 }
@@ -2518,7 +2543,7 @@ function fileToDataUrl(file){
   });
 }
 
-/* Cada página llega por separado: conserva resolución y orden del documento. */
+/* PDF original cuando es pequeño; los grandes conservan la ruta visual por páginas. */
 async function prepararImagenParaIA(file, tipo){
   if(!file.name.toLowerCase().endsWith('.pdf')){
     setSpinnerBar(20);
@@ -2530,6 +2555,12 @@ async function prepararImagenParaIA(file, tipo){
       const err = new Error('Este documento tiene '+pdf.numPages+' páginas. Selecciona un PDF de hasta 6 páginas que incluya las secciones necesarias; no se han omitido páginas en silencio.');
       err.code = 'DOCUMENT_PAGE_LIMIT';
       throw err;
+    }
+    // El PDF nativo conserva todas las páginas y su capa de texto sin rasterizarlas.
+    // Umbral conservador para no aumentar el tamaño de envío de documentos muy pesados.
+    if(file.size > 0 && file.size <= 10*1024*1024){
+      const original = await fileToDataUrl(file);
+      return [{dataUrl:'data:application/pdf;base64,'+original.slice(original.indexOf(',')+1),label:'PDF completo: '+pdf.numPages+' páginas en su orden original'}];
     }
     const pages = [];
     for(let n=1; n<=pdf.numPages; n++){
@@ -3921,17 +3952,11 @@ async function procesarNotaria(file, nombre){
 function camposPapeleta(){
   return [
     {key:'numeroCedula', label:'Cédula', validate:function(v){ return validCed10(v)?'ok':'warn'; }},
-    {key:'nombreCompleto', label:'Nombre completo del elector', wide:true, validate:function(v){ return normalizeHumanName(v,12)?'ok':'warn'; }},
-    {key:'fechaSufragio', label:'Fecha de sufragio', validate:function(v){ return validDate(v)?'ok':'warn'; }},
-    {key:'tipoProceso', label:'Proceso electoral'},
-    {key:'provincia', label:'Provincia'},
-    {key:'canton', label:'Cantón'},
-    {key:'parroquia', label:'Parroquia'},
-    {key:'junta', label:'Junta'},
-    {key:'genero', label:'Género'},
-    {key:'numeroCertificado', label:'Número de certificado'}
+    {key:'nombreCompleto', label:'Nombres completos', wide:true, validate:function(v){ return normalizeHumanName(v,12)?'ok':'warn'; }},
+    {key:'fechaSufragio', label:'Fecha de sufragio', expectedDate:'16/11/2025', validate:function(v){ return validDate(v)?'ok':'warn'; }}
   ];
 }
+
 async function procesarPapeleta(file, tipo, nombre){
   const d = await procesarIaFirst({
     file, tipo, tipoIA:'papeleta', fieldsFn:camposPapeleta,
@@ -4209,7 +4234,10 @@ const TIPO_LABEL_VC = {
   'cedula-cony':'Cédula cónyuge',
   'cuv':         'CUV',
   'matricula':   'Matrícula',
-  'notaria':     'Print notaría'
+  'notaria':     'Print notaría',
+  'ruc':         'RUC empresa',
+  'papeleta-prop':'Papeleta titular',
+  'papeleta-cony':'Papeleta cónyuge'
 };
 
 /* ── Helpers para análisis de mayoría ────────────────────────── */
@@ -4459,7 +4487,7 @@ function computarValidaciones(){
   }
 
   // ── Validación adicional: fecha de sufragio = 16/11/2025 ──
-  // Proceso electoral oficial Ecuador del 16 de noviembre de 2025.
+  // Fecha de referencia solicitada para validar únicamente las papeletas.
   const FECHA_SUFRAGIO_OFICIAL = '16/11/2025';
   function _normFecha(s){
     return String(s||'').trim().replace(/[\-\.]/g,'/').replace(/\s+/g,'');
@@ -4468,8 +4496,7 @@ function computarValidaciones(){
     if(r.campo !== 'fechaSufragioProp' && r.campo !== 'fechaSufragioCony') return;
     if(!r.valores || r.valores.length === 0) return;
     const valDoc = normalizeDate(_normFecha(r.valores[0].raw));
-    const ok = valDoc === FECHA_SUFRAGIO_OFICIAL
-            || _normFecha(r.valores[0].raw) === '16/11/25';
+    const ok = valDoc === FECHA_SUFRAGIO_OFICIAL;
     if(!ok){
       r.estado = 'diff';
       r.mensaje = 'No corresponde al proceso 16/11/2025';
@@ -4478,7 +4505,7 @@ function computarValidaciones(){
     } else {
       const needsReview = r.valores[0].origin === 'review';
       r.estado = needsReview ? 'diff' : 'ok';
-      r.mensaje = needsReview ? 'Fecha del proceso esperado, pero requiere revisión' : 'Coincide con proceso oficial 16/11/2025';
+      r.mensaje = needsReview ? 'Fecha del proceso esperado, pero requiere revisión' : 'Coincide con la fecha requerida 16/11/2025';
       r.sugerido = r.valores[0].raw;
       r.coincidentes = needsReview ? [] : [r.valores[0].tipo];
       if(needsReview) r.sospechosos = [r.valores[0].tipo];
@@ -4582,16 +4609,17 @@ function renderValidacionCruzada(){
         cls = 'diff';
         valHtml = '<span class="vc-source-val" style="color:#b91c1c;font-weight:700">⚠ NO DETECTADO</span>';
         if(r.fallaDeteccion || r.estado === 'majority' || r.estado === 'diff'){
-          badge = ' <span class="vc-source-val empty" style="margin-left:8px;font-style:normal;color:#b91c1c">⚠ falló detección</span>';
+          badge = ' <span class="vc-source-note" style="color:#b91c1c">⚠ falló detección</span>';
         }
       } else {
         if(coinSet.has(s.tipo))      cls = 'match';
         else if(susSet.has(s.tipo))  cls = 'diff';
         else if(r.estado === 'ok' || r.estado === 'partial') cls = 'match';
         else cls = 'diff';
-        valHtml = '<span class="vc-source-val">'+escHtml(valor.raw)+'</span>';
+        const dateMismatch=(r.campo==='fechaSufragioProp' || r.campo==='fechaSufragioCony') && normalizeDate(valor.raw)!=='16/11/2025';
+        valHtml = '<span class="vc-source-val'+(dateMismatch?' date-mismatch':'')+'">'+escHtml(valor.raw)+'</span>';
         if(susSet.has(s.tipo)){
-          badge = ' <span class="vc-source-val empty" style="margin-left:8px;font-style:normal">⚠ sospechoso</span>';
+          badge = ' <span class="vc-source-note">⚠ sospechoso</span>';
         }
       }
       html +=
@@ -4704,11 +4732,13 @@ function buildBlock(cfg, d){
 
       const val      = (d[f.key]||'').toString().trim();
       const origin   = (d._origins && d._origins[f.key]) || (val?'ocr':'none');
-      const state    = origin === 'review' ? 'warn' : fieldState(val, f);
+      const detectedState = fieldState(val,f);
+      const state = origin === 'review' && detectedState!=='err' ? 'warn' : detectedState;
       const originHtml = renderOriginBadge(origin);
       const labelHtml  = '<div class="f-label">'+escHtml(f.label)+' '+originHtml+'</div>';
       const item     = document.createElement('div');
       item.className = 'f-item'+(f.wide?' wide':'');
+      if(f.expectedDate && val && state==='err')item.classList.add('papeleta-date-error');
 
       if(f.multiline){
         /* ── Textarea for multi-line fields (compradores, vendedores) ── */
@@ -4792,6 +4822,8 @@ function buildBlock(cfg, d){
 
 function fieldState(val, fieldDef){
   if(!val) return 'none';
+  // Regla de la papeleta; no modifica la lectura ni provoca OCR por una fecha distinta.
+  if(fieldDef.expectedDate && normalizeDate(val)!==fieldDef.expectedDate)return 'err';
   if(fieldDef.validate){
     const ok = fieldDef.validate(val);
     return ok==='warn'?'warn':ok===false?'err':'ok';
@@ -4856,6 +4888,7 @@ window.onFieldEdit = function(input){
   );
   const fieldDef = fieldDefs.find(function(f){ return f.key===key; }) || {};
   const state = fieldState(val, fieldDef);
+  if(item && fieldDef.expectedDate)item.classList.toggle('papeleta-date-error',!!val && state==='err');
   const ind = input.nextElementSibling;
   if(ind) ind.className = 'f-indicator '+(val ? state : 'none');
   input.className = (input.tagName === 'TEXTAREA' ? 'f-textarea ' : 'f-input ')+(val ? state : 'empty');
@@ -5179,7 +5212,26 @@ function cedulaNamesLookMixed(apellidos, nombres){
   return (' '+ap+' ').indexOf(' '+nm+' ') >= 0 || (' '+nm+' ').indexOf(' '+ap+' ') >= 0;
 }
 
+function restoreGeminiCooldowns(){
+  if(GEMINI_COOLDOWNS_LOADED)return;
+  GEMINI_COOLDOWNS_LOADED=true;
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(GEMINI_COOLDOWN_KEY)||'null');
+    const now=Date.now();
+    if(!saved || saved.endpoint!==GEMINI_PROXY_URL || !Array.isArray(saved.models))return;
+    saved.models.forEach(function(entry){
+      if(Array.isArray(entry) && GEMINI_MODELS_FALLBACK.indexOf(entry[0])>=0 && Number.isFinite(entry[1]) && entry[1]>now && entry[1]<=now+GEMINI_QUOTA_COOLDOWN_MS){
+        GEMINI_MODEL_COOLDOWNS.set(entry[0],entry[1]);
+        GEMINI_QUOTA_COOLDOWNS.set(entry[0],entry[1]);
+      }
+    });
+  }catch(_){}
+}
+function persistGeminiCooldowns(){
+  try{sessionStorage.setItem(GEMINI_COOLDOWN_KEY,JSON.stringify({endpoint:GEMINI_PROXY_URL,models:Array.from(GEMINI_QUOTA_COOLDOWNS)}));}catch(_){}
+}
 function geminiCandidateModels(){
+  restoreGeminiCooldowns();
   var now = Date.now();
   var availableVision = GEMINI_MODELS_FALLBACK.filter(function(model){
     var methods = GEMINI_AVAILABLE_METHODS[model];
@@ -5193,6 +5245,7 @@ function geminiCandidateModels(){
   return availableVision;
 }
 function registerGeminiModelFailure(model, status, detail){
+  restoreGeminiCooldowns();
   var message = String(detail || '').toUpperCase();
   var quotaExhausted = Number(status) === 429 || message.indexOf('RESOURCE_EXHAUSTED') >= 0 ||
     message.indexOf('QUOTA') >= 0 || message.indexOf('RATE LIMIT') >= 0;
@@ -5202,14 +5255,20 @@ function registerGeminiModelFailure(model, status, detail){
       model,
       Date.now() + (quotaExhausted || modelUnavailable ? GEMINI_QUOTA_COOLDOWN_MS : GEMINI_ERROR_COOLDOWN_MS)
     );
+    if(quotaExhausted){
+      GEMINI_QUOTA_COOLDOWNS.set(model,GEMINI_MODEL_COOLDOWNS.get(model));
+      persistGeminiCooldowns();
+    }
   }
 }
-function setGeminiReadyModel(model){
+function setGeminiReadyModel(model, background){
   GEMINI_MODEL_COOLDOWNS.delete(model);
+  GEMINI_QUOTA_COOLDOWNS.delete(model);
+  persistGeminiCooldowns();
   GEMINI_MODEL_ACTIVE = model;
   GEMINI_LAST_OK_MODEL = model;
   aiAvailable = true;
-  setAIBanner('ok', 'Última lectura realizada con '+renderAIBannerModel(model)+'.');
+  if(!background)setAIBanner('ok', 'Última lectura realizada con '+renderAIBannerModel(model)+'.');
   try{
     sessionStorage.setItem(GEMINI_SESSION_KEY, JSON.stringify({ model:model, savedAt:Date.now() }));
   }catch(_){ }
@@ -5223,18 +5282,19 @@ async function geminiGenerateWithFallback(body, opts){
   var attempts = [];
   var lastErr = '';
   var models = geminiCandidateModels();
+  var serializedBody = opts.serializedBody || JSON.stringify(body);
   for(var i=0; i<models.length; i++){
     var model = models[i];
-    setAIBanner('checking', (i ? 'Cambiando de IA: ' : 'Procesando documento con ') + renderAIBannerModel(model) + (i ? '. El modelo anterior no pudo responder.' : '...'));
+    if(!opts.background)setAIBanner('checking', (i ? 'Cambiando de IA: ' : 'Procesando documento con ') + renderAIBannerModel(model) + (i ? '. El modelo anterior no pudo responder.' : '...'));
     try{
       var resp = await geminiFetch(geminiUrl(model), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
+        body: serializedBody
       });
       if(resp.ok){
         var json = await resp.json();
-        setGeminiReadyModel(model);
+        setGeminiReadyModel(model,opts.background);
         return { json: json, model: model, attempts: attempts };
       }
       var errTxt = await resp.text();
@@ -5254,7 +5314,7 @@ async function geminiGenerateWithFallback(body, opts){
       console.warn('[IA] '+model+' red:', err);
     }
   }
-  if(opts.silent !== true) setGeminiUnavailable();
+  if(opts.silent !== true && !opts.background) setGeminiUnavailable();
   throw new Error(lastErr || 'No se encontró un modelo Gemini disponible');
 }
 
@@ -5305,14 +5365,46 @@ if(document.readyState === 'loading'){
   setTimeout(function(){ window.initializeAIState(); }, 50);
 }
 
+async function ejecutarSolicitudIA(body, serializedBody, keys, background){
+  const started=performance.now();
+  let result;
+  try{
+    result=await geminiGenerateWithFallback(body,{serializedBody:serializedBody,background:!!background});
+    return {data:AutoCorDocumentExtraction.parseResponse(result.json,keys),model:result.model,elapsedMs:Math.round(performance.now()-started)};
+  }catch(err){
+    err.analysisElapsedMs=Math.round(performance.now()-started);
+    if(result)err.analysisModel=result.model;
+    throw err;
+  }
+}
+
 async function analizarConGeminiCampos(tipo, dataUrl, missingKeys, extraOpts){
   if(!missingKeys || missingKeys.length===0) return {};
   const body = AutoCorDocumentExtraction.buildRequest(tipo, dataUrl, missingKeys, extraOpts || {});
+  const serializedBody = JSON.stringify(body);
   spinnerMsg('IA identificando campos de '+tipo+'...');
   setSpinnerBar(40);
-  const result = await geminiGenerateWithFallback(body);
-  setSpinnerBar(55);
-  return AutoCorDocumentExtraction.parseResponse(result.json, missingKeys);
+  const started = performance.now();
+  const runAnalysis = function(){return ejecutarSolicitudIA(body,serializedBody,missingKeys,false);};
+  try{
+    const result = window.AutoCorDocumentAnalysis
+      ? await window.AutoCorDocumentAnalysis.share(serializedBody,runAnalysis)
+      : await runAnalysis();
+    setGeminiReadyModel(result.model);
+    setSpinnerBar(55);
+    window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'Extracción IA ('+tipo+') · '+result.model,elapsedMs:result.elapsedMs,local:true}}));
+    return result.data;
+  }catch(err){
+    const original=err.cause || err;
+    let message=String(err.message || 'Error de IA');
+    if(original!==err && original.message)message+=' · '+original.message;
+    if(err.finishReason)message+=' · Finalización: '+err.finishReason;
+    if(err.analysisModel)message+=' · Modelo: '+err.analysisModel;
+    try{const token=JSON.parse(localStorage.getItem('autocor_auth')||'null')?.token;if(token)message=message.split(token).join('[oculto]');}catch(_){}
+    const elapsedMs=Number.isFinite(err.analysisElapsedMs)?err.analysisElapsedMs:Math.round(performance.now()-started);
+    window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'Extracción IA ('+tipo+') · sin respuesta válida',elapsedMs:elapsedMs,local:true,outcome:'failed',details:[{kind:'request',error:{name:original.name||'Error',code:err.code||original.code||null,message:message.slice(0,1200)}}]}}));
+    throw err;
+  }
 }
 
 function validDate(v){ return !!normalizeDate(v); }
@@ -5592,18 +5684,49 @@ async function _procesarUnPendiente(tipo){
   }
 }
 
+function prepararSiguienteAnalisis(tipo, batch){
+  const coordinator=window.AutoCorDocumentAnalysis;
+  const imgs=pastedImages[tipo];
+  if(!coordinator || !batch || !imgs)return;
+  let kind,fields,attachments;
+  if(tipo==='cedula-prop' || tipo==='cedula-cony'){
+    kind='cedula';fields=camposCedula();attachments=[];
+    if(imgs.frontal)attachments.push({dataUrl:imgs.frontal,label:'Frontal de cédula'});
+    if(imgs.reverso)attachments.push({dataUrl:imgs.reverso,label:'Reverso de cédula'});
+  }else if(tipo==='matricula'){
+    kind='matricula';fields=camposMatricula();
+    attachments=[{dataUrl:imgs.frontal,label:'Frontal de matrícula'},{dataUrl:imgs.reverso,label:'Reverso de matrícula'}].filter(function(p){return !!p.dataUrl;});
+  }else if(tipo==='notaria'){
+    kind='notaria';fields=camposNotaria();attachments=imgs.frontal;
+  }else if(tipo==='ruc'){
+    kind='ruc';fields=camposRuc();attachments=imgs.frontal;
+  }else if(tipo==='papeleta-prop' || tipo==='papeleta-cony'){
+    kind='papeleta';fields=camposPapeleta();attachments=imgs.frontal;
+  }else return; // CUV conserva exclusivamente su lectura local.
+  try{
+    const keys=fields.filter(function(f){return f.type!=='separator';}).map(function(f){return f.key;});
+    const body=AutoCorDocumentExtraction.buildRequest(kind,attachments,keys,{});
+    const serialized=JSON.stringify(body);
+    coordinator.prefetch(serialized,function(){return ejecutarSolicitudIA(body,serialized,keys,true);},batch);
+  }catch(err){console.warn('[IA] Se conserva lectura normal del documento:',err);}
+}
 async function validarTodoEnConjunto(){
   /* ─── FASE 1: Procesar todos los documentos pegados pendientes ──── */
   var pendientes = _pendientesDeProcesar();
   if(pendientes.length > 0){
     console.log('[ProcesarTodo] Procesando '+pendientes.length+' doc(s) pendiente(s):', pendientes);
     var procesados = 0, errores = 0;
-    for(var i=0; i<pendientes.length; i++){
-      var r = await _procesarUnPendiente(pendientes[i]);
-      if(r.ok) procesados++; else errores++;
-      // Asegurar render incremental tras cada procesamiento
-      try{ renderResultsSection(); }catch(e){}
-    }
+    const coordinator=window.AutoCorDocumentAnalysis;
+    const batch=pendientes.length>1 && typeof coordinator?.beginBatch==='function' ? coordinator.beginBatch() : null;
+    try{
+      for(var i=0; i<pendientes.length; i++){
+        // Solo una IA anticipada; el OCR y la aplicación de resultados siguen en orden.
+        if(i+1<pendientes.length)prepararSiguienteAnalisis(pendientes[i+1],batch);
+        var r = await _procesarUnPendiente(pendientes[i]);
+        if(r.ok) procesados++; else errores++;
+        try{ renderResultsSection(); }catch(e){}
+      }
+    }finally{if(batch)coordinator.endBatch(batch);}
     console.log('[ProcesarTodo] Resultado: '+procesados+' OK, '+errores+' con error');
   }
 
@@ -5883,22 +6006,17 @@ async function validarTodoEnConjunto(){
   }
 
   function _actualizarHintValor(){
-    var raw = this.value.replace(/\./g,'').replace(',','.');
-    var num = parseFloat(raw);
+    var raw = this.value.trim();
     var hint = document.getElementById('genValorHint');
-    if(!isNaN(num) && num > 0 && typeof generarContratos !== 'undefined'){
-      // usar valorATexto del generador
+    hint.textContent = '';
+    hint.style.color = '';
+    if(raw && typeof window._valorATextoHelper === 'function'){
       try{
-        var txt = window._valorATextoHelper ? window._valorATextoHelper(num) : '';
-        if(!txt){
-          // fallback inline
-          hint.textContent = '';
-          return;
-        }
-        hint.textContent = 'En letras: '+txt;
-      }catch(e){ hint.textContent = ''; }
-    } else {
-      hint.textContent = '';
+        hint.textContent = 'En letras: '+window._valorATextoHelper(raw);
+      }catch(e){
+        hint.textContent = e.message;
+        hint.style.color = '#b91c1c';
+      }
     }
   }
 
@@ -5913,6 +6031,14 @@ async function validarTodoEnConjunto(){
     errorEl.style.display = 'none';
 
     if(!validarContactosContrato('gen', errorEl)) return;
+
+    var domicilio = (document.getElementById('genDomicilio').value||'').trim().toUpperCase();
+    if(domicilio !== 'QUITO' && domicilio !== 'GUAYAQUIL'){
+      errorEl.textContent = 'Selecciona Quito o Guayaquil para asignar el pie de firma del intermediario.';
+      errorEl.style.display = 'block';
+      document.getElementById('genDomicilio').focus();
+      return;
+    }
 
     var km        = (document.getElementById('genKm').value||'').trim();
     var valorNum  = (document.getElementById('genValorNum').value||'').trim();
@@ -5935,7 +6061,7 @@ async function validarTodoEnConjunto(){
     var extra = {
       telefonoProp: (document.getElementById('genTelefonoProp').value||'').trim(),
       emailProp:    (document.getElementById('genEmailProp').value||'').trim(),
-      domicilio:    (document.getElementById('genDomicilio').value||'').trim(),
+      domicilio:    domicilio,
       telefonoCony: (document.getElementById('genTelefonoCony').value||'').trim(),
       emailCony:    (document.getElementById('genEmailCony').value||'').trim(),
       km:           km,
@@ -6636,9 +6762,9 @@ window.AutoCorContractDraft = {
 })();
 </script>
 
-<script src="js/auth-ui.js?v=20261008T223143Z"></script>
-<script src="js/session-sync.js?v=20261008T223143Z"></script>
-<script src="js/workflow.js?v=20261008T223143Z"></script>
-<script src="js/workflow-adapters.js?v=20261008T223143Z"></script>
+<script src="js/auth-ui.js?v=20261016T175623162611Z"></script>
+<script src="js/session-sync.js?v=20261016T175623162611Z"></script>
+<script src="js/workflow.js?v=20261016T175623162611Z"></script>
+<script src="js/workflow-adapters.js?v=20261016T175623162611Z"></script>
 </body>
 </html>
