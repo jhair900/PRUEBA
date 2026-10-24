@@ -1,0 +1,15 @@
+{
+  "caseId": "pdf-autorizado-01",
+  "pages": [
+    {
+      "page": 1,
+      "textCharacters": 0,
+      "images": 1,
+      "width": 595.32,
+      "height": 841.92
+    }
+  ],
+  "pageCount": 1,
+  "mixedTextAndScans": false,
+  "allPagesImageOnly": true
+}

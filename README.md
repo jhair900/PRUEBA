@@ -203,3 +203,19 @@ node tests/matricula-ocr.cjs
 ```
 
 Estas pruebas usan documentos sintéticos y respuestas de IA simuladas. La exactitud con fotografías reales, plantillas específicas y el servicio Gemini debe comprobarse con los documentos del usuario después de publicar; no se midió una tasa de acierto real ni una mejora de latencia en producción.
+
+## Extracción documental automática con Gemini — 22 de octubre de 2026
+
+Contratos mantiene sus apartados y controles habituales. Matrícula usa frontal y reverso; no se añade una carga de PDF/imagen, un selector de modelo, un comprobador manual ni una modalidad de edición nueva. Los campos conservan su edición existente. El CUV conserva su carga y extracción local de PDF, sin Gemini.
+
+El procesamiento documental usa Gemini, sin descargas, workers ni respaldo Tesseract. El sistema comprueba automáticamente una generación sintética con imagen y el esquema de extracción por el mismo proxy autenticado antes de habilitar la incorporación de documentos. Prueba secuencialmente los seis modelos configurados hasta encontrar uno operativo y usa ese modelo al leer el documento. Ante cuotas agotadas comprueba alternativas automáticamente; si no puede procesar, lo indica en la barra existente antes de permitir la carga.
+
+La aprobación es breve (120 segundos por defecto) y depende de sesión/backend. La comprobación se renueva automáticamente y respeta los tiempos de espera del servicio. Una pestaña oculta suspende las comprobaciones y las retoma al volver. No hay decisiones ni pasos nuevos para los usuarios. Los detalles técnicos permanecen en Tiempos para administradores. Las comprobaciones consumen cuota y no la reservan.
+
+Se mantienen cancelación, protección contra respuestas tardías, archivos retenidos y ediciones manuales, incluidos vacíos intencionales. Las contradicciones continúan pendientes de revisión. Los PDF de los apartados que ya los admitían conservan su texto nativo y preparación existentes.
+
+Esta corrección no añade cambios nuevos a `gas/script.gs`, pero el paquete conserva la actualización pendiente de la entrega anterior: listado completo, Retry-After y tiempos internos del proxy. Para publicar el paquete completo hay que pegar el script completo y crear una nueva versión de la implementación existente; no basta con guardar en el editor. No se ha desplegado ni publicado nada. La clave Gemini permanece en Script Properties.
+
+Comprobaciones locales afectadas: `tests/gemini-availability.cjs`, `tests/processing-browser.cjs`, `tests/contract-pipeline.cjs`, `tests/ocr-contradictions.cjs`, `tests/processing-control.cjs` y `tests/document-reading-quality.cjs`. Son simulaciones locales; no miden disponibilidad ni latencia actuales de la cuenta real. Las pruebas con documentos reales siguen detenidas por indicación del usuario. Los nombres heredados de algunos parsers incluyen OCR, pero no ejecutan reconocimiento.
+
+Preparar una versión revisable con `python tools/prepare-release.py`. El ZIP no publica ni despliega por sí solo. Los HTML, `version.json` y recursos JS deben corresponder a la misma versión.

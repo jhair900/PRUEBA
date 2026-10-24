@@ -5,8 +5,8 @@ const html=fs.readFileSync(path.join(root,'contratos.html'),'utf8');
 (async()=>{
  const dataUrl='data:application/octet-stream;base64,JVBERi0xLjc=';
  let renders=0,destroyed=0;
- const pdf={numPages:2,getPage(){renders++;throw Error('No rasterizar PDF pequeño');},destroy:async()=>destroyed++};
- const ctx=vm.createContext({pdfjsLib:{getDocument:()=>({promise:Promise.resolve(pdf)})},fileToDataUrl:async()=>dataUrl,spinnerMsg(){},setSpinnerBar(){}});
+ const pdf={numPages:2,getPage(){return Promise.resolve({getTextContent:async()=>({items:[]}),cleanup(){}});},destroy:async()=>destroyed++};
+ const ctx=vm.createContext({requireDocumentAccess(){},AutoCorDocumentExtraction:require('../js/document-extraction.js'),awaitDocumentTask:(op,p)=>p,pdfjsLib:{getDocument:()=>({promise:Promise.resolve(pdf)})},fileToDataUrl:async()=>dataUrl,spinnerMsg(){},setSpinnerBar(){}});
  const start=html.indexOf('async function prepararImagenParaIA('),end=html.indexOf('/* ── Convertir compradores',start);
  vm.runInContext(html.slice(start,end),ctx);
  const doc=await ctx.prepararImagenParaIA({name:'prueba.pdf',size:10,arrayBuffer:async()=>new ArrayBuffer(0)},'notaria');
@@ -36,22 +36,4 @@ const html=fs.readFileSync(path.join(root,'contratos.html'),'utf8');
  const two=win.AutoCorDocumentAnalysis.share('otro',async()=>{count++;await wait;return 2;});
  await new Promise(r=>setTimeout(r,20));assert.equal(count,2);unlock();assert.deepEqual(await Promise.all([one,two]),[1,2]);
  console.log('OK solicitudes simultáneas se comparten, resultados independientes, reintentos y sesiones aislados');
- let clock=0;const measured=[];
- win.dispatchEvent=e=>measured.push(e.detail);
- const timingCtx=vm.createContext({window:win,localStorage:win.localStorage,performance:{now:()=>clock},
-  AutoCorDocumentExtraction:{buildRequest:()=>({doc:true}),parseResponse:json=>extraction.parseResponse(json,['placa'])},
-  geminiGenerateWithFallback:async()=>{clock=23000;return {model:'modelo-prueba',json:{candidates:[{finishReason:'MAX_TOKENS'}]}};},
-  spinnerMsg(){},setSpinnerBar(){},setGeminiReadyModel(){},
-  CustomEvent:class{constructor(type,opts){this.type=type;this.detail=opts.detail;}}
- });
- const first=html.indexOf('async function ejecutarSolicitudIA('),last=html.indexOf('function validDate',first);
- vm.runInContext(html.slice(first,last),timingCtx);
- const batch=win.AutoCorDocumentAnalysis.beginBatch();
- win.AutoCorDocumentAnalysis.prefetch('{"doc":true}',()=>timingCtx.ejecutarSolicitudIA({doc:true},'{"doc":true}',['placa'],true),batch);
- await new Promise(r=>setImmediate(r));clock=80000;
- await assert.rejects(()=>timingCtx.analizarConGeminiCampos('matricula','unused',['placa']),e=>e.finishReason==='MAX_TOKENS');
- assert.equal(measured[0].elapsedMs,23000);assert.equal(measured[0].details[0].error.code,'AI_RESPONSE_INCOMPLETE');
- assert.ok(measured[0].details[0].error.message.includes('MAX_TOKENS'));
- win.AutoCorDocumentAnalysis.endBatch(batch);
- console.log('OK tiempo y razón original de fallo anticipado conservados al consumir el resultado después');
 })().catch(e=>{console.error(e);process.exitCode=1;});

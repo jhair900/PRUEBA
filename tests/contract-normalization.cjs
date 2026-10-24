@@ -30,11 +30,11 @@ for(const name of [
   'normalizeCedula10', 'normalizeRuc13', 'normalizeIdentificacion', 'validarCedulaEc',
   'normalizeDate', 'normalizeEstadoCivil', 'normalizeNacionalidad', 'normalizeDactilar',
   'normalizePlaca', 'normalizeMarca', 'normalizeModelo', 'normalizeAnio', 'normalizeColor',
-  'normalizeChasis', 'normalizeMotor', 'normalizeFieldValue', 'normalizeOcrText', 'normalizeForParsing',
+  'normalizeChasis', 'normalizeMotor', 'isDocumentHeader','normalizeFieldValue', 'normalizeOcrText', 'normalizeForParsing',
   'matriculaHasPhoneContext', 'matriculaHasCedulaContext', 'findMatriculaCedulaContextual',
   'validarCedulaMatriculaPorOCR', 'cedulaPropietarioReferencia', 'postProcesarMatriculaConfiabilidad',
-  'normalizarValor', 'nombresEquivalentes', 'similitudCadena', 'vcEquivalentes', 'vcAgrupar',
-  'vcMejorValor', 'vcOrigenCampo', 'getValidacionesCruzadas', 'computarValidaciones'
+  'normalizarValor', 'nombresEquivalentes', 'similitudCadena', 'vcClaveChasis', 'vcEquivalentes', 'vcAgrupar',
+  'vcMejorValor', 'vcOrigenCampo', 'vcFieldKeys', 'getValidacionesCruzadas', 'computarValidaciones'
 ]) loadFunction(name);
 
 let count = 0;
@@ -87,7 +87,7 @@ test('OCR sin evidencia no borra una lectura de IA; toda edición manual permane
   const data = {cedulaRuc:cedula}, origins = {cedulaRuc:'ai'};
   context.postProcesarMatriculaConfiabilidad(data, origins, '');
   assert.equal(data.cedulaRuc, cedula);
-  assert.equal(origins.cedulaRuc, 'review');
+  assert.equal(origins.cedulaRuc, 'ai');
   const manual = {cedulaRuc:'MI LECTURA'}, manualOrigins = {cedulaRuc:'manual'};
   context.postProcesarMatriculaConfiabilidad(manual, manualOrigins, 'TELEFONO: '+cedula);
   assert.equal(manual.cedulaRuc, 'MI LECTURA');
@@ -105,26 +105,37 @@ test('La validación conserva review de identificaciones, nombres, representante
   assert.equal(context.vcOrigenCampo({_origins:{numeroCedula:'review'}},'papeleta-prop','cedulaRepresentante'), 'review');
   assert.equal(context.vcOrigenCampo({nombreCompleto:'ANA PEREZ',_origins:{nombreCompleto:'review'}},'papeleta-prop','propietario'), 'review');
 });
-test('Coincidencias entre documentos no hacen pasar una identificación marcada para revisión', () => {
+test('Coincidencias entre documentos no son contradicciones por una etiqueta heredada de revisión', () => {
   context.flujoContrato.tipoPersona = 'natural';
   context.datos = {'cedula-prop':{numeroCedula:cedula,_origins:{numeroCedula:'ai'}},
     matricula:{cedulaRuc:cedula,_origins:{cedulaRuc:'review'}}, cuv:{cedula}};
   const row = result('identificacionPropietario');
-  assert.equal(row.estado, 'diff');
-  assert.ok(row.sospechosos.includes('matricula'));
-  assert.ok(!row.coincidentes.includes('matricula'));
+  assert.equal(row.estado, 'ok');
+  assert.equal(row.sospechosos.length,0);
+  assert.ok(row.coincidentes.includes('matricula'));
 });
-test('Papeleta compara nombre completo y respeta la fecha detectada ante otra fecha esperada', () => {
+test('Papeletas antiguas no participan en las comparaciones ni en sus pendientes', () => {
   context.datos = {'papeleta-prop':{nombreCompleto:'ANA LUZ PEREZ',fechaSufragio:'09/02/2025',
     _origins:{nombreCompleto:'ai',fechaSufragio:'ai'}}};
-  assert.equal(result('propietario').valores[0].raw, 'ANA LUZ PEREZ');
-  assert.equal(result('fechaSufragioProp').sugerido, '09/02/2025');
-  assert.equal(result('fechaSufragioProp').estado, 'diff');
+  assert.equal(result('propietario').valores.length,0);
+  assert.equal(result('fechaSufragioProp'),undefined);
+  assert.ok(context.getValidacionesCruzadas().every(r=>r.sources.every(s=>!s.tipo.startsWith('papeleta'))));
 });
-test('La fecha esperada tampoco elimina review de una lectura dudosa', () => {
-  context.datos = {'papeleta-prop':{fechaSufragio:'16/11/2025',_origins:{fechaSufragio:'review'}}};
-  assert.equal(result('fechaSufragioProp').estado, 'diff');
-  assert.equal(result('fechaSufragioProp').coincidentes.length, 0);
+test('Ausentes y contradicciones internas quedan pendientes sin falsos sospechosos', () => {
+  context.datos={matricula:{motor:'AB1234',_origins:{motor:'review'},_conflicts:{motor:['AB1234','AB1235']}},cuv:{motor:'AB1234'}};
+  assert.equal(result('motor').estado,'pending');assert.equal(result('motor').sospechosos.length,0);
+  context.datos.cuv.motor='';assert.equal(result('motor').estado,'pending');assert.ok(result('motor').noDetectados.includes('cuv'));
+  context.datos.cuv.motor='AB1235';assert.equal(result('motor').estado,'diff');
+});
+test('El modelo conserva puntos al normalizar y distingue 1.2 de 1 2 y de 12',()=>{
+  assert.equal(context.normalizeFieldValue('modelo','SPARK 1.2 LT',{}),'SPARK 1.2 LT');
+  assert.equal(context.vcEquivalentes('SPARK 1.2 LT','spark 1.2 lt','estricto','modelo'),true);
+  for(const other of ['SPARK 1 2 LT','SPARK 12 LT'])assert.equal(context.vcEquivalentes('SPARK 1.2 LT',other,'estricto','modelo'),false);
+});
+test('Un nombre incompleto o una identificación vaciada son pendientes, no diferencias ni valores recuperados',()=>{
+  context.datos={'cedula-prop':{nombres:'ANA',apellidos:''},matricula:{propietario:'PEREZ ANA',cedulaRuc:cedula},cuv:{cedula:'',documentoIdentidad:cedula,_origins:{cedula:'manual'}}};
+  assert.equal(result('propietario').estado,'pending');assert.equal(result('propietario').sospechosos.length,0);
+  assert.equal(result('identificacionPropietario').estado,'pending');assert.ok(result('identificacionPropietario').noDetectados.includes('cuv'));
 });
 test('Compradores y vendedores conservan filas separadas al normalizar', () => {
   const rows = 'CEDULA | 1722821509 | ANA PEREZ\nRUC | 1790012345001 | EMPRESA 2020 S.A.';

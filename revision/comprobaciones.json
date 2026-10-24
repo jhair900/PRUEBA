@@ -1,0 +1,37 @@
+{
+  "synthetic": true,
+  "realGemini": false,
+  "realDocuments": false,
+  "results": [
+    {
+      "suite": "gemini-availability.cjs",
+      "ok": true,
+      "output": "OK listModels 200/generación 429 bloquea, CUV local funciona y Retry-After se respeta\nOK alternativa B elegida automáticamente al agotar A; el documento usa realmente B\nOK pruebas concurrentes agrupadas, caché corta caduca y necesita nueva generación\nOK respuesta tardía no habilita otro contexto ni sesión/backend\nOK cuota posterior invalida aprobación sin borrar los documentos del llamador\nOK automático sólo cambia a una alternativa comprobada activamente, secuencial y sin fanout\nOK 200 inválido no acredita funcionamiento; errores distinguen autorización/solicitud/modelo/servicio/red\nOK cancelación evita envíos y diagnósticos excluyen sesión y documentos\nOK los seis candidatos se comprueban secuencialmente hasta encontrar cuota, sin límite artificial de tres\nOK comprobación atascada termina en plazo sin habilitar entradas ni rechazos sin manejar\n"
+    },
+    {
+      "suite": "processing-browser.cjs",
+      "ok": true,
+      "output": "OK interfaz original sin selectores, botones ni carga extra; CUV y campos existentes conservados\nOK comprobación y recuperación automáticas, sin clics ni elección de modelo\nOK navegador: modelo B en la solicitud simulada, cancelar/reintentar conserva frontal/reverso y campos manuales, vacío y protección tardía\nOK la comprobación vencida se renueva automáticamente\nOK cuota posterior: archivos y manuales conservados; alternativas y comprobación siguen automáticas\nOK navegador: ninguna descarga/ejecución de Tesseract, sin errores JS ni datos personales en Tiempos\n"
+    },
+    {
+      "suite": "contract-pipeline.cjs",
+      "ok": true,
+      "output": "OK una lectura Gemini; formatos válidos no fingen confirmación independiente de códigos críticos\nOK fallo Gemini se entrega para recuperación manual sin ejecutar respaldo OCR\nOK relectura mantiene contradicciones, edición manual y vacío intencional\nOK encabezados rechazados y contradicción del texto PDF persiste en fusiones posteriores\nOK todos los criterios mantienen roles y asociación espacial; año de fabricación separado de año/modelo\n"
+    },
+    {
+      "suite": "ocr-contradictions.cjs",
+      "ok": true,
+      "output": "OK parser real: contradicción frontal/reverso se propaga aunque el campo ya estuviera completo y persiste en fusiones PDF/IA\nOK contradicciones no cambian valores manuales ni campos vaciados manualmente\nOK dos identificaciones del propietario requieren revisión; propietario y representante no se mezclan\nOK lectores reales de cédula y RUC no eligen la primera identificación contradictoria del mismo rol\nOK notaría no elige la primera identificación contradictoria y separa propietario de representante/compradores\nOK un segundo identificador con dígito inválido tampoco permite confirmar el primero por descarte\n"
+    },
+    {
+      "suite": "processing-control.cjs",
+      "ok": true,
+      "output": "OK cancelación inmediata, sin aplicar respuesta tardía\nOK presupuesto total, manuales incluso vacíos y metadatos sin contenido sensible\nOK cancelar un consumidor no cancela al otro ni duplica la consulta compartida\n"
+    },
+    {
+      "suite": "document-reading-quality.cjs",
+      "ok": true,
+      "output": "OK PDF mixto simulado: texto nativo preservado y PDF COMPLETO enviado, incluida página escaneada, sin reconocimiento local\nOK PDF grande conserva todas las páginas visuales; límite explícito y diagnóstico sin contenido\nOK CUV conserva extracción y parser local sin dependencia de Gemini ni Tesseract\n"
+    }
+  ]
+}

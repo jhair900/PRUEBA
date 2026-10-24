@@ -1,0 +1,17 @@
+# Correcciones para revisión — 23 de octubre de 2026
+
+Versión local: **20261023T144613991073Z**. Sin publicar ni desplegar.
+
+Se limitaron los cambios a los cinco puntos solicitados:
+
+- **Papeleta retirada:** ya no aparece como documento de carga, no entra en el lote, las comparaciones, los pendientes ni los expedientes nuevos. Los adjuntos electorales de borradores antiguos se ignoran al recuperarlos; no se borran registros históricos.
+- **Validación de corrido:** un clic recorre los documentos necesarios en orden. Se retiró el anticipo paralelo que podía dejar solicitudes adelantadas con otro modelo. La lectura utiliza su presupuesto completo de 45 segundos, en lugar de heredar el límite de 25 segundos de la prueba sintética de disponibilidad. Una respuesta documental satisfactoria renueva la disponibilidad del modelo. La selección sigue siendo automática.
+- **Recuperación y éxito real:** los parciales vuelven a la cola; un objeto parcial ya no se cuenta como documento terminado. Al continuar se conservan los campos correctos y sólo se solicitan los pendientes, excluyendo los manuales, incluso vacíos. No se anuncia validación completada mientras haya documentos incompletos, datos pendientes o diferencias. Cancelar detiene el lote y las respuestas tardías no se aplican.
+- **Puntos del modelo:** se conservan en la instrucción de extracción, normalización, comparación, valores de cada documento, presentación y payload de guardado. `1.2`, `1 2` y `12` no se consideran iguales. El backend existente serializa el dato sin retirar sus puntos.
+- **Revisión y diferencias:** el cuadro existente permite consultar frontal/reverso o PDF junto a los campos editables, ampliar las imágenes y conservar las correcciones desde el propio cuadro. La coincidencia no se convierte en contradicción por una antigua etiqueta de revisión. Se señalan únicamente los campos con valores diferentes, mostrando cada documento y valor. Ausencias, ilegibilidad y contradicciones internas pendientes se distinguen de diferencias entre documentos. Las ediciones manuales actualizan la validación sin nuevas consultas de IA.
+
+Se conservan Matrícula frontal/reverso, CUV local y las funciones existentes. Tesseract sigue fuera del procesamiento. No se añadieron selectores de IA ni pasos de carga. Apps Script, el parser CUV y el control de cancelación de bajo nivel no cambiaron respecto a la versión anterior; estos ajustes no necesitan una nueva modificación de Apps Script.
+
+Comprobaciones puntuales con datos ficticios: navegador de prueba, normalización/comparación, fusión documental, contradicciones, disponibilidad automática y cancelación. Las seis suites pasaron. Se comprobó un lote completo, una segunda validación sin consultas repetidas, alternativa ante cuota simulada, edición y vaciado desde el visor, puntos en los tres valores enviados al guardar, recuperación de un parcial, cancelación y reintento. La captura `revision-validacion-20261023.png` contiene únicamente un documento ficticio.
+
+**Pendientes reales:** no se hicieron consultas a Gemini ni mediciones de rendimiento real en esta entrega. Un fallo real de conexión o agotamiento de todos los modelos seguirá dejando el resultado incompleto, sin fingir éxito. Los puntos que ya se perdieron en registros antiguos no se reconstruyen por suposición: deben contrastarse con el original y corregirse desde el visor. No se alteraron datos guardados del usuario.

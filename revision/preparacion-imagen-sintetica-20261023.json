@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "realGemini": false,
+  "pixelsEqual": true,
+  "dimensions": [
+    792,
+    482
+  ],
+  "originalRetained": true,
+  "labelRetained": true,
+  "bytesReduced": true,
+  "inputBytes": 1221372,
+  "preparedBytes": 1183457,
+  "syntheticPreparationMs": 149,
+  "alreadyPreparedRetained": true,
+  "unchanged": true,
+  "cancelled": true
+}

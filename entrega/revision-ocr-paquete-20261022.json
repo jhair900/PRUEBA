@@ -1,0 +1,58 @@
+{
+  "version": "20261022T201444372389Z",
+  "archive": "AUTOCOR-actualizacion-automatica-20261022T201444372389Z.zip",
+  "published": false,
+  "zipIntegrity": true,
+  "sourceBytesMatch": true,
+  "pages": [
+    "contratos.html",
+    "firmas.html",
+    "index.html",
+    "liquidacion.html",
+    "pagos.html",
+    "ventas.html"
+  ],
+  "localReferencesChecked": 56,
+  "productionFiles": 46,
+  "unitSuitesPassed": 22,
+  "browserSuitesPassed": 5,
+  "syntheticRealOcrCases": 6,
+  "productionGeminiTested": false,
+  "syntax": {
+    "ok": true,
+    "externalScripts": 16,
+    "inlineScripts": 10,
+    "pages": [
+      {
+        "page": "contratos.html",
+        "scripts": 1
+      },
+      {
+        "page": "firmas.html",
+        "scripts": 2
+      },
+      {
+        "page": "index.html",
+        "scripts": 2
+      },
+      {
+        "page": "liquidacion.html",
+        "scripts": 3
+      },
+      {
+        "page": "pagos.html",
+        "scripts": 1
+      },
+      {
+        "page": "ventas.html",
+        "scripts": 1
+      }
+    ]
+  },
+  "sha256Core": {
+    "contratos.html": "0121474cb5375b1303a919f996664ebdb52b108afdf008a252d7a24e5edb519b",
+    "js/document-processing.js": "1fb7fbf2ff22eee45beab50ed586c7c0b160cdf1dc4de634072817e67eb96dc2",
+    "js/workflow.js": "a5860c8f4e2356b26c4b1bedf19dc77d1a72c87e4181d9b22a11c5910934822c",
+    "version.json": "09cb6a2022980c84e034905eebb8a61794370496075ab4ece610bfcfce6de44b"
+  }
+}

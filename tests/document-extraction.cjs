@@ -22,7 +22,7 @@ test('notary roles use row objects instead of unstructured names', () => {
   assert.equal(properties.vendedores.items.properties.identificacion.type, 'STRING');
 });
 test('CUV cannot accidentally route through AI and foreign keys are rejected', () => {
-  assert.throws(() => extraction.buildRequest('cuv', image, ['placa']), /únicamente con OCR/);
+  assert.throws(() => extraction.buildRequest('cuv', image, ['placa']), /extracción local/);
   assert.throws(() => extraction.buildRequest('cedula', image, ['placa']), /no permitido/);
   assert.throws(() => extraction.buildRequest('cedula', 'not an image', ['numeroCedula']), /inválida/);
 });
@@ -47,7 +47,7 @@ test('notary malformed row does not get coerced to text or partly accepted', () 
 });
 test('truncated, blocked or non-object AI output triggers fallback', () => {
   assert.throws(() => extraction.parseResponse(response({ placa: 'ABC1234' }, { finishReason: 'MAX_TOKENS' }), ['placa']), /incompleta/);
-  assert.throws(() => extraction.parseResponse({ promptFeedback: { blockReason: 'SAFETY' } }, ['placa']), /OCR/);
+  assert.throws(() => extraction.parseResponse({ promptFeedback: { blockReason: 'SAFETY' } }, ['placa']), /revisa o reintenta/);
   assert.throws(() => extraction.parseResponse(response(['ABC1234']), ['placa']), /formato/);
   assert.throws(() => extraction.parseResponse({ candidates: [{ content: { parts: [{ text: '{"placa":' }] } }] }, ['placa']), /JSON completos/);
 });

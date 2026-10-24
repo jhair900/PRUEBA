@@ -35,7 +35,7 @@ test('Etiquetas en su propia línea incluyen valores numéricos', () => {
   const d = ctx.parseMatricula('MARCA\nTOYOTA\nMODELO\nCOROLLA\nAÑO MODELO\n2020\nNÚMERO DE MOTOR\n12345678');
   assert.equal(d.marca, 'TOYOTA');
   assert.equal(d.modelo, 'COROLLA');
-  assert.equal(d.anio, '2020');
+  assert.equal(d.anio, '');assert.ok(d._reviewKeys.includes('anio'));
   assert.equal(d.motor, '12345678');
 });
 test('Columnas explícitas respetan su asociación con la fila siguiente', () => {
@@ -50,7 +50,7 @@ test('Pares etiqueta y valor en columnas de la misma fila', () => {
   const d = ctx.parseMatricula('MARCA | TOYOTA | MODELO | COROLLA | AÑO MODELO | 2020');
   assert.equal(d.marca, 'TOYOTA');
   assert.equal(d.modelo, 'COROLLA');
-  assert.equal(d.anio, '2020');
+  assert.equal(d.anio, '');assert.ok(d._reviewKeys.includes('anio'));
 });
 test('Fila de etiquetas sin separación de columnas no se adivina', () => {
   const d = ctx.parseMatricula('MARCA MODELO AÑO\nTOYOTA COROLLA 2020');
@@ -109,3 +109,7 @@ test('Chasis y motor conservan letras alfanuméricas', () => {
   assert.equal(d.motor, 'B1234S678');
 });
 console.log(passed + ' pruebas de OCR matrícula aprobadas.');
+
+test('Encabezado RAMV / CPN no es un motor y año/modelo no es fabricación',()=>{
+ const d=ctx.parseMatricula('NUMERO MOTOR RAMV / CPN\nAB12345678\nAÑO MODELO 2021');assert.notEqual(d.motor,'RAMV / CPN');assert.equal(d.anio,'');assert.ok(d._reviewKeys.includes('anio'));
+});

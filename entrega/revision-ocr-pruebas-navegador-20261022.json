@@ -1,0 +1,32 @@
+[
+  {
+    "test": "contract-values-browser.cjs",
+    "exitCode": 0,
+    "elapsedMs": 9461,
+    "output": "OK 42 contratos Word reales: seis plantillas, cifras y letras coincidentes, sin undefined.\nOK vista previa corregida e importe inválido detenido antes de guardar o descargar."
+  },
+  {
+    "test": "ocr-retirement-browser.cjs",
+    "exitCode": 0,
+    "elapsedMs": 8108,
+    "output": "OK navegador rejected: guardar borrador/recargar, revisión disponible, manuales protegidos, un worker y cero rechazos sin manejar\nOK navegador never: guardar borrador/recargar, revisión disponible, manuales protegidos, un worker y cero rechazos sin manejar\nOK navegador cancel-rejected: guardar borrador/recargar, revisión disponible, manuales protegidos, un worker y cero rechazos sin manejar\nOK navegador cancel-never: guardar borrador/recargar, revisión disponible, manuales protegidos, un worker y cero rechazos sin manejar"
+  },
+  {
+    "test": "papeleta-layout-browser.cjs",
+    "exitCode": 0,
+    "elapsedMs": 7782,
+    "output": "OK navegador: tres campos en ambas papeletas, color por fecha y edición, nombres legibles en escritorio y móvil, sin desbordamiento"
+  },
+  {
+    "test": "processing-browser.cjs",
+    "exitCode": 0,
+    "elapsedMs": 4017,
+    "output": "OK navegador: cancelar IA, archivos retenidos, respuesta tardía y edición manual protegida\nOK navegador: reintento usa archivo guardado, una pasada confirma identificación/chasis/motor\nOK navegador: OCR atascado termina worker, marca críticos pendientes y permite reintento seguro\nOK navegador: cancelar durante verificación conserva valores pero deja los críticos sin confirmar en revisión\nOK navegador: matrícula pegada omite segunda cara solo después de comprobar los campos pendientes\nOK navegador: detalle de etapas para administradores, sin datos personales ni errores JS"
+  },
+  {
+    "test": "workflow-browser.cjs",
+    "exitCode": 0,
+    "elapsedMs": 9783,
+    "output": "OK contratos.html: borrador, bloqueo, tiempos, limpieza, evidencia y reintento parcial\nOK liquidacion.html: borrador, bloqueo, tiempos, limpieza\nOK pagos.html: borrador, bloqueo, tiempos, limpieza\nOK ventas.html: borrador, bloqueo, tiempos, limpieza"
+  }
+]

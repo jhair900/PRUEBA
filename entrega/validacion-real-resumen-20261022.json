@@ -1,0 +1,176 @@
+{
+  "version": "20261022T201444372389Z",
+  "dateLocal": "2026-10-22",
+  "timezone": "America/Guayaquil",
+  "backend": "Apps Script y Gemini reales; canal indicado por caso",
+  "model": "gemini-3.5-flash-lite",
+  "measurementSource": "Interfaz Tiempos; precisión limitada a decimales mostrados; espera y respuesta IA incluyen transporte y no separan cómputo interno de Gemini",
+  "ocrStageIncludesInitializationAndPasses": true,
+  "rows": [
+    {
+      "caseId": "matricula-01",
+      "totalSecondsRounded": 75.6,
+      "outcome": "partial",
+      "aiWaitAndResponseSecondsRounded": 15.6,
+      "aiTransport": "google.script.run",
+      "ocrInitializationSecondsRounded": 2.89,
+      "ocrCompletedPasses": 23,
+      "ocrFailedPassesRecorded": 1,
+      "ocrPassSecondsRounded": 55.78,
+      "imagePreparationSecondsRounded": 0.0,
+      "pendingFormFields": 4,
+      "quality": {
+        "correctVisually": 7,
+        "incorrect": 1,
+        "inconclusive": 1,
+        "pending": 4,
+        "criticalCorrectButPending": 3,
+        "incorrectField": "motor",
+        "inconclusiveField": "anio",
+        "comparison": "Contraste visual con frontal y reverso; métricas de revisión y exactitud se solapan"
+      },
+      "checks": null,
+      "ocrWholeStageSecondsRounded": 60.0
+    },
+    {
+      "caseId": "matricula-02",
+      "totalSecondsRounded": 65.5,
+      "outcome": "partial",
+      "aiWaitAndResponseSecondsRounded": 5.47,
+      "aiTransport": "google.script.run",
+      "ocrInitializationSecondsRounded": 0.17,
+      "ocrCompletedPasses": 8,
+      "ocrFailedPassesRecorded": 1,
+      "ocrPassSecondsRounded": 59.33,
+      "imagePreparationSecondsRounded": 0.0,
+      "pendingFormFields": 4,
+      "quality": {
+        "correctVisually": 8,
+        "incorrect": 0,
+        "inconclusive": 1,
+        "pending": 4,
+        "inconclusiveField": "anio"
+      },
+      "checks": null,
+      "ocrWholeStageSecondsRounded": 60.0
+    },
+    {
+      "caseId": "cancelacion-ia-01",
+      "totalSecondsRounded": 5.0,
+      "outcome": "cancelled",
+      "aiWaitAndResponseSecondsRounded": 5.0,
+      "aiTransport": "google.script.run",
+      "ocrInitializationSecondsRounded": null,
+      "ocrCompletedPasses": 0,
+      "ocrFailedPassesRecorded": 0,
+      "ocrPassSecondsRounded": 0,
+      "imagePreparationSecondsRounded": null,
+      "pendingFormFields": 8,
+      "quality": {
+        "freshAccuracyEvaluable": false,
+        "pending": 8
+      },
+      "checks": {
+        "elapsedSeconds": 72,
+        "formUnchanged": true,
+        "manualFilledPreserved": true,
+        "manualBlankPreserved": true,
+        "imagesRetained": [
+          true,
+          true
+        ]
+      },
+      "note": "Intento cancelado documentado fuera del detalle ya cerrado de la operación; no representa una respuesta exitosa."
+    },
+    {
+      "caseId": "cancelacion-ocr-01",
+      "totalSecondsRounded": 26.1,
+      "outcome": "cancelled",
+      "aiWaitAndResponseSecondsRounded": 7.48,
+      "aiTransport": "google.script.run",
+      "ocrInitializationSecondsRounded": 0.17,
+      "ocrCompletedPasses": 7,
+      "ocrFailedPassesRecorded": 0,
+      "ocrPassSecondsRounded": 16.66,
+      "imagePreparationSecondsRounded": 0.0,
+      "pendingFormFields": 3,
+      "quality": {
+        "freshAccuracyEvaluable": false,
+        "pending": 3
+      },
+      "checks": {
+        "observationSeconds": 52,
+        "formUnchanged": true,
+        "manualFilledPreserved": true,
+        "manualBlankPreserved": true,
+        "imagesRetained": [
+          true,
+          true
+        ]
+      },
+      "ocrWholeStageSecondsRounded": 18.6,
+      "note": "La pasada en curso al cancelar puede no figurar en el detalle cerrado. Los pendientes finales se cotejaron en el formulario, no con el objetivo interno del OCR."
+    },
+    {
+      "caseId": "reintento-manuales-01",
+      "totalSecondsRounded": 6.4,
+      "outcome": "success",
+      "aiWaitAndResponseSecondsRounded": 6.44,
+      "aiTransport": "google.script.run",
+      "ocrInitializationSecondsRounded": null,
+      "ocrCompletedPasses": 0,
+      "ocrFailedPassesRecorded": 0,
+      "ocrPassSecondsRounded": 0,
+      "imagePreparationSecondsRounded": null,
+      "pendingFormFields": 1,
+      "quality": {
+        "correctVisually": 8,
+        "incorrect": 0,
+        "intentionallyBlank": 1,
+        "pending": 1
+      },
+      "checks": {
+        "manualBlankPreserved": true,
+        "manualFilledPreserved": true
+      }
+    },
+    {
+      "caseId": "imagen-dificil-01",
+      "totalSecondsRounded": 68.0,
+      "outcome": "partial",
+      "aiWaitAndResponseSecondsRounded": 7.94,
+      "aiTransport": "fetch",
+      "ocrInitializationSecondsRounded": 0.17,
+      "ocrCompletedPasses": 14,
+      "ocrFailedPassesRecorded": 1,
+      "ocrPassSecondsRounded": 58.46,
+      "imagePreparationSecondsRounded": 0.0,
+      "pendingFormFields": 3,
+      "quality": {
+        "correctVisually": 7,
+        "incorrect": 1,
+        "inconclusive": 1,
+        "pending": 3,
+        "incorrectField": "modelo",
+        "inconclusiveField": "anio"
+      },
+      "checks": {
+        "criticalFieldsMatch": {
+          "cedulaRuc": true,
+          "chasis": true,
+          "motor": true,
+          "placa": true
+        },
+        "modelMatchesReviewedOriginal": false,
+        "pendingBadges": 3
+      },
+      "ocrWholeStageSecondsRounded": 60.0
+    }
+  ],
+  "hardImageTested": true,
+  "nativePdfTested": false,
+  "nativeMixedPdfPending": true,
+  "originalDocumentImagesInDiagnostics": false,
+  "credentialsInDiagnostics": false,
+  "conclusion": "NECESITA_CORRECCION_CONCRETA"
+}

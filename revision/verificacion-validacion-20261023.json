@@ -1,0 +1,53 @@
+{
+  "version": "20261023T144613991073Z",
+  "dateLocal": "2026-10-23",
+  "htmlChecked": 6,
+  "versionIssues": [],
+  "unchanged": {
+    "gas/script.gs": true,
+    "js/cuv-parser.js": true,
+    "js/document-processing.js": true,
+    "procesarCUV_normalizedLineEndings": true
+  },
+  "checks": [
+    {
+      "suite": "validation-focused.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "contract-normalization.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "contract-pipeline.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "ocr-contradictions.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "gemini-availability.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "processing-control.cjs",
+      "result": "passed",
+      "synthetic": true
+    }
+  ],
+  "realGeminiCalls": 0,
+  "published": false,
+  "deployed": false,
+  "productHashes": {
+    "contratos.html": "5bc19cc2d32f0da41146ebcebd3845b629c55a52848dc662b511879fe894e424",
+    "js/gemini-availability.js": "bc1143bd1c5e67bf9ac1aef119bb8a8b0ceab86d8b409c04e868d39b7ae347db",
+    "js/document-extraction.js": "04f9c9428b809257df711ad5eb36e2d76d58f3aadf58fda16fdad1ee4a6ba980",
+    "js/workflow-adapters.js": "fe3b0e1a021380446768da1234a05426d8edd326cc0b19f07e9b185acaf55e8f"
+  }
+}

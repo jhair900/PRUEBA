@@ -1,0 +1,193 @@
+{
+  "version": "20261022T220355280100Z",
+  "dateLocal": "2026-10-22",
+  "timezone": "America/Guayaquil",
+  "realBackend": true,
+  "source": "Interfaz administrativa Tiempos y contraste visual, sin valores documentales",
+  "beforeApproval": {
+    "message": "Comprobando disponibilidad de IA",
+    "iaFilesBlocked": true,
+    "pasteBlocked": true,
+    "cuvEnabled": true
+  },
+  "precheck": {
+    "model": "gemini-3.5-flash-lite",
+    "elapsedMs": 2250,
+    "httpStatus": 200,
+    "transport": "google.script.run",
+    "outcome": "success",
+    "responseContentValidated": true
+  },
+  "cases": [
+    {
+      "caseId": "matricula-ia-01",
+      "sameImagesAsBaseline": true,
+      "inputFaces": 2,
+      "inputBytes": 1487929,
+      "totalSecondsRounded": 4.6,
+      "aiWaitResponseMs": 4590,
+      "transportRequestResponseMs": 4580,
+      "model": "gemini-3.5-flash-lite",
+      "transport": "google.script.run",
+      "httpStatus": 200,
+      "outcome": "success",
+      "ocrExecuted": false,
+      "correctAgainstPreviouslyReviewedReference": 8,
+      "criticalFieldsVisuallyMatched": [
+        "placa",
+        "cedulaRuc",
+        "chasis",
+        "motor"
+      ],
+      "pendingFields": [
+        "placa",
+        "cedulaRuc",
+        "chasis",
+        "motor"
+      ],
+      "yearPopulatedWithoutExplicitFabricationLabel": true,
+      "yearAccuracyConfirmed": false,
+      "headerNotSubstitutedForMotor": true
+    },
+    {
+      "caseId": "imagen-dificil-ia-01",
+      "execution": "Imagen del PDF autorizado, giro de 90 grados; nueva preparación de PNG, no comparación de bytes idénticos",
+      "timingText": "Tiempos de las operaciones\nCerrar\n\nMediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red.\n\nProcesamiento documental (matricula): 4.7 s · success\n\nOperación: document-mvk3xah6-1 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 5\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 5\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 4.7 s · success\n\nRespuesta IA: 4.7 s · success\n\nVer etapas\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.66 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 5.4 s · success\n\nVer etapas\n\nai-precheck: 5.43 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 5.43 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.0 s · success\n\nVer etapas\n\nai-precheck: 4.04 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.03 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.",
+      "inputPixels": 598080,
+      "inputBytes": 715768,
+      "totalSecondsRounded": 4.7,
+      "aiWaitResponseMs": 4670,
+      "transportRequestResponseMs": 4660,
+      "transport": "fetch",
+      "httpStatus": 200,
+      "model": "gemini-3.5-flash-lite",
+      "ocrExecuted": false,
+      "correctFieldsVisuallyMatched": 7,
+      "discrepantFields": [
+        "modelo"
+      ],
+      "discrepancyType": "Confusión visual entre cifra y letra en el token de puertas; puntuación del modelo normalizada",
+      "missingFields": [
+        "anio"
+      ],
+      "criticalFieldsVisuallyMatched": [
+        "placa",
+        "cedulaRuc",
+        "chasis",
+        "motor"
+      ],
+      "pendingFields": [
+        "anio",
+        "cedulaRuc",
+        "chasis",
+        "motor",
+        "placa"
+      ],
+      "visuallyComparedWithAuthorizedOriginal": true
+    },
+    {
+      "caseId": "edicion-manual-ia-01",
+      "motorPreserved": true,
+      "emptyYearPreserved": true,
+      "motorOrigin": "MANUAL",
+      "emptyYearOrigin": "MANUAL",
+      "documentImageRetained": true,
+      "timingText": "Tiempos de las operaciones\nCerrar\n\nMediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red.\n\nComprobación activa IA: 4.2 s · success\n\nVer etapas\n\nai-precheck: 4.17 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: google.script.run\nSolicitud y respuesta completas: 4.17 s\nHTTP: 200\n\nProcesamiento documental (matricula): 5.9 s · success\n\nOperación: document-mvk40tai-2 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 5.85 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 4\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 4\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 5.9 s · success\n\nRespuesta IA: 5.9 s · success\n\nVer etapas\n\nai-response: 5.85 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 5.85 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.1 s · success\n\nVer etapas\n\nai-precheck: 4.06 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.06 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.2 s · success\n\nVer etapas\n\nai-precheck: 4.20 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.20 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nProcesamiento documental (matricula): 4.7 s · success\n\nOperación: document-mvk3xah6-1 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 5\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 5\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 4.7 s · success\n\nRespuesta IA: 4.7 s · success\n\nVer etapas\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.66 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 5.4 s · success\n\nVer etapas\n\nai-precheck: 5.43 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 5.43 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.0 s · success\n\nVer etapas\n\nai-precheck: 4.04 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.03 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.",
+      "totalSecondsRounded": 5.9,
+      "aiWaitResponseMs": 5850,
+      "transport": "fetch",
+      "httpStatus": 200,
+      "ocrExecuted": false,
+      "pendingCount": 4
+    },
+    {
+      "caseId": "repeticion-manuales-ia-02",
+      "totalSecondsRounded": 4.2,
+      "aiWaitResponseMs": 4190,
+      "httpStatus": 200,
+      "transport": "google.script.run",
+      "ocrExecuted": false,
+      "pendingCount": 4
+    },
+    {
+      "caseId": "cancelacion-ia-01",
+      "totalSecondsRounded": 0.2,
+      "aiWaitResponseMs": 180,
+      "outcome": "cancelled",
+      "code": "PROCESSING_CANCELLED",
+      "manualMotorPreserved": true,
+      "manualEmptyYearPreserved": true,
+      "imageRetained": true,
+      "noLateFieldChangesObserved": true,
+      "observationSeconds": 44,
+      "allFieldBaselineImmediatelyBeforeCancellationUnavailable": true
+    },
+    {
+      "caseId": "reintento-tras-cancelar-ia-01",
+      "totalSecondsRounded": 4,
+      "aiWaitResponseMs": 4010,
+      "transportRequestResponseMs": 4000,
+      "transport": "google.script.run",
+      "httpStatus": 200,
+      "outcome": "success",
+      "manualMotorPreserved": true,
+      "manualEmptyYearPreserved": true,
+      "imageRetained": true,
+      "pendingCount": 8,
+      "ocrExecuted": false
+    }
+  ],
+  "status": "NEEDS_SPECIFIC_CORRECTION",
+  "interruption": "Se recuperó una pestaña operativa; el acceso a las anteriores siguió sin estar disponible. La sesión reabierta permitió completar manuales, cancelación y reintento.",
+  "quotaFallbackObservedReal": false,
+  "allUnavailableObservedReal": false,
+  "productIntegrity": {
+    "version": "20261022T220355280100Z",
+    "productFilesCompared": 25,
+    "matchesReviewPackage": true,
+    "sourceChangedDuringValidation": false,
+    "published": false,
+    "deployed": false
+  },
+  "cancelCheck": {
+    "manualMotorPreserved": true,
+    "manualEmptyYearPreserved": true,
+    "imageRetained": true,
+    "noLateFieldChanges": true,
+    "observedSeconds": 44,
+    "fullFieldBaselineBeforeCancelNotCaptured": true,
+    "timingText": "Tiempos de las operaciones\nCerrar\n\nMediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red.\n\nProcesamiento documental (matricula): 4.0 s · success\n\nOperación: document-mvk4728o-5 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 4.01 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 8\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 8\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 4.0 s · success\n\nRespuesta IA: 4.0 s · success\n\nVer etapas\n\nai-response: 4.01 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: google.script.run\nSolicitud y respuesta completas: 4.00 s\nHTTP: 200\n\nRespuesta IA: 0.2 s · failed\n\nVer etapas\n\nai-response: 0.18 s · failed\n\nModelo: gemini-3.5-flash-lite\nResultado: 20\nCanal: google.script.run\nEtapa del fallo: connection\n\nProcesamiento documental (matricula): 0.2 s · cancelled\n\nOperación: document-mvk45l61-4 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nprocessing-stop: 0.18 s · cancelled\n\nResultado: PROCESSING_CANCELLED\n\nComprobación activa IA: 2.8 s · success\n\nVer etapas\n\nai-precheck: 2.84 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: google.script.run\nSolicitud y respuesta completas: 2.84 s\nHTTP: 200\n\nProcesamiento documental (matricula): 4.2 s · success\n\nOperación: document-mvk452pg-3 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 4.19 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 4\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 4\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 4.2 s · success\n\nRespuesta IA: 4.2 s · success\n\nVer etapas\n\nai-response: 4.19 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: google.script.run\nSolicitud y respuesta completas: 4.19 s\nHTTP: 200\n\nComprobación activa IA: 4.2 s · success\n\nVer etapas\n\nai-precheck: 4.17 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: google.script.run\nSolicitud y respuesta completas: 4.17 s\nHTTP: 200\n\nProcesamiento documental (matricula): 5.9 s · success\n\nOperación: document-mvk40tai-2 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 5.85 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 4\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 4\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 5.9 s · success\n\nRespuesta IA: 5.9 s · success\n\nVer etapas\n\nai-response: 5.85 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 5.85 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.1 s · success\n\nVer etapas\n\nai-precheck: 4.06 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.06 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.2 s · success\n\nVer etapas\n\nai-precheck: 4.20 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.20 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nProcesamiento documental (matricula): 4.7 s · success\n\nOperación: document-mvk3xah6-1 · versión: 20261022T220355280100Z\nVer etapas\n\ndocument-input: sin medición\n\nPáginas/caras: 1\nBytes de entrada: 715768\n\nai-request: sin medición\n\nModelo: gemini-3.5-flash-lite\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\n\nfield-validation: 0.00 s · success\n\nCampos pendientes: 5\n\nvalidation-application: 0.00 s · success\n\nCampos pendientes: 5\n\nExtracción IA (matricula) · gemini-3.5-flash-lite: 4.7 s · success\n\nRespuesta IA: 4.7 s · success\n\nVer etapas\n\nai-response: 4.67 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.66 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 5.4 s · success\n\nVer etapas\n\nai-precheck: 5.43 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 5.43 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP.\n\nComprobación activa IA: 4.0 s · success\n\nVer etapas\n\nai-precheck: 4.04 s · success\n\nModelo: gemini-3.5-flash-lite\nResultado: \nCanal: fetch\nSolicitud y respuesta completas: 4.03 s\nHTTP: 200\nCanal directo no disponible; respaldo HTTP."
+  },
+  "cuvRetest": "Omitido por indicación expresa del usuario",
+  "clearRepeatMeasurement": "La segunda extracción independiente frontal/reverso terminó; su medición no se recuperó después de perder acceso a esa pestaña. No se estima.",
+  "availabilityReal": {
+    "autoModel": "gemini-3.5-flash-lite",
+    "gateBeforeCaptureObserved": true,
+    "firstMeasuredPrecheckMs": 2250,
+    "newTabInitialPrecheckMs": 4040,
+    "observedRenewalMs": [
+      5430,
+      4200,
+      4060,
+      4170,
+      2840
+    ],
+    "quotaFallbackObserved": false,
+    "allModelsUnavailableObserved": false,
+    "quotaSyntheticCoverageOnly": true
+  },
+  "correctionNeeded": [
+    "No completar ni confirmar año de fabricación cuando sólo figuran Año/Año modelo sin asociación explícita; debe permanecer pendiente.",
+    "El modelo de la imagen difícil contiene una confusión de carácter; mantiene revisión tras las relecturas. No queda acreditada exactitud completa."
+  ],
+  "pending": [
+    "Fallback real con cuota agotada: no se observó 429.",
+    "Ningún modelo disponible: no se observó en el backend real.",
+    "CUV local: repetición omitida por petición expresa.",
+    "PDF mixto: el usuario no dispone de uno autorizado.",
+    "Confirmar dos identificaciones diferentes del mismo campo/rol con un documento real: sin muestra autorizada.",
+    "Desglose de preparación y cómputo puro Gemini: no instrumentado en el backend desplegado."
+  ],
+  "published": false,
+  "deployed": false
+}

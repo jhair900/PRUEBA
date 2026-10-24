@@ -1,0 +1,90 @@
+{
+  "kind": "real-tesseract-synthetic-images",
+  "production": false,
+  "results": [
+    {
+      "version": "before",
+      "fixture": "short-clear",
+      "elapsedMs": 305,
+      "passes": 1,
+      "fields": 3,
+      "correct": 3,
+      "pending": 0,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1943,
+      "maxLiveCanvasPixels": 1059136,
+      "peakPageJsHeapBytes": 13385141
+    },
+    {
+      "version": "before",
+      "fixture": "short-degraded",
+      "elapsedMs": 4015,
+      "passes": 15,
+      "fields": 3,
+      "correct": 2,
+      "pending": 1,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1943,
+      "maxLiveCanvasPixels": 1825176,
+      "peakPageJsHeapBytes": 45047652
+    },
+    {
+      "version": "before",
+      "fixture": "missing-motor",
+      "elapsedMs": 522,
+      "passes": 3,
+      "fields": 2,
+      "correct": 2,
+      "pending": 1,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1943,
+      "maxLiveCanvasPixels": 811756,
+      "peakPageJsHeapBytes": 54393870
+    },
+    {
+      "version": "after",
+      "fixture": "short-clear",
+      "elapsedMs": 265,
+      "passes": 1,
+      "fields": 3,
+      "correct": 3,
+      "pending": 0,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1003,
+      "maxLiveCanvasPixels": 1059136,
+      "peakPageJsHeapBytes": 13375497
+    },
+    {
+      "version": "after",
+      "fixture": "short-degraded",
+      "elapsedMs": 3401,
+      "passes": 15,
+      "fields": 3,
+      "correct": 2,
+      "pending": 1,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1003,
+      "maxLiveCanvasPixels": 1825176,
+      "peakPageJsHeapBytes": 45046915
+    },
+    {
+      "version": "after",
+      "fixture": "missing-motor",
+      "elapsedMs": 483,
+      "passes": 3,
+      "fields": 2,
+      "correct": 2,
+      "pending": 1,
+      "aiCalls": 0,
+      "inputPixels": 456000,
+      "initMs": 1003,
+      "maxLiveCanvasPixels": 811756,
+      "peakPageJsHeapBytes": 54663746
+    }
+  ]
+}

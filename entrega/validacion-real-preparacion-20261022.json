@@ -1,0 +1,126 @@
+{
+  "version": "20261022T201444372389Z",
+  "published": false,
+  "origin": "http://127.0.0.1:8765/",
+  "htmlChecks": [
+    {
+      "page": "contratos.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 17
+    },
+    {
+      "page": "firmas.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 5
+    },
+    {
+      "page": "index.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 5
+    },
+    {
+      "page": "liquidacion.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 9
+    },
+    {
+      "page": "pagos.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 10
+    },
+    {
+      "page": "ventas.html",
+      "version": "20261022T201444372389Z",
+      "httpStatus": 200,
+      "versionedLocalResources": 10
+    }
+  ],
+  "resources": {
+    "js/auto-update.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "94b85d6ec67861c155a92441c5eafd7139274b172b94966b47566b68dbec35f1"
+    },
+    "js/api-config.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "cf5e269a86f354d04975d03b06a59250ad11dccba9990edc0ed4b45b1dadea83"
+    },
+    "js/apps-script-transport.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "5e23a6496985cb92c75943c129c320859501fc0a9420c2dcd803de87ff509e04"
+    },
+    "js/api-client.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "0c6c7fc6b2b042d4b89c253e522ba750bd07ff99d48ec771ebf0baf4e8cc53b1"
+    },
+    "js/gemini-client.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "dca0bb2fabd7e6e4cbd4f78c8f6621c5dea3a1c1f0fa0067af786bd9396081e3"
+    },
+    "js/document-extraction.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "f6a72b1ae2dd7fdbf79551c737f005561b15d41bd4faf8efffda08b1f58ecf59"
+    },
+    "js/document-processing.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "1fb7fbf2ff22eee45beab50ed586c7c0b160cdf1dc4de634072817e67eb96dc2"
+    },
+    "js/document-analysis.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "8cdcdd461f3fdccbdeb15ae9f35bddcc79280c28813ccb3f12d5f7f85ca91080"
+    },
+    "js/expediente.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "6e4106bbec7e8d5d3268abeddbf251509139c06f3279b3417b6e93b622c64a28"
+    },
+    "js/navigation.css?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "569830657b7e0ad258fab5ce41d9aa38edb3e52d79324349cb45fe9a0ad3165d"
+    },
+    "js/cuv-parser.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "0db347181482a84f7de006e1f3987c8f053cb5d9a59fa117d154a4da2251a5ba"
+    },
+    "js/contrato-templates.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "228f712332f8c990ce8f7c401673d86a5b73bde369df3700437a0eee4078561e"
+    },
+    "js/generador-contratos.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "4e5eff16e3cb332c7b2fdfb3c40eb16ea27db8dc2b1cd5d8dff0143611f54111"
+    },
+    "js/auth-ui.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "99f84a00fec1ea03b1f946dd6556867f4b058e9b487c7ae7ce16a15c42f4f3ea"
+    },
+    "js/session-sync.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "4631f47db41bf4768288da33ff476971bab2c444acd15cfa399c59da456ebb1a"
+    },
+    "js/workflow.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "a5860c8f4e2356b26c4b1bedf19dc77d1a72c87e4181d9b22a11c5910934822c"
+    },
+    "js/workflow-adapters.js?v=20261022T201444372389Z": {
+      "status": 200,
+      "sha256": "24af12ad2e64e98724fee9eeb4caac002757f161e5e58f93f15bf8099120afbe"
+    }
+  },
+  "browser": {
+    "page": "contratos.html",
+    "metaVersion": "20261022T201444372389Z",
+    "localJsVersionReferences": 16,
+    "sessionVisible": true
+  },
+  "documentCasesRun": 0,
+  "documentAuthorizationPending": true,
+  "productionGeminiMeasured": false,
+  "resourceCounts": {
+    "js": 16,
+    "css": 1
+  }
+}

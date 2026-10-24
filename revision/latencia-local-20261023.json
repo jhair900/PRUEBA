@@ -1,0 +1,100 @@
+{
+  "dateLocal": "2026-10-23",
+  "realGeminiCalls": 0,
+  "published": false,
+  "deployed": false,
+  "realBaselineProvided": {
+    "cedulaSeconds": 24.1,
+    "matriculaSeconds": 10.9,
+    "notariaSeconds": 8.1,
+    "cuvSeconds": 1.9,
+    "probeSeconds": 5.1,
+    "versions": "20261023T144613991073Z",
+    "limits": "Sin separación retrospectiva de backend, Gemini y transporte ni nombres de campos pendientes."
+  },
+  "localFindings": {
+    "bridgeOpeningWaitBeforeMs": 1500,
+    "bridgeOpeningWaitNowMs": 0,
+    "bridgeWaitAppliesOnlyWhenNotReady": true,
+    "coldReadinessRequestsBefore": 2,
+    "coldReadinessRequestsNow": 1,
+    "catalogListRemoved": true,
+    "requestPreparation": "Una serialización al usar HTTP; sin codificación JSON intermedia para el puente listo",
+    "probePromptBytesBefore": 2311,
+    "probePromptBytesNow": 201,
+    "documentRequestCriteriaUnchanged": [
+      "cedula",
+      "matricula",
+      "notaria",
+      "ruc"
+    ],
+    "quality": "No reescalado ni JPEG con pérdida; márgenes sólo blancos exactos o transparentes, originales conservados, se usa el resultado sólo si reduce bytes.",
+    "unknownImageProperties": "No se conocen las dimensiones ni los márgenes de las dos imágenes de cédula de la medición real.",
+    "requestCountScope": "Solicitudes al proxy Gemini para comprobar disponibilidad; no incluye la precarga del puente ni el resto de la página."
+  },
+  "syntheticImageCheck": {
+    "synthetic": true,
+    "realGemini": false,
+    "pixelsEqual": true,
+    "dimensions": [
+      792,
+      482
+    ],
+    "originalRetained": true,
+    "labelRetained": true,
+    "bytesReduced": true,
+    "inputBytes": 1221372,
+    "preparedBytes": 1183457,
+    "syntheticPreparationMs": 149,
+    "alreadyPreparedRetained": true,
+    "unchanged": true,
+    "cancelled": true
+  },
+  "checks": [
+    {
+      "suite": "ai-latency.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "document-image.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "gemini-availability.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "contract-pipeline.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "validation-focused.cjs",
+      "result": "passed",
+      "synthetic": true
+    },
+    {
+      "suite": "channel-recovery.cjs",
+      "result": "passed",
+      "synthetic": true
+    }
+  ],
+  "pending": "Medición posterior real de esta versión y metadatos de backend para separar el trayecto backend–IA. Sin nuevas consultas reales en esta entrega.",
+  "version": "20261023T153447010934Z",
+  "integrity": {
+    "htmlCount": 6,
+    "allVersionsCorrect": true,
+    "originalInterfacePreserved": true,
+    "unchangedFiles": {
+      "gas/script.gs": true,
+      "js/cuv-parser.js": true,
+      "js/workflow-adapters.js": true,
+      "js/generador-contratos.js": true
+    },
+    "published": false,
+    "deployed": false
+  }
+}

@@ -86,21 +86,32 @@
     return connection;
   }
   async function request(url, body, signal, trace){
+    const cancelled=function(){const error=new Error('Solicitud cancelada');error.name='AbortError';error.code=signal&&signal.reason&&signal.reason.code;return error;};
+    if(signal&&signal.aborted)throw cancelled();
     // Compatibilidad: solo usar el canal para el backend configurado.
     const endpoint = new URL(url);
     if(endpoint.origin + endpoint.pathname !== new URL(global.AutoCorConfig.apiUrl).origin + new URL(global.AutoCorConfig.apiUrl).pathname) return null;
     let client = connectedClient;
     if(!client){
+      if(body.action==='geminiProxy'){
+        // Aún no se ha enviado la consulta. Usar HTTP sin esperar la apertura del iframe.
+        // El canal sigue abriéndose para futuras consultas; nunca se envía por ambos.
+        connect().catch(function(){});
+        if(trace){trace.bridgeUnavailable=true;trace.bridgeWaitMs=0;}
+        return null;
+      }
       // Solo esperar brevemente al arranque. Aun no se ha enviado ninguna operacion.
       // Si el navegador bloquea el iframe, usar la API HTTP existente.
-      let timer;
+      let timer,abort;const bridgeStarted=Date.now();
       try {
         client = await Promise.race([
           connect().catch(function(error){ if(trace)trace.bridgeError={name:error.name,message:error.message};return null; }),
           new Promise(function(resolve){timer=setTimeout(function(){resolve(null);},1500);})
+          ,new Promise(function(_,reject){if(signal){abort=function(){reject(cancelled());};signal.addEventListener('abort',abort,{once:true});}})
         ]);
-      } finally { clearTimeout(timer); }
+      } finally { if(trace)trace.bridgeWaitMs=Date.now()-bridgeStarted;clearTimeout(timer);if(signal&&abort)signal.removeEventListener('abort',abort); }
     }
+    if(signal&&signal.aborted)throw cancelled();
     if(!client){
       if(trace) trace.bridgeUnavailable = true;
       return null;
@@ -108,6 +119,7 @@
     if(trace) trace.transport = 'google.script.run';
     try {return await client.request(body, signal);}
     catch(error){
+      if(signal&&signal.aborted&&signal.reason&&/^(AI_CANCELLED|PROCESSING_CANCELLED|PROCESSING_STALE)$/.test(signal.reason.code||''))throw error;
       // No reenviar aquí: el cliente API confirma primero cualquier escritura incierta.
       client.retire();
       if(trace)trace.channelRecovery='Canal retirado; conexión nueva para la siguiente operación';

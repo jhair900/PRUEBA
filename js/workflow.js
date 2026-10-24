@@ -159,15 +159,34 @@
       const row=document.createElement('p');
       const server=t.server && t.server.serverMs;
       row.textContent=t.action+': '+(t.elapsedMs/1000).toFixed(1)+' s'+(server!=null?' · servidor: '+(server/1000).toFixed(2)+' s':'')+(t.attempts?' · intentos: '+t.attempts:'')+(t.outcome?' · '+t.outcome:'');host.appendChild(row);
+      if(t.operationId){const ref=document.createElement('small');ref.textContent='Operación: '+t.operationId+(t.version?' · versión: '+t.version:'');host.appendChild(ref);}
       if(t.details){
         const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Ver etapas';details.appendChild(summary);
         function addTrace(d, nested){
           const p=document.createElement('p');
-          p.textContent=(nested?'↳ ':'')+(d.kind==='verification'?'Verificación':'Solicitud')+': conexión/respuesta '+seconds(d.headersMs)+'; lectura '+seconds(d.bodyMs)+'; bloqueo servidor '+seconds(d.server&&d.server.lockWaitMs)+'; proceso '+seconds(d.server&&d.server.processingMs)+'; escritura '+seconds(d.server&&d.server.flushMs);
+          p.textContent=d.stage ? d.stage+': '+seconds(d.elapsedMs)+(d.outcome?' · '+d.outcome:'') : (nested?'↳ ':'')+(d.kind==='verification'?'Verificación':'Solicitud')+': conexión/respuesta '+seconds(d.headersMs)+'; lectura '+seconds(d.bodyMs)+'; bloqueo servidor '+seconds(d.server&&d.server.lockWaitMs)+'; proceso '+seconds(d.server&&d.server.processingMs)+'; escritura '+seconds(d.server&&d.server.flushMs);
           details.appendChild(p);
           const technical=[];
+          if(d.stage){
+            const labels={page:'Página',pages:'Páginas/caras',face:'Cara',variant:'Variante',psm:'Modo OCR',model:'Modelo',attempt:'Intento',inputBytes:'Bytes originales',preparedBytes:'Bytes preparados para IA',pixels:'Píxeles originales',preparedPixels:'Píxeles preparados (sin reescalado)',optimizedImages:'Imágenes optimizadas sin pérdida',skippedImages:'Imágenes conservadas sin optimización',confidence:'Confianza OCR',pending:'Campos pendientes de lectura/revisión',requiredPending:'Pendientes obligatorios del documento',optionalPending:'Pendientes condicionales/no obligatorios',pendingFields:'Detalle de pendientes (sin valores)',passes:'Pasadas',code:'Resultado',causeCode:'Causa de la recuperación',causeName:'Tipo de error'};
+            Object.keys(labels).forEach(key=>{if(d[key]!=null)technical.push(labels[key]+': '+d[key]);});
+          }
           if(d.transport)technical.push('Canal: '+d.transport);
+          if(d.requestBuildMs!=null)technical.push('Preparación local del envío: '+seconds(d.requestBuildMs));
+          if(d.requestBytes!=null)technical.push('Bytes del cuerpo HTTP: '+d.requestBytes);
+          if(d.bridgeWaitMs!=null)technical.push('Espera para elegir canal: '+seconds(d.bridgeWaitMs));
+          if(d.httpResponseMs!=null)technical.push('HTTP: envío, backend y respuesta: '+seconds(d.httpResponseMs));
+          if(d.upstreamMs!=null)technical.push('Trayecto backend–Gemini y respuesta: '+seconds(d.upstreamMs));
+          else if(d.stage==='ai-response'||d.stage==='ai-precheck')technical.push('Trayecto backend–IA: sin medición en esta respuesta.');
+          if(d.transportMs!=null)technical.push('Resto del trayecto (incluye preparación y cola del backend): '+seconds(d.transportMs));
+          if(d.headersMs!=null&&d.stage)technical.push('Solicitud y respuesta completas: '+seconds(d.headersMs));
           if(d.httpStatus!=null)technical.push('HTTP: '+d.httpStatus);
+          if(d.transportHttpStatus!=null)technical.push('HTTP de Apps Script: '+d.transportHttpStatus);
+          if(d.proxyHttpStatus!=null)technical.push('Estado devuelto por el proxy: '+d.proxyHttpStatus);
+          if(d.statusOrigin)technical.push('Origen del estado: '+d.statusOrigin);
+          if(d.serviceStatus)technical.push('Estado del servicio: '+d.serviceStatus);
+          if(d.requestAttempt!=null)technical.push('Solicitud acumulada en esta lectura: '+d.requestAttempt);
+          if(d.waitMs!=null)technical.push('Espera antes del reintento: '+seconds(d.waitMs));
           if(d.failedStage)technical.push('Etapa del fallo: '+d.failedStage);
           if(d.timedOut)technical.push('Se agotó el tiempo de espera.');
           if(d.error)technical.push(d.error.name+(d.error.code!=null?' (código '+d.error.code+')':'')+': '+d.error.message);

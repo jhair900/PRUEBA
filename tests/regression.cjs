@@ -318,26 +318,6 @@ function backend() {
       assert.equal(calls,1);
     }
   });
-  await test('Inicio de IA reutiliza modelo reciente y no genera una consulta pong', async () => {
-    const html = fs.readFileSync(path.join(root, 'contratos.html'),'utf8');
-    const start = html.indexOf('window.testAIConnection = function');
-    const end = html.indexOf('// Disparar verificación de IA', start);
-    for(const cached of [true,false]) {
-      let listings=0;
-      const context = vm.createContext({window:{},console,Date,Promise,
-        aiCheckPromise:null, aiAvailable:false,aiAvailabilityChecked:false,
-        GEMINI_SESSION_KEY:'test',GEMINI_SESSION_TTL_MS:300000,GEMINI_MODELS_FALLBACK:['model'],
-        GEMINI_MODEL_ACTIVE:'',GEMINI_LAST_OK_MODEL:'',
-        sessionStorage:{getItem:()=>cached ? JSON.stringify({model:'model',savedAt:Date.now()}) : null},
-        refreshGeminiModelAvailability:async()=>{listings++;return 1;},geminiCandidateModels:()=>['model'],
-        renderAIBannerModel:model=>model,geminiGenerateWithFallback:()=>{throw new Error('No debe generar un pong');},setAIBanner(){},setGeminiUnavailable(){}
-      });
-      vm.runInContext(html.slice(start,end),context);
-      await context.window.initializeAIState();
-      assert.equal(context.aiAvailable,true);
-      assert.equal(listings,cached ? 0 : 1);
-    }
-  });
   await test('Reproceso con fila localizada lee datos actuales sin buscar toda la placa; recupera filas movidas', () => {
     const {ctx} = backend();
     const cache = new Map(); let searches=0, reads=0;

@@ -1,0 +1,35 @@
+// Comprobaciones locales sin red ni documentos reales.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),{webcrypto:crypto}=require('node:crypto');
+const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
+(async()=>{
+ const listeners=new Set(),frames=[],sent=[],timers=[];
+ const win={crypto,location:{origin:'https://autocor.test'},AutoCorConfig:{apiUrl:'https://script.google.com/macros/s/test/exec'},addEventListener:(_,f)=>listeners.add(f),removeEventListener:(_,f)=>listeners.delete(f)};
+ vm.runInContext(read('js/apps-script-transport.js'),vm.createContext({URL,Date,Map,window:win,setTimeout:(f,ms)=>{timers.push(ms);return timers.length;},clearTimeout(){},document:{readyState:'complete',createElement:()=>({setAttribute(){},contentWindow:{},remove(){}}),body:{appendChild:f=>frames.push(f)}}}));
+ const trace={};assert.equal(await win.AutoCorTransport.request(win.AutoCorConfig.apiUrl,{action:'geminiProxy'},null,trace),null);
+ assert.equal(trace.bridgeWaitMs,0);assert.ok(!timers.includes(1500));assert.equal(sent.length,0);
+ const frame=frames[0],channel=new URL(frame.src).searchParams.get('channel'),peer={parent:frame.contentWindow,postMessage:m=>sent.push(m)};
+ const emit=data=>{for(const fn of listeners)fn({source:peer,origin:'https://test.googleusercontent.com',data:{channel,...data}});};
+ emit({type:'autocor-ready'});const rpc=win.AutoCorTransport.request(win.AutoCorConfig.apiUrl,{action:'geminiProxy'},null,{});
+ assert.equal(sent.length,1);emit({type:'autocor-response',id:sent[0].id,result:{ok:true}});assert.equal((await rpc).ok,true);
+ console.log('OK IA usa HTTP inmediatamente si el puente está abriéndose; puente listo se reutiliza sin doble envío');
+ let fetches=0,serialized=0,captured;
+ const app={localStorage:{getItem:()=>JSON.stringify({token:'SECRET'})},AutoCorTransport:{request:async()=>null}};
+ const ctx=vm.createContext({window:app,localStorage:app.localStorage,URL,Date,AbortController,TextEncoder,setTimeout,clearTimeout,fetch:async(url,init)=>{fetches++;captured=JSON.parse(init.body);return {ok:true,status:200,json:async()=>({_proxy:{ok:true,status:200},data:{valid:true}})};}});
+ vm.runInContext(read('js/gemini-client.js'),ctx);
+ const request={contents:['PRIVATE'],toJSON(){serialized++;return {contents:this.contents};}},httpTrace={};
+ assert.equal((await app.AutoCorGemini.fetch('https://script.google.com/macros/s/test/exec',{request},1000,httpTrace)).ok,true);
+ assert.equal(fetches,1);assert.equal(serialized,1);assert.equal(captured.sessionToken,'SECRET');assert.ok(httpTrace.requestBytes>0);assert.ok(!JSON.stringify(httpTrace).includes('PRIVATE'));assert.ok(!JSON.stringify(httpTrace).includes('SECRET'));
+ app.AutoCorTransport.request=async(url,payload)=>{assert.equal(payload.request,request);return {_proxy:{ok:true,status:200},data:{valid:true}};};
+ await app.AutoCorGemini.fetch('https://script.google.com/macros/s/test/exec',{request},1000,{});assert.equal(serialized,1);assert.equal(fetches,1);
+ console.log('OK una serialización HTTP, ninguna duplicada para RPC; tiempos y bytes sin documentos ni credenciales');
+ const ex=require('../js/document-extraction.js'),attachment='data:image/png;base64,AA==';
+ const normal=ex.buildRequest('matricula',attachment,['placa','color']),probe=ex.buildRequest('matricula',attachment,['placa','color'],{availabilityProbe:true});
+ assert.deepEqual(normal.generationConfig,probe.generationConfig);assert.ok(probe.contents[0].parts[0].text.length<normal.contents[0].parts[0].text.length/4);assert.ok(!probe.contents[0].parts[0].text.includes('ABC1234'));
+ const html=read('contratos.html'),fn=n=>html.match(new RegExp('(?:async )?function '+n+'\\([^]*?\\n\\}'))[0];
+ const fields=['placa','anio','modelo','marca','serialChasis','numeroMotor','nombrePropietario','identificacionPropietario','valorContrato','fechaContrato'].map(key=>({key}));
+ const pending=vm.createContext({Set});for(const n of ['isFieldEmpty','isFieldDubious','getMissingFields','validationFieldsForDocument','getDocumentPendingDetail'])vm.runInContext(fn(n),pending);
+ const data=Object.fromEntries(fields.map(f=>[f.key,'PRIVATE']));data.valorContrato='';data.fechaContrato='';
+ let detail=pending.getDocumentPendingDetail(data,fields,'notaria');assert.equal(detail.pending,2);assert.equal(detail.requiredPending,0);assert.equal(detail.optionalPending,2);assert.ok(!JSON.stringify(detail).includes('PRIVATE'));
+ const m={anio:'',_origins:{anio:'review'},_internalReview:['anio']};detail=pending.getDocumentPendingDetail(m,[{key:'anio'}],'matricula');assert.equal(detail.requiredPending,1);assert.match(detail.pendingFields,/ambigua/);assert.equal(detail.code,'READ_COMPLETE');
+ console.log('OK prueba inicial ligera con la misma comprobación de imagen/JSON; pendientes identificados sin inferir valores ni validación completa');
+})().catch(e=>{console.error(e);process.exitCode=1;});

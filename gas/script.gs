@@ -75,7 +75,7 @@ function geminiProxy_(params, rawBody) {
   const op = String(params.op || 'models');
   let url, options;
   if (op === 'models') {
-    url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(apiKey);
+    url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=' + encodeURIComponent(apiKey);
     options = { method: 'get', muteHttpExceptions: true };
   } else if (op === 'generate') {
     const model = String(params.model || '').replace(/[^A-Za-z0-9._\-]/g, '');
@@ -100,13 +100,21 @@ function geminiProxy_(params, rawBody) {
     });
   }
   try {
+    const started = Date.now();
     const resp = UrlFetchApp.fetch(url, options);
     const status = resp.getResponseCode();
     let parsed;
     try { parsed = JSON.parse(resp.getContentText()); }
     catch (e) { parsed = { raw: resp.getContentText() }; }
+    // Sólo metadatos del servicio; sin cabeceras de autenticación ni contenido documental.
+    const headers = typeof resp.getAllHeaders === 'function' ? resp.getAllHeaders() : {};
+    const retryKey = Object.keys(headers).find(function(key){return key.toLowerCase()==='retry-after';});
+    if(op==='models' && parsed.nextPageToken){
+      // No presentar una lista parcial como prueba de ausencia de un modelo.
+      return outputJson({_proxy:{ok:false,status:502},data:{error:{status:'INCOMPLETE_MODEL_LIST'}}});
+    }
     return outputJson({
-      _proxy: { ok: status >= 200 && status < 300, status: status },
+      _proxy: { ok: status >= 200 && status < 300, status: status, retryAfter: retryKey ? String(headers[retryKey]) : '', upstreamMs: Date.now()-started },
       data: parsed
     });
   } catch (err) {

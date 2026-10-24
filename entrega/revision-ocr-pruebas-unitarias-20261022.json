@@ -1,0 +1,134 @@
+[
+  {
+    "test": "analysis-adaptive.cjs",
+    "exitCode": 0,
+    "elapsedMs": 64,
+    "output": "OK una pasada si campos comprobados, meseta fiable queda pendiente, baja confianza conserva las 15 alternativas\nOK zonas adicionales solo con una etiqueta localizada, sin cortar columnas ni usar coordenadas fijas\nOK reevalúa después de cada cara; no omite comprobación de cédula/RUC, chasis o motor y no confirma discrepancias\nOK PDF mixto: cancelar render de página escaneada libera páginas, canvas y documento sin perder el texto ya leído"
+  },
+  {
+    "test": "analysis-batch.cjs",
+    "exitCode": 0,
+    "elapsedMs": 59,
+    "output": "OK lote: consultas IA solapadas (máximo dos), una por documento, OCR y resultados en orden, sin reutilizar lecturas al reintentar\nOK fallo anticipado usa respaldo sin reenvío oculto; cambios de imagen no consumen resultado anterior"
+  },
+  {
+    "test": "analysis-limits.cjs",
+    "exitCode": 0,
+    "elapsedMs": 60,
+    "output": "OK presupuesto IA compartido entre modelos, máximo de intentos y espera restante\nOK autorización/red no reenvían; modelo inexistente permite alternativa; cancelar evita nuevos envíos"
+  },
+  {
+    "test": "analysis-speed.cjs",
+    "exitCode": 0,
+    "elapsedMs": 165,
+    "output": "OK PDF original completo, sin rasterización ni pérdida de bytes; mantiene límite y esquema de validación\nOK solicitudes simultáneas se comparten, resultados independientes, reintentos y sesiones aislados\nOK tiempo y razón original de fallo anticipado conservados al consumir el resultado después"
+  },
+  {
+    "test": "auto-update.cjs",
+    "exitCode": 0,
+    "elapsedMs": 52,
+    "output": "OK nueva version recarga; actividad, despliegue parcial y red fallida no recargan"
+  },
+  {
+    "test": "cedula-ocr.cjs",
+    "exitCode": 0,
+    "elapsedMs": 72,
+    "output": "OK Etiquetas separadas conservan apellidos compuestos y nombre corto\nOK Bloque de nombres en dos líneas consecutivas\nOK Bloque combinado de una línea no se divide por palabras\nOK No salta etiquetas ni toma el nombre de padres o cónyuge\nOK Sólo cédula con etiqueta; no teléfono, MRZ ni número suelto\nOK No deduce vencimiento de fecha de nacimiento ni emisión\nOK Caducidad explícita acepta fecha y rechaza fecha imposible\nOK Nacionalidad no se deduce del encabezado ECUADOR\nOK Código dactilar etiquetado no altera letras válidas\nOK Código dactilar sin etiqueta exige revisión y candidatos múltiples quedan vacíos\nOK Cédula y fechas numéricas no se toman como dactilar\nOK Comparación de nombres usa palabras completas\nOK Etiquetas al final de la misma línea no contaminan el nombre\n13 pruebas de OCR cédula aprobadas.\nOK Cédula OCR conserva Ñ en apellidos del titular"
+  },
+  {
+    "test": "channel-recovery.cjs",
+    "exitCode": 0,
+    "elapsedMs": 108,
+    "output": "OK canal nuevo tras error y timeout, sin duplicar envío ni perder consultas concurrentes\nOK verifica guardado antes de reenviar; error original conservado, credenciales ocultas y aviso público sencillo"
+  },
+  {
+    "test": "contract-normalization.cjs",
+    "exitCode": 0,
+    "elapsedMs": 207,
+    "output": "OK Nombres reales cortos o con NAN no se pierden; etiquetas y lecturas numéricas sí se rechazan\nOK No se recorta MARIANA porque un apellido sea ANA ni se inventa separación del nombre\nOK El propietario empresarial conserva cifras, símbolos y palabras que son válidas en razones sociales\nOK Fechas son calendarios completos y no coincidencias dentro de otra fecha o una explicación\nOK Matrícula admite RUC del titular y no extrae teléfonos\nOK La referencia de la empresa usa su RUC y no la cédula del representante\nOK OCR sin evidencia no borra una lectura de IA; toda edición manual permanece intacta\nOK Semejanza o nombre parcial no equivale a coincidencia; distinto orden completo sí\nOK La validación conserva review de identificaciones, nombres, representantes y papeletas\nOK Coincidencias entre documentos no hacen pasar una identificación marcada para revisión\nOK Papeleta compara nombre completo y respeta la fecha detectada ante otra fecha esperada\nOK La fecha esperada tampoco elimina review de una lectura dudosa\nOK Compradores y vendedores conservan filas separadas al normalizar\n13 comprobaciones de normalización y validación superadas.\nOK La Ñ se conserva desde IA y OCR, también en Unicode descompuesto"
+  },
+  {
+    "test": "contract-pipeline.cjs",
+    "exitCode": 0,
+    "elapsedMs": 114,
+    "output": "OK IA se intenta aunque la disponibilidad anterior sea falsa; no OCR si todos los campos están claros\nOK RUC: OCR completa dirección aunque IA ya detectó RUC y razón social\nOK Fallo IA usa OCR y no descarta formulario\nOK OCR reemplaza valor IA inválido no vacío y completa revisión explícita\nOK Ambigüedad OCR no se convierte en aceptación automática\nOK Ambas fuentes conservan las ediciones manuales\nOK PDF entrega páginas separadas, en orden, y libera recursos\nOK CUV conserva ruta local sin ninguna llamada IA\nOK Papeletas cargadas y pegadas comparten IA primero y respaldo OCR\nOK Texto OCR preserva códigos alfanuméricos y separadores de tablas\nOK Todos los campos del formulario tienen un esquema IA compatible\nOK Edición manual de papeleta valida cédula y fecha usando sus propios campos\n12 pruebas del flujo de extracción completadas."
+  },
+  {
+    "test": "contract-values.cjs",
+    "exitCode": 0,
+    "elapsedMs": 67,
+    "output": "OK El importe de la captura conserva dólares y centavos con ambos formatos\nOK Los separadores de miles no se confunden con decimales\nOK Los importes grandes y los límites no producen undefined\nOK Cifras de uno se apocopan antes de dólares y miles\nOK Importes incompletos o inválidos no se convierten silenciosamente a otro valor\n5 comprobaciones del valor en letras completadas."
+  },
+  {
+    "test": "document-extraction.cjs",
+    "exitCode": 0,
+    "elapsedMs": 60,
+    "output": "OK front and back are separate ordered pages, all requested fields have schema\nOK notary roles use row objects instead of unstructured names\nOK CUV cannot accidentally route through AI and foreign keys are rejected\nOK response joins text fragments, excludes thought text and ignores extra keys\nOK ambiguous and numeric identifiers cannot silently become accepted strings\nOK notary malformed row does not get coerced to text or partly accepted\nOK truncated, blocked or non-object AI output triggers fallback\nOK papeleta full compound name is not split by a two-word heuristic\nOK papeleta separate labels preserve particles, zeros and literal actual date\nOK papeleta neither invents an expected date nor treats an unlabeled ID as identity\nOK papeleta conflicting IDs and dates remain pending instead of picking one\nOK papeleta rejects impossible dates and longer IDs rather than truncating\n12 pruebas de extracción completadas."
+  },
+  {
+    "test": "document-reading-quality.cjs",
+    "exitCode": 0,
+    "elapsedMs": 62,
+    "output": "OK PDF conserva filas, orden visual y Ñ; encabezado o capa dañada requieren OCR\nOK PDF mixto lee página digital y página escaneada sin perder la segunda; libera recursos\nOK OCR no interrumpe alternativas con confianza baja aunque haya muchas etiquetas\nOK todos los documentos IA incluyen verificación de asociación espacial"
+  },
+  {
+    "test": "gemini-priority.cjs",
+    "exitCode": 0,
+    "elapsedMs": 78,
+    "output": "OK: prioridad por RPD incluso con modelo antiguo en cache; inicio sin consumo\nOK: solo modelos disponibles de generacion; no reintroduce ausentes cuando se agota cuota\nOK: 429 cambia modelo, muestra intento y resultado, cooldown y recuperacion de prioridad\nOK: recargar conserva exclusión temporal por cuota, aislada por backend"
+  },
+  {
+    "test": "matricula-ocr.cjs",
+    "exitCode": 0,
+    "elapsedMs": 114,
+    "output": "OK Campos de una fila terminan en su siguiente etiqueta\nOK Etiquetas en su propia línea incluyen valores numéricos\nOK Columnas explícitas respetan su asociación con la fila siguiente\nOK Pares etiqueta y valor en columnas de la misma fila\nOK Fila de etiquetas sin separación de columnas no se adivina\nOK Etiqueta vacía no salta al valor de otro campo\nOK No toma el año de emisión, fecha suelta ni número de trámite como fabricación o VIN\nOK Fechas sólo de emisión y caducidad rotuladas\nOK Marca y color no se infieren del texto del modelo\nOK Valores contradictorios de la misma etiqueta requieren revisión\nOK Identificación y teléfono no contaminan el propietario\nOK Placa anterior y color secundario no reemplazan a los principales\nOK Chasis y motor conservan letras alfanuméricas\n13 pruebas de OCR matrícula aprobadas."
+  },
+  {
+    "test": "ocr-contradictions.cjs",
+    "exitCode": 0,
+    "elapsedMs": 105,
+    "output": "OK parser real: contradicción de placa frontal/reverso se propaga aunque ya estuviera completa\nOK contradicciones no cambian valores manuales ni campos vaciados manualmente\nOK dos identificaciones del propietario requieren revisión; propietario y representante no se mezclan\nOK la matrícula no confirma identificaciones contradictorias ni en la verificación final de códigos críticos\nOK lectores reales de cédula y RUC no eligen la primera identificación contradictoria del mismo rol\nOK notaría no elige la primera identificación contradictoria y separa propietario de representante/compradores\nOK un segundo identificador con dígito inválido tampoco permite confirmar el primero por descarte"
+  },
+  {
+    "test": "ocr-memory.cjs",
+    "exitCode": 0,
+    "elapsedMs": 53,
+    "output": "OK variantes OCR se crean bajo demanda, se liberan al avanzar y al interrumpir, conservan original"
+  },
+  {
+    "test": "ocr-retirement.cjs",
+    "exitCode": 0,
+    "elapsedMs": 2160,
+    "output": "OK terminate rejected: estado normalizado, causa interna, sin rechazos no manejados ni workers adicionales\nOK terminate never: estado normalizado, causa interna, sin rechazos no manejados ni workers adicionales"
+  },
+  {
+    "test": "papeleta-minimal.cjs",
+    "exitCode": 0,
+    "elapsedMs": 56,
+    "output": "OK papeletas solicitan solo tres campos; regla de fecha aislada del OCR y de otras fechas, sin sugerir ni sustituir la fecha real\nOK fallo de IA conserva razón exacta de respuesta incompleta para administradores"
+  },
+  {
+    "test": "processing-control.cjs",
+    "exitCode": 0,
+    "elapsedMs": 295,
+    "output": "OK cancelación inmediata, sin aplicar respuesta tardía\nOK OCR que no termina: termina worker, recrea, ignora resultado tardío\nOK cancelar OCR termina su recurso, además de cancelar la espera\nOK parámetros y reconocimiento seriales, nunca dos trabajos en el mismo worker\nOK inicialización bloqueada no crea workers adicionales en cada reintento\nOK presupuesto total, manuales incluso vacíos y metadatos sin contenido sensible\nOK cancelar un consumidor no cancela al otro ni duplica la consulta compartida"
+  },
+  {
+    "test": "regression.cjs",
+    "exitCode": 0,
+    "elapsedMs": 126,
+    "output": "OK Todos los JS y scripts HTML tienen sintaxis valida\n{\"action\":\"listUsers\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"listUsers\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"adminResetPassword\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":1,\"flushMs\":0,\"serverMs\":1}}\n{\"action\":\"adminResetPassword\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"setupUsers\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK No se pueden administrar usuarios con un nombre falsificado\n{\"action\":\"listUsers\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"adminResetPassword\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"adminResetPassword\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":2,\"flushMs\":0,\"serverMs\":2}}\nOK Administrador autenticado puede listar y restablecer claves\nOK Gemini rechaza solicitudes anonimas y retira credenciales del cuerpo enviado\n{\"action\":\"save\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"save\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"save\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"save\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":1,\"flushMs\":0,\"serverMs\":1}}\n{\"action\":\"getByPlaca\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK save: reprocesar sin revision sobrescribe una sola fila y el reintento no duplica\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"getPagoByPlaca\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK savePago: reprocesar sin revision sobrescribe una sola fila y el reintento no duplica\n{\"action\":\"saveVenta\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveVenta\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveVenta\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveVenta\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"getVentaByPlaca\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK saveVenta: reprocesar sin revision sobrescribe una sola fila y el reintento no duplica\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":6,\"flushMs\":0,\"serverMs\":6}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"getContratoByPlaca\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK saveContrato: reprocesar sin revision sobrescribe una sola fila y el reintento no duplica\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK Guardar contrato conserva historial de estados y archivos existentes\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"setEstadoProceso\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK Reprocesar despues de cambiar estado conserva historial y archivos\nOK Cliente guarda sin revision y reutiliza ID despues de perder una respuesta\nOK Cliente de IA exige login y usa POST incluso para listar modelos\nOK Ninguna pagina carga el aviso de reemplazo y el servidor no bloquea por revision\n{\"action\":\"save\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveVenta\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"saveContrato\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK Cada guardado valida una sola sesion y busca la placa una sola vez\nOK Busqueda por placa conserva espacios y caracteres literales sin descargar la columna\nOK Ubicacion de usuario en cache reduce lecturas y sigue detectando token revocado e inactividad\nOK Consultas simultaneas comparten peticion, pero una nueva busqueda vuelve al servidor\nOK Respuesta perdida: confirmar guardado por ID sin volver a escribir, en los cuatro modulos\n{\"action\":\"subirExpedienteDrive\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK La conversion de Drive no ocupa el bloqueo global y las escrituras conservan bloqueo\nOK IA distingue tiempo agotado, cancelacion y respuesta incompleta\nOK Login reintenta un 404 temporal pero no una clave incorrecta\nOK Busqueda general no multiplica consultas ante fallos de red o sesion\nOK Inicio de IA reutiliza modelo reciente y no genera una consulta pong\nOK Reproceso con fila localizada lee datos actuales sin buscar toda la placa; recupera filas movidas\nOK El diagnostico de guardado registra fallo del cuerpo y se conserva tras buscar\n{\"action\":\"savePago\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"adminResetPassword\",\"ok\":false,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\n{\"action\":\"savePago\",\"ok\":true,\"timing\":{\"lockWaitMs\":0,\"processingMs\":0,\"flushMs\":0,\"serverMs\":0}}\nOK Canal directo usa los mismos permisos y mantiene reprocesos por placa\nOK Puente valida origen, ventana y canal antes de llamar al servidor\nOK Cliente usa canal directo sin fetch y falla de forma segura si una consulta expira\nOK Transporte acepta solo respuestas del iframe autorizado y reutiliza el canal\nOK Iframe bloqueado permite respaldo HTTP sin enviar previamente la operacion\n\n30 comprobaciones completadas."
+  },
+  {
+    "test": "save-confirmation-budget.cjs",
+    "exitCode": 0,
+    "elapsedMs": 54,
+    "output": "OK: escritura sin respuesta reserva verificacion, confirma mismo ID sin reenviar y registra limite/canal"
+  },
+  {
+    "test": "stability.cjs",
+    "exitCode": 0,
+    "elapsedMs": 54,
+    "output": "OK pagos.html descarta respuestas y errores antiguos\nOK ventas.html descarta respuestas y errores antiguos\nOK liquidacion.html descarta respuestas y errores antiguos\nOK cambio y cierre de sesión sin recargar ni reescribir almacenamiento\nOK presupuesto de 90 segundos incluye verificación y evita nuevos reintentos"
+  }
+]

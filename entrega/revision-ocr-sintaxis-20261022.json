@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "externalScripts": 16,
+  "inlineScripts": 10,
+  "pages": [
+    {
+      "page": "contratos.html",
+      "scripts": 1
+    },
+    {
+      "page": "firmas.html",
+      "scripts": 2
+    },
+    {
+      "page": "index.html",
+      "scripts": 2
+    },
+    {
+      "page": "liquidacion.html",
+      "scripts": 3
+    },
+    {
+      "page": "pagos.html",
+      "scripts": 1
+    },
+    {
+      "page": "ventas.html",
+      "scripts": 1
+    }
+  ]
+}

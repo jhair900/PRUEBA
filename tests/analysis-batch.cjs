@@ -9,7 +9,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
  const aiGates=Object.fromEntries(['A','B','C'].map(d=>[d,new Promise(r=>releaseAI[d]=r)]));
  const ocrGates=Object.fromEntries(['A','B','C'].map(d=>[d,new Promise(r=>releaseOCR[d]=r)]));
  const work=d=>async()=>{events.push('ia-'+d);max=Math.max(max,++active);await aiGates[d];active--;return {doc:d};};
- const ctx=vm.createContext({window:win,console:{log(){}},_pendientesDeProcesar:()=>['A','B','C'],
+ const ctx=vm.createContext({window:win,allowDocumentInput:()=>true,console:{log(){}},_pendientesDeProcesar:()=>['A','B','C'],
  prepararSiguienteAnalisis:(d,batch)=>api.prefetch(d,work(d),batch),
  _procesarUnPendiente:async d=>{const response=await api.share(d,work(d));assert.equal(response.doc,d);events.push('ocr-'+d);await ocrGates[d];events.push('fin-'+d);return {ok:true};},
  renderResultsSection(){},_docsCargadosCount:()=>0,_mostrarValidateToast(){}

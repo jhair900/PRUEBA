@@ -1,0 +1,26 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const path=require('node:path');
+require('../js/document-processing.js');
+const api=global.AutoCorDocumentProcessing;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const operation=(extra={})=>api.createOperation({documentType:'matricula',budgets:{totalMs:1000,ocrPassMs:25,ocrInitMs:30,ocrMs:100},...extra});
+(async()=>{
+ let release,applied=false;
+ const op=operation(),late=new Promise(r=>release=r);
+ const running=op.wait(late).then(()=>{op.check();applied=true;});
+ op.cancel();await assert.rejects(running,e=>e.code==='PROCESSING_CANCELLED');op.finish('cancelled');
+ release();await sleep(5);assert.equal(applied,false);
+ console.log('OK cancelación inmediata, sin aplicar respuesta tardía');
+ const total=operation({budgets:{totalMs:10}});await assert.rejects(total.wait(()=>new Promise(()=>{})),e=>e.code==='PROCESSING_TIMEOUT');total.finish('cancelled');
+ assert.deepEqual(api.preserveManual({placa:'IA',modelo:'IA',_origins:{}},{placa:'',modelo:'MANUAL',_origins:{placa:'manual',modelo:'manual'}}),{placa:'',modelo:'MANUAL',_origins:{placa:'manual',modelo:'manual'}});
+ const clean=operation();clean.record('test',{model:'gemini-prueba',inputBytes:12,text:'privado',token:'secreto',image:'imagen'});assert.ok(!JSON.stringify(clean.details).includes('privado'));assert.ok(!JSON.stringify(clean.details).includes('secreto'));clean.finish();
+ console.log('OK presupuesto total, manuales incluso vacíos y metadatos sin contenido sensible');
+ const win={localStorage:{getItem:()=>'{"token":"A"}'}};
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/document-analysis.js'),'utf8'),vm.createContext({window:win,Map,Promise,AbortController,structuredClone}));
+ let calls=0,complete,underlyingSignal;
+ const work=signal=>{calls++;underlyingSignal=signal;return new Promise(r=>complete=r);};
+ const controller=new AbortController();
+ const x=win.AutoCorDocumentAnalysis.share('igual',work,{signal:controller.signal}),y=win.AutoCorDocumentAnalysis.share('igual',work);
+ await sleep(1);controller.abort();await assert.rejects(x);assert.equal(underlyingSignal.aborted,false);complete({ok:true});assert.equal((await y).ok,true);assert.equal(calls,1);
+ console.log('OK cancelar un consumidor no cancela al otro ni duplica la consulta compartida');
+})().catch(e=>{console.error(e);process.exitCode=1;});

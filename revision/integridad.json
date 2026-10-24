@@ -1,0 +1,41 @@
+{
+  "version": "20261022T220355280100Z",
+  "newControlIds": [],
+  "removedControlIds": [
+    "aiBannerTest"
+  ],
+  "originalDocumentCardsPreserved": true,
+  "originalFileInputsPreserved": true,
+  "cuvProcessorUnchanged": true,
+  "pages": {
+    "contratos.html": {
+      "versionMatches": true,
+      "localResources": 18
+    },
+    "firmas.html": {
+      "versionMatches": true,
+      "localResources": 5
+    },
+    "index.html": {
+      "versionMatches": true,
+      "localResources": 5
+    },
+    "liquidacion.html": {
+      "versionMatches": true,
+      "localResources": 9
+    },
+    "pagos.html": {
+      "versionMatches": true,
+      "localResources": 10
+    },
+    "ventas.html": {
+      "versionMatches": true,
+      "localResources": 10
+    }
+  },
+  "syntheticSuitesPassed": 6,
+  "realGeminiRequestsThisRevision": 0,
+  "realDocumentTestsResumed": false,
+  "published": false,
+  "deployed": false
+}

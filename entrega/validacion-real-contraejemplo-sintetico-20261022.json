@@ -1,0 +1,17 @@
+{
+  "version": "20261022T201444372389Z",
+  "kind": "synthetic-counterexample-real-parser-and-merger",
+  "productionMeasurement": false,
+  "containsDocumentContent": false,
+  "parserTreatsNeighbouringHeaderAsMotor": true,
+  "afterFirstMerge": {
+    "correctAiValuePreserved": true,
+    "pending": true
+  },
+  "afterSecondMerge": {
+    "correctAiValuePreserved": false,
+    "pending": false,
+    "unrelatedHeaderAcceptedAsOcr": true
+  },
+  "conclusion": "NEEDS_CORRECTION"
+}
