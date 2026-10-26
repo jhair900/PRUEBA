@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261024T024756572304Z">
-<script src="js/auto-update.js?v=20261024T024756572304Z"></script>
+<meta name="autocor-version" content="20261026T145527836395Z">
+<script src="js/auto-update.js?v=20261026T145527836395Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Contratos</title>
@@ -912,19 +912,19 @@
   }
 
 </style>
-<script src="js/api-config.js?v=20261024T024756572304Z"></script>
-<script src="js/apps-script-transport.js?v=20261024T024756572304Z"></script>
-<script src="js/api-client.js?v=20261024T024756572304Z"></script>
-<script src="js/gemini-client.js?v=20261024T024756572304Z"></script>
-<script src="js/document-extraction.js?v=20261024T024756572304Z"></script>
-<script src="js/document-processing.js?v=20261024T024756572304Z"></script>
-<script src="js/document-image.js?v=20261024T024756572304Z"></script>
-<script src="js/gemini-availability.js?v=20261024T024756572304Z"></script>
-<script src="js/document-analysis.js?v=20261024T024756572304Z"></script>
-<script src="js/expediente.js?v=20261024T024756572304Z"></script>
+<script src="js/api-config.js?v=20261026T145527836395Z"></script>
+<script src="js/apps-script-transport.js?v=20261026T145527836395Z"></script>
+<script src="js/api-client.js?v=20261026T145527836395Z"></script>
+<script src="js/gemini-client.js?v=20261026T145527836395Z"></script>
+<script src="js/document-extraction.js?v=20261026T145527836395Z"></script>
+<script src="js/document-processing.js?v=20261026T145527836395Z"></script>
+<script src="js/document-image.js?v=20261026T145527836395Z"></script>
+<script src="js/gemini-availability.js?v=20261026T145527836395Z"></script>
+<script src="js/document-analysis.js?v=20261026T145527836395Z"></script>
+<script src="js/expediente.js?v=20261026T145527836395Z"></script>
 <style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}
 </style>
-<link rel="stylesheet" href="js/navigation.css?v=20261024T024756572304Z">
+<link rel="stylesheet" href="js/navigation.css?v=20261026T145527836395Z">
 </head>
 <body>
 
@@ -1257,19 +1257,6 @@
       <!-- contenido inyectado por JS -->
     </div>
 
-    <div class="guardar-proceso-bar" id="continuarLiquidacionBar" style="display:none">
-      <div class="guardar-proceso-info">
-        <div class="guardar-proceso-title">Validación terminada</div>
-        <div class="guardar-proceso-sub">Continúa a Liquidación con los datos validados ya precargados.</div>
-      </div>
-      <button type="button" class="btn-guardar-proceso" id="btnContinuarLiquidacionValidacion" onclick="continuarALiquidacion()">
-        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
-        </svg>
-        Continuar a Liquidación
-      </button>
-    </div>
-
     <!-- ── Barra: Generar Contratos ───────────────────────────── -->
     <div class="generar-contratos-bar" id="generarContratosBar" style="display:none">
       <div class="generar-contratos-info">
@@ -1286,6 +1273,19 @@
           <line x1="9" y1="15" x2="15" y2="15"></line>
         </svg>
         Generar Contratos + Guardar
+      </button>
+    </div>
+
+    <div class="guardar-proceso-bar" id="continuarLiquidacionBar" style="display:none">
+      <div class="guardar-proceso-info">
+        <div class="guardar-proceso-title">Validación terminada</div>
+        <div class="guardar-proceso-sub">Continúa a Liquidación con los datos validados ya precargados.</div>
+      </div>
+      <button type="button" class="btn-guardar-proceso" id="btnContinuarLiquidacionValidacion" onclick="continuarALiquidacion()">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
+        </svg>
+        Continuar a Liquidación
       </button>
     </div>
 
@@ -1523,9 +1523,9 @@
 <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/cuv-parser.js?v=20261024T024756572304Z"></script>
-<script src="js/contrato-templates.js?v=20261024T024756572304Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20261024T024756572304Z"></script>
+<script src="js/cuv-parser.js?v=20261026T145527836395Z"></script>
+<script src="js/contrato-templates.js?v=20261026T145527836395Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20261026T145527836395Z"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1620,7 +1620,8 @@ function validarContactosContrato(prefijo, errorEl){
 }
 
 function _actualizarAccionesPostValidacion(){
-  var mostrar = window._contratosValidacionCompletada === true;
+  var mostrar = window._contratosValidacionCompletada === true && validationRequested &&
+    !validationBatchPromise && !activeDocumentOperation && _validationSummary().complete;
   var resultados = document.getElementById('resultsSection');
   var generar = document.getElementById('generarContratosBar');
   var continuar = document.getElementById('continuarLiquidacionBar');
@@ -3050,7 +3051,8 @@ function setStatus(tipo,estado,texto){
 async function procesarArchivo(file, tipo,op){
   requireDocumentAccess(tipo);
   retainedDocumentFiles.set(tipo,file);
-  _invalidarValidacion();
+  // La lectura de un archivo dentro del lote conserva la validación solicitada.
+  _invalidarValidacion(!!validationBatchPromise);
   const nombre = file.name.length>26 ? file.name.substring(0,24)+'…' : file.name;
   showSpinner('Procesando '+tipoLabel(tipo)+'...',op);
   try{
@@ -3940,7 +3942,7 @@ window.onFieldEdit = function(input){
     if(datos[tipo]._conflicts)delete datos[tipo]._conflicts[key];
     datos[tipo]._internalReview=(datos[tipo]._internalReview||[]).filter(k=>k!==key);
     datos[tipo]._missing=getMissingFields(datos[tipo],fieldsForDocument(tipo));
-    if(!datos[tipo]._missing.length)datos[tipo]._processingIncomplete=false;
+    if(!getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length)datos[tipo]._processingIncomplete=false;
   }
   // Actualizar el badge de origen en el label
   const item = input.closest('.f-item');
@@ -4607,7 +4609,10 @@ function validarTodoEnConjunto(){
   if(validationBatchPromise)return validationBatchPromise;
   validationBatchAbort=new AbortController();
   const promise=ejecutarValidacionCompleta();validationBatchPromise=promise;
-  const finish=()=>{if(validationBatchPromise===promise){validationBatchPromise=null;validationBatchAbort=null;}_refreshValidateAllBar();renderAiAvailability(aiController.snapshot());};
+  const finish=()=>{
+    if(validationBatchPromise===promise){validationBatchPromise=null;validationBatchAbort=null;}
+    _refreshValidateAllBar();renderAiAvailability(aiController.snapshot());_actualizarAccionesPostValidacion();
+  };
   promise.then(finish,finish);return promise;
 }
 async function ejecutarValidacionCompleta(){
@@ -5585,9 +5590,9 @@ window.AutoCorContractDraft = {
 })();
 </script>
 
-<script src="js/auth-ui.js?v=20261024T024756572304Z"></script>
-<script src="js/session-sync.js?v=20261024T024756572304Z"></script>
-<script src="js/workflow.js?v=20261024T024756572304Z"></script>
-<script src="js/workflow-adapters.js?v=20261024T024756572304Z"></script>
+<script src="js/auth-ui.js?v=20261026T145527836395Z"></script>
+<script src="js/session-sync.js?v=20261026T145527836395Z"></script>
+<script src="js/workflow.js?v=20261026T145527836395Z"></script>
+<script src="js/workflow-adapters.js?v=20261026T145527836395Z"></script>
 </body>
 </html>
