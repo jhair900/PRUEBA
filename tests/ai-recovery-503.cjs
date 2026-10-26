@@ -24,13 +24,13 @@ function setup(request,config={}){
   console.log('OK 503 es fallo temporal del servicio; espera indicada y reintento de la misma solicitud sin otra preparación/comprobación');
 
   t=setup(async(model,body)=>body.probe||model===B?ok():service());await t.controller.ensure();
-  result=await t.controller.generate({document:true},{timeoutMs:100});
-  assert.equal(result.model,B);assert.equal(result.attempts.length,3);assert.equal(result.requests,4);
-  assert.deepEqual(t.calls.map(c=>(c.probe?'probe:':'doc:')+c.model),['probe:'+A,'doc:'+A,'doc:'+A,'probe:'+B,'doc:'+B]);
-  console.log('OK dos 503 permiten alternativa comprobada; comparte límite de intentos y solicitudes');
+  await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_UPSTREAM_ERROR'&&e.analysisAttempts.length===3&&e.recoveryRequests===3);
+  assert.equal(t.controller.snapshot().model,A);
+  assert.deepEqual(t.calls.map(c=>(c.probe?'probe:':'doc:')+c.model),['probe:'+A,'doc:'+A,'doc:'+A,'doc:'+A]);
+  console.log('OK dos 503 mantienen A en el tercer intento; no se comprueba ni utiliza B');
 
   t=setup(async(model,body)=>body.probe?ok():service());await t.controller.ensure();
-  await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_UPSTREAM_ERROR'&&e.recoveryExhausted&&e.analysisAttempts.length===3&&e.recoveryRequests===4);
+  await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_UPSTREAM_ERROR'&&e.recoveryExhausted&&e.analysisAttempts.length===3&&e.recoveryRequests===3);
   assert.equal(t.calls.filter(c=>!c.probe).length,3);assert.equal(t.controller.snapshot().code,'AI_UPSTREAM_ERROR');
   console.log('OK 503 persistente se detiene con tres envíos documentales y conserva la causa, sin llamarlo cuota o conexión');
 
@@ -44,14 +44,14 @@ function setup(request,config={}){
   await t.controller.ensure();const deadlineStarted=Date.now();
   await assert.rejects(t.controller.generate({document:true},{timeoutMs:25}),e=>e.code==='AI_TIMEOUT'&&e.recoveryExhausted&&e.analysisAttempts.length===2);
   assert.equal(stopped,true);assert.ok(Date.now()-deadlineStarted<500);assert.equal(reads,2);
+  assert.equal(t.controller.snapshot().model,A);assert.equal(t.controller.snapshot().code,'AI_TIMEOUT');
   console.log('OK el plazo acumulado incluye la recuperación y aborta un reintento atascado sin ampliarse');
 
-  let probing=true;
-  t=setup(async(model,body)=>!body.probe?service():probing?ok():{ok:false,status:429,retryAfter:'1',json:async()=>({})});
-  await t.controller.ensure();probing=false;
-  await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_RECOVERY_LIMIT'&&e.recoveryRequests===4&&e.causeCode==='AI_UPSTREAM_ERROR');
-  assert.equal(t.calls.length,5,'Comprobación inicial aparte; sólo cuatro solicitudes dentro de esta lectura');
-  console.log('OK alternativas sin cuota no multiplican comprobaciones; presupuesto acumulado reserva un envío documental');
+  t=setup(async(model,body)=>body.probe?ok():service(),{maxRecoveryRequests:2});
+  await t.controller.ensure();
+  await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_RECOVERY_LIMIT'&&e.recoveryRequests===2&&e.causeCode==='AI_UPSTREAM_ERROR');
+  assert.equal(t.calls.length,3,'Comprobación inicial aparte; sólo dos solicitudes dentro de esta lectura');
+  console.log('OK el presupuesto de solicitudes se respeta sin comprobar alternativas');
 
   const cancel=new AbortController();
   t=setup(async(model,body)=>body.probe?ok():service());await t.controller.ensure();
@@ -59,13 +59,14 @@ function setup(request,config={}){
   await tick();assert.equal(t.calls.filter(c=>!c.probe).length,1);assert.equal(t.controller.snapshot().nextCheckAt,0);
   console.log('OK cancelar durante la espera detiene reintentos y no programa una recuperación duplicada');
 
-  let probeSent,probeStopped=false;
+  let thirdSent,thirdStopped=false,documentAttempt=0;
   const duringProbe=new AbortController();
-  t=setup((model,body,signal)=>body.probe&&model===B?new Promise(()=>{probeSent=true;signal.addEventListener('abort',()=>probeStopped=true,{once:true});}):Promise.resolve(body.probe?ok():service()));
+  t=setup((model,body,signal)=>!body.probe&&++documentAttempt===3?new Promise(()=>{thirdSent=true;signal.addEventListener('abort',()=>thirdStopped=true,{once:true});}):Promise.resolve(body.probe?ok():service()));
   await t.controller.ensure();const pending=t.controller.generate({document:true},{timeoutMs:200,signal:duringProbe.signal});
-  while(!probeSent)await tick();duringProbe.abort();
-  await assert.rejects(pending,e=>e.code==='AI_CANCELLED');assert.equal(probeStopped,true);assert.equal(t.calls.filter(c=>!c.probe).length,2);
-  console.log('OK cancelar durante la comprobación de alternativa aborta el canal y no envía el documento a B');
+  while(!thirdSent)await tick();duringProbe.abort();
+  await assert.rejects(pending,e=>e.code==='AI_CANCELLED');assert.equal(thirdStopped,true);assert.equal(t.calls.filter(c=>!c.probe).length,3);
+  assert.ok(t.calls.every(c=>c.model===A));assert.equal(t.calls.filter(c=>c.probe).length,1);
+  console.log('OK cancelar el tercer intento aborta el canal y conserva la selección, sin comprobaciones adicionales');
 
   const app={AutoCorTransport:{request:async()=>null}},storage={getItem:()=>JSON.stringify({token:'fixture'})};
   let response={ok:true,status:200,json:async()=>({_proxy:{ok:false,status:503},data:{error:{status:'UNAVAILABLE'}}})};

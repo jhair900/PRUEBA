@@ -57,12 +57,13 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
    await page.waitForFunction(title=>document.getElementById('validateToast').classList.contains('visible')&&document.getElementById('validateToastTitle').textContent===title,title);
    assert.equal(matriculaRequests,3,JSON.stringify({mode,requests,stops:await page.evaluate(()=>__timings.flatMap(t=>(t.details||[]).filter(d=>d.code).map(d=>({action:t.action,stage:d.stage,code:d.code,httpStatus:d.httpStatus}))))}));
    assert.deepEqual(requests.filter(r=>r.kind!=='probe').map(r=>r.kind),mode==='recover'?['cedula-prop','matricula','matricula','matricula','notaria']:['cedula-prop','matricula','matricula','matricula']);
-   assert.deepEqual(requests.filter(r=>r.kind==='probe').map(r=>r.model),[A,B]);
+   assert.deepEqual(requests.filter(r=>r.kind==='probe').map(r=>r.model),[A]);
+   assert.ok(requests.every(r=>r.model===A),'Todos los documentos y reintentos mantienen el modelo inicial');
    if(mode==='recover'){
     assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),true);
     assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),false);
     assert.equal(await page.evaluate(()=>_contratosData.notaria._processingIncomplete),false);
-    console.log('OK lote: Cédula correcta → Matrícula 503, 503 → alternativa comprobada → Matrícula correcta → Notaría, sin reiniciar el lote');
+    console.log('OK lote: Cédula correcta → Matrícula 503, 503 → recuperación con el mismo modelo → Notaría, sin reiniciar el lote');
    }else{
     const text=await page.locator('#validateToastSub').textContent();assert.match(text,/límite de recuperación/);assert.match(text,/No se completó: Matrícula/);assert.match(text,/Sin intentar: Print Notaría/);
     assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),false);

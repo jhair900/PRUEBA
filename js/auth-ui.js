@@ -21,6 +21,7 @@
       localStorage.removeItem('autocor_auth');
     }
     render();
+    global.dispatchEvent(new Event('autocor-auth-changed'));
   }
 
   function api(action, payload){

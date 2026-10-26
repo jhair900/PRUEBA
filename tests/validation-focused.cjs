@@ -160,8 +160,7 @@ const root=path.resolve(__dirname,'..');
   await page.waitForFunction(()=>document.getElementById('validateToastTitle').textContent==='Validación incompleta');
   assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),false);
   assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),true);
-  // El selector vigente respeta una pausa tras fallar; avanzar sólo el reloj ficticio.
-  await page.evaluate(()=>__fixtureClockOffset+=61000);
+  // El reintento usa la selección inicial, sin esperar ni comprobar otro modelo.
   await page.locator('#btnValidateAll').click();
   await page.waitForFunction(()=>!document.getElementById('btnValidateAll').disabled);
   const resumed=await page.evaluate(()=>__calls.filter(c=>!c.probe));

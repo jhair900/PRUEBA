@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T145527836395Z">
-<script src="js/auto-update.js?v=20261026T145527836395Z"></script>
+<meta name="autocor-version" content="20261026T170606545650Z">
+<script src="js/auto-update.js?v=20261026T170606545650Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Contratos</title>
@@ -665,7 +665,9 @@
   .validate-toast.err  .validate-toast-icon{background:#ef4444}
   .validate-toast-body{flex:1;min-width:0}
   .validate-toast-title{font-size:14px;font-weight:800;letter-spacing:.3px;line-height:1.2}
-  .validate-toast-sub{font-size:12px;font-weight:500;margin-top:2px;opacity:.85;line-height:1.35}
+  .validate-toast-sub{font-size:12px;font-weight:500;margin-top:2px;opacity:.85;line-height:1.35;max-height:45vh;overflow-y:auto}
+  .validation-pending-item{margin-top:8px}
+  .f-pending-reason{font-size:11px;color:#92400e;margin-top:4px}
   .validate-toast-close{
     background:transparent;border:none;cursor:pointer;font-family:inherit;
     width:28px;height:28px;border-radius:50%;flex-shrink:0;
@@ -912,19 +914,19 @@
   }
 
 </style>
-<script src="js/api-config.js?v=20261026T145527836395Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T145527836395Z"></script>
-<script src="js/api-client.js?v=20261026T145527836395Z"></script>
-<script src="js/gemini-client.js?v=20261026T145527836395Z"></script>
-<script src="js/document-extraction.js?v=20261026T145527836395Z"></script>
-<script src="js/document-processing.js?v=20261026T145527836395Z"></script>
-<script src="js/document-image.js?v=20261026T145527836395Z"></script>
-<script src="js/gemini-availability.js?v=20261026T145527836395Z"></script>
-<script src="js/document-analysis.js?v=20261026T145527836395Z"></script>
-<script src="js/expediente.js?v=20261026T145527836395Z"></script>
+<script src="js/api-config.js?v=20261026T170606545650Z"></script>
+<script src="js/apps-script-transport.js?v=20261026T170606545650Z"></script>
+<script src="js/api-client.js?v=20261026T170606545650Z"></script>
+<script src="js/gemini-client.js?v=20261026T170606545650Z"></script>
+<script src="js/document-extraction.js?v=20261026T170606545650Z"></script>
+<script src="js/document-processing.js?v=20261026T170606545650Z"></script>
+<script src="js/document-image.js?v=20261026T170606545650Z"></script>
+<script src="js/gemini-availability.js?v=20261026T170606545650Z"></script>
+<script src="js/document-analysis.js?v=20261026T170606545650Z"></script>
+<script src="js/expediente.js?v=20261026T170606545650Z"></script>
 <style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}
 </style>
-<link rel="stylesheet" href="js/navigation.css?v=20261026T145527836395Z">
+<link rel="stylesheet" href="js/navigation.css?v=20261026T170606545650Z">
 </head>
 <body>
 
@@ -1523,9 +1525,9 @@
 <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/cuv-parser.js?v=20261026T145527836395Z"></script>
-<script src="js/contrato-templates.js?v=20261026T145527836395Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20261026T145527836395Z"></script>
+<script src="js/cuv-parser.js?v=20261026T170606545650Z"></script>
+<script src="js/contrato-templates.js?v=20261026T170606545650Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20261026T170606545650Z"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1563,6 +1565,7 @@ let cuvDatosCompleto = null; // full CUV object for detail modal
 window._contratosData = datos;
 window._contratosValidacionCompletada = false;
 let validationRequested=false;
+let validationFailureContext=null;
 
 // Una sola dirección manual para guardar y generar el contrato del mismo vehículo.
 let domicilioContratoPlaca = null;
@@ -1631,7 +1634,11 @@ function _actualizarAccionesPostValidacion(){
 }
 
 function _invalidarValidacion(keepRequested){
-  if(!keepRequested)validationRequested=false;
+  if(!keepRequested){
+    validationRequested=false;validationFailureContext=null;
+    const toast=document.getElementById('validateToast');
+    if(toast?.dataset.validationSummary){toast.classList.remove('visible');delete toast.dataset.validationSummary;}
+  }
   window._contratosValidacionCompletada = false;
   _actualizarAccionesPostValidacion();
 }
@@ -1819,8 +1826,8 @@ function recoverDocumentOperation(op){
 }
 async function runDocumentProcessing(tipo,work,retry){
   if(/^papeleta/.test(tipo))return {ok:false,excluded:true};
-  // La captura ya fue autorizada. Renovar aquí automáticamente una aprobación vencida.
-  if(tipo!=='cuv')try{await aiController.ensure({signal:validationBatchAbort?.signal});}catch(err){setStatus(tipo,'pending',aiMessages[err.code]||'No se pudo iniciar la lectura.');return {ok:false,started:false,attempted:false,cancelled:validationBatchAbort?.signal.aborted===true,error:err};}
+  // Reutilizar la selección inicial; esta comprobación local no consulta la IA.
+  if(tipo!=='cuv')try{requireDocumentAccess(tipo);}catch(err){setStatus(tipo,'pending',aiMessages[err.code]||'No se pudo iniciar la lectura.');return {ok:false,started:false,attempted:false,cancelled:validationBatchAbort?.signal.aborted===true,error:err};}
   if(validationBatchAbort?.signal.aborted)return {ok:false,cancelled:true};
   if(activeDocumentOperation)activeDocumentOperation.cancel(activeDocumentOperation.documentType===tipo?'PROCESSING_STALE':'PROCESSING_CANCELLED');
   const op=AutoCorDocumentProcessing.createOperation({documentType:tipo,version:processingVersion(),budgets:window.AutoCorProcessingBudgets,
@@ -1972,7 +1979,7 @@ function setAIBanner(state,msg){
   const text=document.getElementById('aiStatusText');if(text)text.textContent=msg;
 }
 const aiMessages={
-  AI_PRECHECK_REQUIRED:'Comprobando disponibilidad de IA. Espera un momento antes de cargar documentos.',
+  AI_PRECHECK_REQUIRED:'Espera a que termine la comprobación inicial de IA antes de cargar documentos.',
   AI_AUTH_ERROR:'Inicia sesión para procesar documentos.',
   AI_QUOTA_EXHAUSTED:'No hay IA disponible en este momento. Espera antes de cargar documentos.',
   AI_MODEL_UNAVAILABLE:'No hay IA disponible para procesar documentos en este momento.',
@@ -1983,7 +1990,7 @@ const aiMessages={
   AI_TIMEOUT:'La IA no respondió a tiempo.',
   AI_INVALID_RESPONSE:'No se pudo completar la comprobación de IA.',
   AI_RESPONSE_INCOMPLETE:'La IA no completó la lectura. Se conservan tus documentos.',
-  AI_CONTEXT_CHANGED:'Comprobando disponibilidad de IA…'
+  AI_CONTEXT_CHANGED:'La sesión cambió durante la comprobación inicial. Recarga la página para comprobar la IA.'
 };
 function aiContext(){
   try{const auth=JSON.parse(localStorage.getItem('autocor_auth')||'null');return auth?.token?JSON.stringify([auth.token,AutoCorConfig.apiUrl,processingVersion()]):'';}catch(_){return '';}
@@ -1993,7 +2000,6 @@ function syntheticProbeBody(){
   const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,520,180);ctx.fillStyle='#000';ctx.font='bold 36px sans-serif';ctx.fillText('PLACA ABC1234',24,65);ctx.fillText('COLOR AZUL',24,130);
   try{return AutoCorDocumentExtraction.buildRequest('matricula',canvas.toDataURL('image/png'),['placa','color'],{availabilityProbe:true});}finally{canvas.width=canvas.height=0;}
 }
-let aiAvailabilityTimer;
 const aiController=AutoCorGeminiAvailability.create({
   getContext:aiContext,config:window.AutoCorAIAvailabilityConfig,
   probeBody:syntheticProbeBody,
@@ -2009,35 +2015,34 @@ const aiController=AutoCorGeminiAvailability.create({
 });
 function renderAiAvailability(state){
   GEMINI_MODEL_ACTIVE=state.model;
-  const message=state.checking?'Comprobando disponibilidad de IA…':state.ready?'IA disponible: '+renderAIBannerModel(state.model)+'.':(aiMessages[state.code]||aiMessages.AI_PRECHECK_REQUIRED)+(state.nextCheckAt?' Se volverá a comprobar automáticamente.':'');
-  setAIBanner(state.checking?'checking':state.ready?'ok':'err',message);
+  const message=state.checking?'Comprobando disponibilidad de IA…':state.ready?
+    (state.code?renderAIBannerModel(state.model)+': '+(aiMessages[state.code]||'No se completó la lectura.'):'IA seleccionada: '+renderAIBannerModel(state.model)+'.'):
+    (aiMessages[state.code]||aiMessages.AI_PRECHECK_REQUIRED);
+  setAIBanner(state.checking?'checking':state.ready&&!state.code?'ok':'err',message);
   document.querySelectorAll('.doc-card:not([data-type="cuv"]) input[type="file"]').forEach(input=>{input.disabled=!state.ready;});
   document.querySelectorAll('.paste-side').forEach(zone=>zone.setAttribute('aria-disabled',String(!state.ready)));
-  clearTimeout(aiAvailabilityTimer);
-  if(!state.checking&&document.visibilityState!=='hidden'&&aiContext()&&state.code!=='AI_AUTH_ERROR'){
-    const next=state.ready?state.expiresAt+1:state.code?state.nextCheckAt:Date.now();
-    if(next)aiAvailabilityTimer=setTimeout(checkAiAutomatically,Math.max(1,next-Date.now()));
-  }
 }
-async function checkAiAutomatically(){
-  clearTimeout(aiAvailabilityTimer);
-  if(document.visibilityState==='hidden'||activeDocumentOperation||validationBatchPromise)return;
+async function checkInitialAiSelection(){
   try{await aiController.ensure();}catch(_){/* El controlador publica sólo el estado del contexto vigente. */}
 }
 function requireDocumentAccess(tipo){if(/^papeleta/.test(tipo))throw AutoCorDocumentProcessing.error('DOCUMENT_EXCLUDED');return aiController.guard(tipo);}
 function allowDocumentInput(tipo){try{requireDocumentAccess(tipo);return true;}catch(_){return false;}}
 let previousAiContext=aiContext();
-setInterval(function(){
+function syncAiSession(){
   const next=aiContext();
-  if(next!==previousAiContext){previousAiContext=next;window.cancelDocumentProcessing();aiController.invalidate();checkAiAutomatically();}
-},1000);
+  if(next!==previousAiContext){
+    previousAiContext=next;window.cancelDocumentProcessing();aiController.invalidate();
+    // Si aún no había sesión, ésta sigue siendo la primera comprobación de la carga.
+    if(next&&!aiController.snapshot().selectionStarted)checkInitialAiSelection();
+  }
+  renderAiAvailability(aiController.snapshot());
+}
+window.addEventListener('autocor-auth-changed',syncAiSession);
+window.addEventListener('storage',function(e){if(e.key==='autocor_auth'||e.key===null)syncAiSession();});
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='hidden'){clearTimeout(aiAvailabilityTimer);return;}
-  const state=aiController.snapshot();
-  renderAiAvailability(state);
-  if(!state.ready&&!state.checking&&!state.code)checkAiAutomatically();
+  if(document.visibilityState!=='hidden')syncAiSession();
 });
-setTimeout(checkAiAutomatically,50);
+setTimeout(checkInitialAiSelection,50);
 // La captura se bloquea antes de abrir los selectores originales, incluso si otro código los habilita.
 document.addEventListener('click',function(e){const input=e.target.closest?.('.doc-card input[type="file"]');if(input&&!allowDocumentInput(input.closest('.doc-card').dataset.type)){e.preventDefault();e.stopImmediatePropagation();}},true);
 
@@ -2053,7 +2058,7 @@ function isFieldDubious(val, fieldDef){
   if(isFieldEmpty(val)) return true;
   if(fieldDef && typeof fieldDef.validate==='function'){
     const result = fieldDef.validate(val);
-    if(result==='warn' || result===false) return true;
+    if(result==='warn' || result==='err' || result===false) return true;
   }
   return false;
 }
@@ -2062,9 +2067,20 @@ function getMissingFields(data, fields, origins){
   const missing = [];
   for(const field of fields){
     if(field.type==='separator') continue;
-    if(origins[field.key]==='review' || isFieldDubious(data[field.key], field)) missing.push(field.key);
+    const internal=origins[field.key]!=='manual'&&((data._conflicts?.[field.key]||[]).length>1||(data._internalReview||[]).includes(field.key));
+    if(origins[field.key]==='review' || internal || isFieldDubious(data[field.key], field)) missing.push(field.key);
   }
   return missing;
+}
+
+function fieldPendingReason(data,field){
+  const key=field.key,manual=data._origins?.[key]==='manual';
+  if(isFieldEmpty(data[key]))return manual?'Campo vaciado manualmente':'Dato ausente o ilegible';
+  if(!manual&&(data._conflicts?.[key]||[]).length>1)return 'Lecturas contradictorias dentro del documento';
+  if(!manual&&(data._internalReview||[]).includes(key))return 'Lectura ambigua; requiere revisión del documento';
+  if(isFieldDubious(data[key],field))return 'El formato del dato requiere corrección';
+  if(data._origins?.[key]==='review')return 'Lectura pendiente de confirmación';
+  return '';
 }
 
 function validationFieldsForDocument(tipo,fields){
@@ -3645,15 +3661,21 @@ function vcFieldKeys(tipo,campo){
   return aliases[campo]||[campo];
 }
 function reconciliarCoincidencias(rows){
+  const resolved=new Set();
   for(const row of rows.filter(r=>r.estado==='ok'))for(const value of row.valores){
     const d=datos[value.tipo];
     for(const key of vcFieldKeys(value.tipo,row.campo))if(d._origins?.[key]==='review'&&!(d._conflicts?.[key]?.length)&&!(d._internalReview||[]).includes(key)){
       d._origins[key]='cross';
+      resolved.add(value.tipo);
       const input=[...document.querySelectorAll('[data-tipo][data-key]')].find(e=>e.dataset.tipo===value.tipo&&e.dataset.key===key),badge=input?.closest('.f-item')?.querySelector('.f-origin');
       if(badge){badge.className='f-origin ai';badge.textContent='COINCIDE ENTRE DOCUMENTOS';input.classList.remove('warn');input.classList.add('ok');input.closest('.f-item').style.background='';}
     }
     d._missing=getMissingFields(d,fieldsForDocument(value.tipo));
   }
+  // La marca de un intento anterior no sobrevive a su última revisión resuelta.
+  // Una lectura interrumpida sin esa confirmación conserva su bloqueo.
+  for(const tipo of resolved)if(activeDocumentOperation?.documentType!==tipo&&
+    !getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length)datos[tipo]._processingIncomplete=false;
 }
 function _requiredDocumentTypes(){return flujoContrato.tipoPersona==='juridica'?['ruc','cedula-prop','matricula']:_flujoEsConyugal()?['cedula-prop','cedula-cony','matricula']:['cedula-prop','matricula'];}
 function _activeDocumentTypes(){return [..._requiredDocumentTypes(),'cuv','notaria'];}
@@ -3664,11 +3686,29 @@ function _validationSummary(rows){
   const pending=[];
   for(const tipo of _activeDocumentTypes())if(datos[tipo]){
     const fields=validationFieldsForDocument(tipo);
-    for(const key of getMissingFields(datos[tipo],fields))pending.push({tipo,key});
+    for(const key of getMissingFields(datos[tipo],fields)){
+      const field=fields.find(f=>f.key===key);
+      pending.push({tipo,key,label:field.label,reason:fieldPendingReason(datos[tipo],field)});
+    }
   }
   const differences=rows.filter(r=>r.estado==='diff');
   const missingRows=rows.filter(r=>r.estado==='pending'&&(r.valores.length||r.noDetectados.length));
   return {requiredMissing,incomplete,pending,differences,missingRows,complete:!requiredMissing.length&&!incomplete.length&&!pending.length&&!differences.length&&!missingRows.length};
+}
+function validationBlockers(state){
+  const issues=state.pending.map(p=>({...p}));
+  for(const tipo of state.requiredMissing)issues.push({tipo,key:'',label:'Documento',reason:_hayImagenPegadaPendiente(tipo)?'Documento obligatorio pendiente de lectura':'Documento obligatorio no cargado'});
+  for(const tipo of state.incomplete)if(!state.requiredMissing.includes(tipo)){
+    const field=validationFieldsForDocument(tipo).find(f=>f.key);
+    issues.push({tipo,key:datos[tipo]?field?.key:'',label:'Lectura del documento',reason:datos[tipo]?'Lectura no completada; revisa los datos conservados':'Documento aún no procesado'});
+  }
+  for(const row of state.differences)for(const value of row.valores){
+    const keys=vcFieldKeys(value.tipo,row.campo),key=keys.find(k=>state.pending.some(p=>p.tipo===value.tipo&&p.key===k))||keys[0];
+    const previous=issues.find(p=>p.tipo===value.tipo&&p.key===key);
+    if(previous)previous.reason+='; valor diferente entre los documentos comparados';
+    else issues.push({tipo:value.tipo,key,label:row.label,reason:'Valor diferente entre los documentos comparados'});
+  }
+  return issues;
 }
 function computarValidaciones(){
   return getValidacionesCruzadas().map(v=>{
@@ -3695,14 +3735,19 @@ function computarValidaciones(){
 /* Renderizar el panel de validación */
 function renderValidacionCruzada(){
   const cont=document.getElementById('validacionCruzada');if(!cont)return;
-  if(_docsCargadosCount()<2){cont.style.display='none';return;}
-  const rows=computarValidaciones();
+  let rows=computarValidaciones();
   reconciliarCoincidencias(rows);
+  rows=computarValidaciones();
   const validationState=_validationSummary(rows);
+  actualizarEstadosCampos();
+  if(validationRequested){
+    window._contratosValidacionCompletada=validationState.complete;
+    _actualizarAccionesPostValidacion();_actualizarAvisoValidacion(validationState);
+  }
+  if(_docsCargadosCount()<2){cont.style.display='none';return;}
   const differences=rows.filter(r=>r.estado==='diff');
-  const pending=rows.filter(r=>r.estado==='pending'&&(r.valores.length||r.noDetectados.length));
   const matches=rows.filter(r=>r.estado==='ok');
-  const pendingCount=Math.max(pending.length,validationState.pending.length+validationState.requiredMissing.length+validationState.incomplete.length);
+  const pendingCount=validationBlockers({...validationState,differences:[]}).length;
   const nivel=differences.length?'err':pendingCount||!matches.length?'warn':'ok';
   cont.style.display='block';cont.className='validacion-cruzada '+nivel;
   const evidenceLinks=[];
@@ -3711,20 +3756,24 @@ function renderValidacionCruzada(){
     '</div></div><div class="vc-summary">'+differences.length+' diferencias · '+pendingCount+' pendientes</div></div><div class="vc-body">';
   for(const row of rows){
     if(!row.valores.length&&!row.noDetectados.length)continue;
+    const rowPending=validationState.pending.some(p=>row.sources.some(s=>s.tipo===p.tipo&&vcFieldKeys(s.tipo,row.campo).includes(p.key)));
+    const rowState=row.estado==='diff'?'diff':rowPending?'pending':row.estado;
+    const rowMessage=rowPending&&row.estado!=='diff'?'Pendiente: revisa los datos señalados en sus documentos':row.mensaje;
     html+='<div class="vc-row"><div class="vc-row-field">'+escHtml(row.label)+'</div><div class="vc-sources">';
     for(const source of row.sources){
       if(!datos[source.tipo])continue;
-      const value=row.valores.find(x=>x.tipo===source.tipo),cls=!value?'pending':row.sospechosos.includes(source.tipo)?'diff':'match';
+      const value=row.valores.find(x=>x.tipo===source.tipo),keys=vcFieldKeys(source.tipo,row.campo);
+      const pending=validationState.pending.find(p=>p.tipo===source.tipo&&keys.includes(p.key));
+      const reason=pending?.reason||'',cls=row.sospechosos.includes(source.tipo)?'diff':!value||reason?'pending':'match';
       let evidenceHtml='';
-      if(!value||row.estado==='diff'){
-        const keys=vcFieldKeys(source.tipo,row.campo);
-        const key=(!value&&keys.find(k=>isFieldEmpty(datos[source.tipo][k])))||keys[0];
+      if(!value||reason||row.estado==='diff'){
+        const key=pending?.key||(!value&&keys.find(k=>isFieldEmpty(datos[source.tipo][k])))||keys[0];
         const index=evidenceLinks.push({tipo:source.tipo,key,label:row.label})-1;
         evidenceHtml='<button type="button" class="vc-evidence" data-vc-review="'+index+'">Ver documento de respaldo</button>';
       }
-      html+='<div class="vc-source-line '+cls+'"><span class="vc-source-doc">'+escHtml(TIPO_LABEL_VC[source.tipo]||source.tipo)+'</span><span class="vc-source-val">'+escHtml(value?value.raw:'Pendiente: no detectado')+evidenceHtml+'</span>'+(cls==='diff'?'<span class="vc-source-note">Valor diferente</span>':'')+'</div>';
+      html+='<div class="vc-source-line '+cls+'"><span class="vc-source-doc">'+escHtml(TIPO_LABEL_VC[source.tipo]||source.tipo)+'</span><span class="vc-source-val">'+escHtml(value?value.raw:'Pendiente: no detectado')+evidenceHtml+'</span>'+(cls==='diff'?'<span class="vc-source-note">Valor diferente</span>':reason?'<span class="vc-source-note">'+escHtml(reason)+'</span>':'')+'</div>';
     }
-    html+='</div><div class="vc-status '+row.estado+'">'+escHtml(row.mensaje)+'</div></div>';
+    html+='</div><div class="vc-status '+rowState+'">'+escHtml(rowMessage)+'</div></div>';
   }
   cont.innerHTML=html+'</div>';
   for(const button of cont.querySelectorAll('.vc-evidence')){
@@ -3732,11 +3781,37 @@ function renderValidacionCruzada(){
     button.onclick=()=>window.verRespaldoContrato(evidence.tipo,evidence.key,evidence.label);
   }
   const inputs=[...document.querySelectorAll('.f-input[data-tipo],.f-textarea[data-tipo]')];
-  for(const input of inputs){input.closest('.f-item').classList.remove('vc-needs-review');input.title='';}
+  for(const input of inputs)input.closest('.f-item').classList.remove('vc-needs-review');
   for(const row of differences)for(const input of inputs)if(row.sospechosos.includes(input.dataset.tipo)&&vcFieldKeys(input.dataset.tipo,row.campo).includes(input.dataset.key)){
     input.closest('.f-item').classList.add('vc-needs-review');input.title=row.label+': '+row.mensaje;
   }
-  if(validationRequested){window._contratosValidacionCompletada=_validationSummary(rows).complete;_actualizarAccionesPostValidacion();}
+}
+
+function actualizarEstadosCampos(){
+  for(const tipo of _activeDocumentTypes()){
+    const d=datos[tipo],block=document.getElementById('block-'+tipo);if(!d||!block)continue;
+    const fields=fieldsForDocument(tipo),required=validationFieldsForDocument(tipo),requiredKeys=new Set(required.map(f=>f.key));
+    d._missing=getMissingFields(d,fields);
+    for(const input of block.querySelectorAll('[data-tipo][data-key]')){
+      const field=fields.find(f=>f.key===input.dataset.key);if(!field)continue;
+      const val=String(d[field.key]??'').trim(),reason=fieldPendingReason(d,field),detected=fieldState(val,field);
+      const state=reason&&detected!=='err'?'warn':detected,item=input.closest('.f-item');
+      input.className=(input.tagName==='TEXTAREA'?'f-textarea ':'f-input ')+(val?state:'empty');
+      input.title=reason;
+      item.style.background=reason&&val?'#fff7ed':'';
+      const indicator=item.querySelector('.f-indicator');if(indicator)indicator.className='f-indicator '+(val?state:'none');
+      const origin=d._origins?.[field.key]||(val?'ocr':'none'),badge=item.querySelector('.f-origin');
+      if(badge)badge.outerHTML=renderOriginBadge(reason&&val&&origin!=='manual'?'review':origin);
+      let note=item.querySelector('.f-pending-reason');
+      if(reason&&requiredKeys.has(field.key)){
+        if(!note){note=document.createElement('div');note.className='f-pending-reason';item.appendChild(note);}
+        note.textContent=reason;
+      }else if(note)note.remove();
+    }
+    const pending=getMissingFields(d,required),badge=block.querySelector('.rb-badge'),sub=block.querySelector('.rb-sub');
+    if(badge){badge.className='rb-badge '+(pending.length||d._processingIncomplete?'warn':'ok');badge.textContent=d._processingIncomplete?'Lectura incompleta':pending.length?pending.length+' campo(s) pendientes':countDetected(d,fields)+' / '+realFieldCount(fields)+' detectados';}
+    if(sub)sub.textContent=d._processingIncomplete?'Lectura pendiente de completar':pending.length?'Revisa los campos señalados':'Documento procesado';
+  }
 }
 
 function buildBlock(cfg, d){
@@ -3969,13 +4044,12 @@ window.onFieldEdit = function(input){
   const ind = input.nextElementSibling;
   if(ind) ind.className = 'f-indicator '+(val ? state : 'none');
   input.className = (input.tagName === 'TEXTAREA' ? 'f-textarea ' : 'f-input ')+(val ? state : 'empty');
-  // Chasis se compara inmediatamente; los demás campos conservan su debounce ligero.
+  // La edición actualiza campos, aviso y acciones en el mismo paso, sin nuevas lecturas.
   if(window.__vcDebounce) clearTimeout(window.__vcDebounce);
   const refreshCrossValidation=function(){
     try{ renderValidacionCruzada(); }catch(e){ console.warn('[VC] error:', e); }
   };
-  if(key==='chasis'||key==='serialChasis')refreshCrossValidation();
-  else window.__vcDebounce=setTimeout(refreshCrossValidation,350);
+  refreshCrossValidation();
 };
 
 /* ── Field definitions ───────────────────────────────────────── */
@@ -4555,7 +4629,7 @@ function _refreshValidateAllBar(){
 }
 
 var _validateToastTimer = null;
-function _mostrarValidateToast(nivel, titulo, sub){
+function _mostrarValidateToast(nivel, titulo, sub, issues){
   var toast = document.getElementById('validateToast');
   var icon  = document.getElementById('validateToastIcon');
   var tt    = document.getElementById('validateToastTitle');
@@ -4566,6 +4640,17 @@ function _mostrarValidateToast(nivel, titulo, sub){
   icon.textContent = (nivel==='ok' ? '✓' : nivel==='err' ? '!' : '?');
   tt.textContent = titulo;
   ss.textContent = sub;
+  delete toast.dataset.validationSummary;
+  for(const issue of issues||[]){
+    const line=document.createElement('div');line.className='validation-pending-item';
+    line.textContent=issue.label+' · '+tipoLabel(issue.tipo)+' — '+issue.reason+'. ';
+    if(issue.key&&datos[issue.tipo]){
+      const button=document.createElement('button');button.type='button';button.className='vc-evidence';button.textContent='Ver documento de respaldo';
+      button.dataset.validationTipo=issue.tipo;button.dataset.validationKey=issue.key;
+      button.onclick=()=>window.verRespaldoContrato(issue.tipo,issue.key,issue.label);line.appendChild(button);
+    }
+    ss.appendChild(line);
+  }
 
   // Forzar reflow para que la transición se aplique
   toast.classList.remove('visible');
@@ -4573,9 +4658,38 @@ function _mostrarValidateToast(nivel, titulo, sub){
   toast.classList.add('visible');
 
   if(_validateToastTimer) clearTimeout(_validateToastTimer);
-  _validateToastTimer = setTimeout(function(){
+  _validateToastTimer = issues?.length?null:setTimeout(function(){
     toast.classList.remove('visible');
   }, 5500);
+}
+
+function _actualizarAvisoValidacion(state,afterBatch){
+  if(!validationRequested||(!afterBatch&&(validationBatchPromise||activeDocumentOperation)))return;
+  const toast=document.getElementById('validateToast');if(!toast)return;
+  if(state.complete){
+    validationFailureContext=null;
+    if(toast.dataset.validationSummary){
+      if(_validateToastTimer)clearTimeout(_validateToastTimer);
+      toast.className='validate-toast ok';delete toast.dataset.validationSummary;
+      document.getElementById('validateToastIcon').textContent='✓';
+      document.getElementById('validateToastTitle').textContent='Validación completada';
+      document.getElementById('validateToastSub').textContent='Los datos comparables coinciden y no hay pendientes obligatorios.';
+    }
+    return;
+  }
+  const issues=validationBlockers(state),context=validationFailureContext;
+  const incomplete=new Set([...state.incomplete,...state.requiredMissing]);
+  const failed=(context?.failures||[]).filter(t=>incomplete.has(t));
+  const notAttempted=(context?.notAttempted||[]).filter(t=>incomplete.has(t));
+  const unread=Array.from(new Set([...failed,...state.incomplete.filter(t=>!notAttempted.includes(t))]));
+  const prefix=(context?.recoveryExhausted&&(failed.length||notAttempted.length)?'Se alcanzó el límite de recuperación automática. ':'')+
+    (unread.length?'No se completó: '+unread.map(tipoLabel).join(', ')+'. ':'')+
+    (notAttempted.length?'Sin intentar: '+notAttempted.map(tipoLabel).join(', ')+'. ':'');
+  const signature=JSON.stringify({issues,prefix});
+  if(toast.dataset.validationSummary===signature)return;
+  const title=state.incomplete.length?'Validación incompleta':state.differences.length?'Valores diferentes':'Datos pendientes';
+  _mostrarValidateToast(state.differences.length?'err':'warn',title,prefix+'Revisa los siguientes datos para completar la validación:',issues);
+  toast.dataset.validationSummary=signature;
 }
 
 /* Procesar un solo documento pendiente. Captura errores sin detener el flujo. */
@@ -4616,7 +4730,7 @@ function validarTodoEnConjunto(){
   promise.then(finish,finish);return promise;
 }
 async function ejecutarValidacionCompleta(){
-  validationRequested=true;window._contratosValidacionCompletada=false;_actualizarAccionesPostValidacion();
+  validationRequested=true;validationFailureContext=null;window._contratosValidacionCompletada=false;_actualizarAccionesPostValidacion();
   const pendientes=_pendientesDeProcesar(),failures=[],notAttempted=[];
   let recoveryExhausted=false;
   for(let index=0;index<pendientes.length;index++){
@@ -4627,7 +4741,7 @@ async function ejecutarValidacionCompleta(){
     if(!result.ok){
       (result.started===false?notAttempted:failures).push(tipo);
       recoveryExhausted=recoveryExhausted||result.error?.recoveryExhausted===true;
-      if(result.error?.recoveryExhausted||!aiController.snapshot().ready){
+      if(result.error?.recoveryExhausted||result.error?.stopBatch||!aiController.snapshot().ready){
         notAttempted.push(...pendientes.slice(index+1));
         for(const pending of notAttempted)setStatus(pending,'pending','Pendiente · aún no se ha procesado');
         break;
@@ -4641,14 +4755,9 @@ async function ejecutarValidacionCompleta(){
   if(window._contratosValidacionCompletada){
     _mostrarValidateToast('ok','Validación completada','Los documentos necesarios están procesados, los datos comparables coinciden y no hay pendientes.');
     window.dispatchEvent(new Event('contratos-validacion-completa'));
-  }else if(failures.length||state.incomplete.length){
-    const unread=Array.from(new Set([...failures,...state.incomplete.filter(t=>!notAttempted.includes(t))]));
-    const summary=(unread.length?'No se completó: '+unread.map(tipoLabel).join(', ')+'. ':'')+(notAttempted.length?'Sin intentar: '+Array.from(new Set(notAttempted)).map(tipoLabel).join(', ')+'. ':'');
-    _mostrarValidateToast('warn','Validación incompleta',(recoveryExhausted?'Se alcanzó el límite de recuperación automática. ':'')+summary+'Se conservan los documentos y las correcciones.');
-  }else if(state.differences.length){
-    _mostrarValidateToast('err','Valores diferentes',state.differences.map(r=>r.label).join(', ')+'. Contrasta los valores señalados con sus documentos.');
   }else{
-    _mostrarValidateToast('warn','Datos pendientes',state.requiredMissing.length?'Faltan documentos: '+state.requiredMissing.map(tipoLabel).join(', '):'Hay datos ausentes, ilegibles o pendientes de revisión. Puedes corregirlos en el cuadro de revisión.');
+    validationFailureContext={failures,notAttempted:Array.from(new Set(notAttempted)),recoveryExhausted};
+    _actualizarAvisoValidacion(state,true);
   }
   _actualizarAccionesPostValidacion();
 }
@@ -5590,9 +5699,9 @@ window.AutoCorContractDraft = {
 })();
 </script>
 
-<script src="js/auth-ui.js?v=20261026T145527836395Z"></script>
-<script src="js/session-sync.js?v=20261026T145527836395Z"></script>
-<script src="js/workflow.js?v=20261026T145527836395Z"></script>
-<script src="js/workflow-adapters.js?v=20261026T145527836395Z"></script>
+<script src="js/auth-ui.js?v=20261026T170606545650Z"></script>
+<script src="js/session-sync.js?v=20261026T170606545650Z"></script>
+<script src="js/workflow.js?v=20261026T170606545650Z"></script>
+<script src="js/workflow-adapters.js?v=20261026T170606545650Z"></script>
 </body>
 </html>

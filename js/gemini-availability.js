@@ -1,18 +1,15 @@
-/* Disponibilidad activa. Sólo conserva estados y diagnósticos sin documentos. */
+/* Selección inicial por carga de página. Sólo estados y diagnósticos sin documentos. */
 (function(root,factory){
   const api=factory();
   if(typeof module==='object'&&module.exports)module.exports=api;else root.AutoCorGeminiAvailability=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  // IDs contrastados con las fichas oficiales el 22-10-2026. La cuenta se consulta aparte.
+  // Únicos modelos autorizados. La selección no cambia durante esta carga de página.
   const catalog=Object.freeze([
-    {id:'gemini-3.5-flash-lite',label:'Gemini 3.5 Flash Lite'},
-    {id:'gemini-3.1-flash-lite',label:'Gemini 3.1 Flash Lite'},
-    {id:'gemini-3.8-flash',label:'Gemini 3.8 Flash'},
-    {id:'gemini-3-flash-preview',label:'Gemini 3 Flash (Preview)'},
-    {id:'gemini-3.6-flash',label:'Gemini 3.6 Flash'},
-    {id:'gemini-2.5-flash-lite',label:'Gemini 2.5 Flash Lite'}
+    Object.freeze({id:'gemini-3.5-flash-lite',label:'Gemini 3.5 Flash Lite'}),
+    Object.freeze({id:'gemini-3.1-flash-lite',label:'Gemini 3.1 Flash Lite'})
   ]);
+  const allowedModels=new Set(catalog.map(m=>m.id));
   const error=code=>Object.assign(new Error(code),{code});
   function wait(work,signal,ms){
     return new Promise((resolve,reject)=>{
@@ -45,24 +42,23 @@
   }
   function classify(status){return status===401||status===403?'AI_AUTH_ERROR':status===429?'AI_QUOTA_EXHAUSTED':status===404||status===410?'AI_MODEL_UNAVAILABLE':status>=500?'AI_UPSTREAM_ERROR':status===0?'AI_NETWORK_ERROR':'AI_REQUEST_REJECTED';}
   function create(options){
-    const now=options.now||Date.now,config={ttlMs:120000,checkMs:45000,attemptMs:10000,maxCandidates:catalog.length,maxCheckRuns:2,retryMs:60000,maxGenerateAttempts:3,maxRecoveryRequests:5,retryBaseMs:1000,retryMaxMs:5000,...options.config};
-    config.ttlMs=Math.max(1000,Math.min(300000,config.ttlMs));
-    config.maxCandidates=Math.max(1,Math.min(catalog.length,config.maxCandidates));
-    config.maxCheckRuns=Math.max(1,Math.min(3,config.maxCheckRuns));
-    let context='',epoch=0,active='',lastGood='',checkPromise=null,lastCode='',checkRuns=0,retryAt=0;
+    const now=options.now||Date.now,config={checkMs:45000,attemptMs:10000,maxGenerateAttempts:3,maxRecoveryRequests:5,retryBaseMs:1000,retryMaxMs:5000,...options.config};
+    let context='',epoch=0,active='',checkPromise=null,lastCode='',checkRuns=0;
     const proofs=new Map(),states=new Map(),controllers=new Set();
-    function reset(){epoch++;active=lastGood='';proofs.clear();states.clear();checkPromise=null;lastCode='';checkRuns=retryAt=0;for(const c of controllers)c.abort(error('AI_CONTEXT_CHANGED'));controllers.clear();}
+    // Cambiar sesión invalida respuestas anteriores, no la selección ni su ronda inicial.
+    function reset(){epoch++;checkPromise=null;if(checkRuns&&!active)lastCode='AI_CONTEXT_CHANGED';else if(active&&lastCode==='AI_AUTH_ERROR')lastCode='';for(const c of controllers)c.abort(error('AI_CONTEXT_CHANGED'));controllers.clear();}
     function sync(){const next=options.getContext();if(next!==context){reset();context=next;}return !!context;}
-    function valid(model){const proof=proofs.get(model);return !!proof&&proof.epoch===epoch&&now()<proof.until;}
+    function valid(model){return allowedModels.has(model)&&proofs.has(model);}
     function snapshot(){
-      sync();const ready=!!active&&valid(active),entry=ready?proofs.get(active):null;
-      return {model:ready?active:'',ready,checkedAt:entry?.at||0,expiresAt:entry?.until||0,checking:!!checkPromise,code:lastCode,nextCheckAt:retryAt,retryExhausted:!ready&&!checkPromise&&checkRuns>=config.maxCheckRuns,
-        models:catalog.map(m=>({...m,...states.get(m.id),status:valid(m.id)?'available':states.get(m.id)?.status==='available'?'unchecked':states.get(m.id)?.status||'unchecked'}))};
+      sync();const ready=!!context&&!!active&&valid(active),entry=proofs.get(active);
+      return {model:active,ready,checkedAt:entry?.at||0,expiresAt:0,checking:!!checkPromise,code:context?lastCode:'AI_AUTH_ERROR',nextCheckAt:0,selectionStarted:checkRuns>0,retryExhausted:!active&&!checkPromise&&checkRuns>0,
+        models:catalog.map(m=>({...m,...states.get(m.id),status:states.get(m.id)?.status||'unchecked'}))};
     }
     const emit=()=>options.onState?.(snapshot());
-    function guard(tipo){sync();if(tipo==='cuv')return true;if(!active||!valid(active)){emit();throw error('AI_PRECHECK_REQUIRED');}return {epoch,context,model:active};}
-    function checkTicket(ticket){sync();if(ticket.epoch!==epoch||ticket.context!==context)throw error('AI_CONTEXT_CHANGED');}
+    function guard(tipo){sync();if(tipo==='cuv')return true;if(!context)throw error('AI_AUTH_ERROR');if(!active||!valid(active))throw error('AI_PRECHECK_REQUIRED');return {epoch,context,model:active};}
+    function checkTicket(ticket){sync();if(!ticket||ticket.epoch!==epoch||ticket.context!==context)throw error('AI_CONTEXT_CHANGED');if(ticket.model&&(!allowedModels.has(ticket.model)||ticket.model!==active))throw error('AI_MODEL_UNAVAILABLE');}
     async function call(model,body,signal,timeoutMs,stage,ticket,meta){
+      if(!allowedModels.has(model))throw error('AI_MODEL_UNAVAILABLE');
       const start=now(),trace=stage==='ai-precheck'?{selectionRun:checkRuns,attemptBudgetMs:timeoutMs}:{};let code='',status;
       // Cada intento cancela también su transporte; no basta con abandonar su promesa.
       const controller=new AbortController(),cancel=()=>controller.abort(signal.reason||error('AI_CANCELLED'));
@@ -86,23 +82,16 @@
       }catch(e){if(controller.signal.aborted)e=controller.signal.reason||e;code=e.code||'AI_INVALID_RESPONSE';throw Object.assign(e,{code});}
       finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel);controllers.delete(controller);options.onTiming?.({stage,model,elapsedMs:now()-start,outcome:code?'failed':'success',code,httpStatus:status,...trace});}
     }
-    function failed(model,e){proofs.delete(model);if(active===model)active='';lastCode=e.code;states.set(model,{status:['AI_QUOTA_EXHAUSTED','AI_UPSTREAM_ERROR','AI_NETWORK_ERROR','AI_TIMEOUT'].includes(e.code)?'limited':'unavailable',code:e.code,until:now()+(e.retryMs||60000)});emit();}
-    function scheduleRetry(){
-      retryAt=0;
-      if(checkRuns<config.maxCheckRuns&&lastCode!=='AI_AUTH_ERROR'){
-        const waiting=[...states.values()].map(s=>s.until).filter(until=>until>now());
-        retryAt=Math.max(now()+config.retryMs,waiting.length?Math.min(...waiting):0);
-      }
-    }
+    function failed(model,e){lastCode=e.code;states.set(model,{status:['AI_QUOTA_EXHAUSTED','AI_UPSTREAM_ERROR','AI_NETWORK_ERROR','AI_TIMEOUT'].includes(e.code)?'limited':'unavailable',code:e.code});emit();}
     function ensure(opts){
       opts=opts||{};sync();
       if(opts.signal?.aborted)return Promise.reject(error(opts.signal.reason?.code==='AI_TIMEOUT'?'AI_TIMEOUT':'AI_CANCELLED'));
       if(!context){lastCode='AI_AUTH_ERROR';emit();return Promise.reject(error(lastCode));}
-      if(active&&valid(active)&&!opts.exclude?.has(active))return Promise.resolve(guard());
+      if(active&&valid(active))return Promise.resolve(guard());
       if(checkPromise)return opts.signal?wait(()=>checkPromise,opts.signal,opts.timeoutMs||config.checkMs):checkPromise;
-      // Las interacciones de pantalla no pueden saltarse la pausa ni reiniciar el ciclo agotado.
-      if(now()<retryAt||checkRuns>=config.maxCheckRuns){emit();return Promise.reject(error(lastCode||'AI_MODEL_UNAVAILABLE'));}
-      checkRuns++;retryAt=0;
+      // Sólo una ronda inicial; ni el reloj, las interacciones ni los errores la reinician.
+      if(checkRuns>0)return Promise.reject(error(lastCode||'AI_MODEL_UNAVAILABLE'));
+      checkRuns++;
       const ticket={epoch,context},controller=new AbortController();controllers.add(controller);
       const cancel=()=>controller.abort(error(opts.signal.reason?.code==='AI_TIMEOUT'?'AI_TIMEOUT':'AI_CANCELLED'));
       opts.signal?.addEventListener('abort',cancel,{once:true});
@@ -111,11 +100,7 @@
       const promise=Promise.resolve().then(async()=>{
         try{
           checkTicket(ticket);
-          const others=catalog.map(m=>m.id).filter(id=>id!==lastGood);
-          // Si se acabó el presupuesto, la siguiente ronda alcanza los modelos aún no probados.
-          let candidates=[lastGood,...others.filter(id=>!states.has(id)),...others.filter(id=>states.has(id))].filter(Boolean);
-          candidates=candidates.filter(id=>!opts.exclude?.has(id)&&(states.get(id)?.until||0)<=now()).slice(0,config.maxCandidates);
-          if(!candidates.length)throw error(lastCode||'AI_MODEL_UNAVAILABLE');
+          const candidates=catalog.map(m=>m.id);
           // Una generación válida acredita soporte y cuota; listar modelos antes no lo acredita.
           const body=options.probeBody();
           for(const model of candidates){
@@ -125,7 +110,7 @@
             try{
               await call(model,body,controller.signal,Math.min(config.attemptMs,remaining),'ai-precheck',ticket,{budget:opts.requestBudget,limit:opts.requestLimit});
               checkTicket(ticket);if(controller.signal.aborted)throw error('AI_TIMEOUT');
-              const at=now();proofs.set(model,{at,until:at+config.ttlMs,epoch});active=lastGood=model;lastCode='';checkRuns=retryAt=0;states.set(model,{status:'available'});emit();return guard();
+              proofs.set(model,{at:now()});active=model;lastCode='';states.set(model,{status:'available'});emit();return guard();
             }catch(e){
               checkTicket(ticket);if(controller.signal.aborted&&opts.signal?.aborted)throw controller.signal.reason;
               if(e.code==='AI_RECOVERY_LIMIT')throw e;
@@ -136,7 +121,6 @@
           throw error(lastCode||'AI_MODEL_UNAVAILABLE');
         }catch(e){
           checkTicket(ticket);lastCode=e.code||'AI_INVALID_RESPONSE';
-          if(e.code==='AI_CANCELLED'){checkRuns=Math.max(0,checkRuns-1);retryAt=0;}else scheduleRetry();
           emit();throw e;
         }
         finally{clearTimeout(timer);opts.signal?.removeEventListener('abort',cancel);controllers.delete(controller);}
@@ -146,21 +130,21 @@
     }
     async function generate(body,opts){
       opts=opts||{};
-      const start=now(),duration=opts.timeoutMs||45000,excluded=new Set(),triedModels=new Set(),attempts=[],budget={used:0};
+      sync();
+      const start=now(),duration=opts.timeoutMs||45000,attempts=[],budget={used:0};
       const maxAttempts=Math.max(1,Math.min(5,opts.maxAttempts||config.maxGenerateAttempts));
       const maxRequests=Math.max(1,Math.min(8,config.maxRecoveryRequests));
       const controller=new AbortController(),cancel=()=>controller.abort(error('AI_CANCELLED'));
       controllers.add(controller);
       if(opts.signal?.aborted)cancel();else opts.signal?.addEventListener('abort',cancel,{once:true});
       const timer=setTimeout(()=>controller.abort(error('AI_TIMEOUT')),duration);
-      let ticket,lastError,sameModelFailures=0,documentRequests=0;
+      let ticket,lastError,documentRequests=0;
       const remaining=()=>duration-(now()-start);
       try{
         if(controller.signal.aborted)throw error('AI_CANCELLED');
-        ticket=opts.ticket||await ensure({signal:controller.signal,timeoutMs:remaining(),requestBudget:budget,requestLimit:maxRequests-1});
+        ticket=opts.ticket||guard();
         checkTicket(ticket);
-        if(!valid(ticket.model))ticket=await ensure({signal:controller.signal,timeoutMs:remaining(),requestBudget:budget,requestLimit:maxRequests-1});
-        triedModels.add(ticket.model);
+        if(!valid(ticket.model))throw error('AI_PRECHECK_REQUIRED');
         for(let attempt=1;attempt<=maxAttempts;attempt++){
           checkTicket(ticket);if(controller.signal.aborted)throw controller.signal.reason;
           if(remaining()<=0)throw error('AI_TIMEOUT');
@@ -170,28 +154,17 @@
             // Los reintentos comparten el plazo de lectura; no amplían su timeout.
             const result=await call(ticket.model,body,controller.signal,remaining(),'ai-response',ticket,{budget,limit:maxRequests,attempt,onSend:meta=>{sent=true;documentRequests++;opts.onAttempt?.(meta);}});
             checkTicket(ticket);if(controller.signal.aborted)throw controller.signal.reason;
-            const at=now();proofs.set(ticket.model,{at,until:at+config.ttlMs,epoch});active=lastGood=ticket.model;lastCode='';checkRuns=retryAt=0;states.set(ticket.model,{status:'available'});emit();
+            lastCode='';states.set(ticket.model,{status:'available'});emit();
             attempts.push({model:ticket.model,outcome:'success'});return {data:result,model:ticket.model,attempts,requests:budget.used};
           }catch(e){
             checkTicket(ticket);if(controller.signal.aborted){if(sent)attempts.push({model:ticket.model,outcome:'failed',code:controller.signal.reason.code});throw controller.signal.reason;}
             lastError=e;attempts.push({model:ticket.model,outcome:'failed',code:e.code,httpStatus:e.status});failed(ticket.model,e);
-            const temporary=e.code==='AI_UPSTREAM_ERROR';
-            const switchable=['AI_QUOTA_EXHAUSTED','AI_MODEL_UNAVAILABLE'].includes(e.code);
-            if(attempt>=maxAttempts||(!temporary&&!switchable))throw e;
-            if(temporary){
-              sameModelFailures++;
-              const waitMs=Math.max(e.retryMs||0,Math.min(config.retryMaxMs,config.retryBaseMs*2**(attempt-1)));
-              if(waitMs>=remaining()){e.recoveryReason='service-wait-exceeds-budget';throw e;}
-              opts.onRetry?.({attempt:attempt+1,model:ticket.model,waitMs,code:e.code,httpStatus:e.status});
-              await pause(waitMs,controller.signal);checkTicket(ticket);
-              if(sameModelFailures<2)continue;
-            }
-            if(triedModels.size>=config.maxCandidates)throw e;
-            excluded.add(ticket.model);
-            if(budget.used>=maxRequests-1)throw error('AI_RECOVERY_LIMIT');
-            ticket=await ensure({exclude:excluded,timeoutMs:remaining(),signal:controller.signal,requestBudget:budget,requestLimit:maxRequests-1});
-            triedModels.add(ticket.model);
-            sameModelFailures=0;options.onSwitch?.(ticket.model);
+            const retryable=['AI_UPSTREAM_ERROR','AI_QUOTA_EXHAUSTED'].includes(e.code);
+            if(attempt>=maxAttempts||!retryable)throw e;
+            const waitMs=Math.max(e.retryMs||0,Math.min(config.retryMaxMs,config.retryBaseMs*2**(attempt-1)));
+            if(waitMs>=remaining()){e.recoveryReason='service-wait-exceeds-budget';throw e;}
+            opts.onRetry?.({attempt:attempt+1,model:ticket.model,waitMs,code:e.code,httpStatus:e.status});
+            await pause(waitMs,controller.signal);checkTicket(ticket);
           }
         }
         throw error('AI_RECOVERY_LIMIT');
@@ -202,7 +175,8 @@
         e.requestAttempted=documentRequests>0;
         if(lastError&&e!==lastError)e.causeCode=lastError.code;
         e.recoveryExhausted=['AI_UPSTREAM_ERROR','AI_RECOVERY_LIMIT','AI_TIMEOUT'].includes(e.code);
-        if(!['AI_CANCELLED','AI_CONTEXT_CHANGED'].includes(e.code)){scheduleRetry();emit();}
+        e.stopBatch=!['AI_CANCELLED','AI_CONTEXT_CHANGED'].includes(e.code);
+        if(e.stopBatch&&ticket?.model===active)failed(active,e);
         throw e;
       }finally{
         clearTimeout(timer);opts.signal?.removeEventListener('abort',cancel);controllers.delete(controller);
