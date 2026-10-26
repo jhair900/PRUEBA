@@ -157,10 +157,11 @@ const root=path.resolve(__dirname,'..');
    __failNext=true;AutoCorContractDraft.refresh();
   });
   await page.locator('#btnValidateAll').click();
-  await page.waitForFunction(()=>document.getElementById('validateToastTitle').textContent==='Validación incompleta');
+  await page.waitForFunction(()=>!document.getElementById('btnValidateAll').disabled);
+  assert.ok(['Datos pendientes','Valores diferentes'].includes(await page.locator('#validateToastTitle').textContent()));
   assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),false);
-  assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),true);
-  // El reintento usa la selección inicial, sin esperar ni comprobar otro modelo.
+  assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),false);
+  // Se recupera automáticamente; validar otra vez no repite una lectura ya completada.
   await page.locator('#btnValidateAll').click();
   await page.waitForFunction(()=>!document.getElementById('btnValidateAll').disabled);
   const resumed=await page.evaluate(()=>__calls.filter(c=>!c.probe));
@@ -169,7 +170,7 @@ const root=path.resolve(__dirname,'..');
   assert.equal(await page.evaluate(()=>_contratosData.matricula.motor),'MANUAL');assert.equal(await page.evaluate(()=>_contratosData.matricula.anio),'');
   assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),false);
   assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),false,'El vacío manual sigue pendiente');
-  console.log('OK un timeout no finge éxito; un parcial se retoma sin repetir campos correctos ni manuales vacíos');
+  console.log('OK un timeout transitorio se recupera; el vacío manual queda pendiente y no se repite la lectura completada');
   await page.evaluate(()=>{_contratosData['cedula-prop']=null;_contratosData.matricula._processingIncomplete=true;__holdDocuments=true;AutoCorContractDraft.refresh();});
   await page.locator('#btnValidateAll').click();await page.waitForFunction(()=>typeof __releaseDoc==='function');
   await page.getByRole('button',{name:'Cancelar procesamiento',exact:true}).click();

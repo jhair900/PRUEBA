@@ -3,19 +3,22 @@ const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:
 const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-flash-lite';
 (async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true});
- try{for(const mode of ['recover','persistent','cancel']){
-  const page=await browser.newPage(),requests=[],errors=[];let matriculaRequests=0;
+ try{for(const mode of ['recover','persistent','owner-failure','empty-response','fatal-quota','cancel']){
+  const ownerCase=['owner-failure','empty-response'].includes(mode);
+  const page=await browser.newPage(),requests=[],errors=[];let matriculaRequests=0,forceGood=false;
   page.on('pageerror',e=>errors.push(e.message));page.on('dialog',dialog=>dialog.accept());
   await page.route('**/*',async route=>{
    const url=new URL(route.request().url());
    if(url.hostname==='script.google.com'&&url.searchParams.get('action')==='geminiProxy'){
     const {request}=route.request().postDataJSON(),keys=request.generationConfig.responseSchema.required,probe=keys.length===3;
-    const kind=probe?'probe':keys.includes('apellidos')?'cedula-prop':keys.includes('serialChasis')?'notaria':'matricula';
+    const kind=probe?'probe':keys.includes('apellidos')?(await page.locator('#spinnerText').textContent()).includes('Cónyuge')?'cedula-cony':'cedula-prop':keys.includes('serialChasis')?'notaria':'matricula';
     const model=url.searchParams.get('model');
-    const fail=kind==='matricula'&&(mode!=='recover'||matriculaRequests<2);if(kind==='matricula')matriculaRequests++;
-    requests.push({kind,model,status:fail?503:200,keys});
-    if(fail)return route.fulfill({contentType:'application/json',body:JSON.stringify({_proxy:{ok:false,status:503,retryAfter:'0',upstreamMs:1},data:{error:{status:'UNAVAILABLE'}}})});
-    const values={placa:'ABC1234',propietario:'PEREZ LOPEZ ANA',cedulaRuc:'1722821509',marca:'CHEVROLET',modelo:'SPARK 1.2 LT',color:probe?'AZUL':'BLANCO',chasis:'ABC12345678901234',motor:'AB12345678',anio:'2020',apellidos:'PEREZ LOPEZ',nombres:'ANA',numeroCedula:'1722821509',codigoDactilar:'A1234B5678',fechaExpiracion:'01/01/2030',estadoCivil:'SOLTERO',nacionalidad:'ECUATORIANA',serialChasis:'ABC12345678901234',numeroMotor:'AB12345678',nombrePropietario:'PEREZ LOPEZ ANA',identificacionPropietario:'1722821509',_reviewKeys:[]};
+    const fail=!forceGood&&((ownerCase&&kind==='cedula-prop')||(kind==='matricula'&&!ownerCase&&(mode!=='recover'||matriculaRequests<2)));if(kind==='matricula')matriculaRequests++;
+    const status=fail?(mode==='empty-response'?200:mode==='fatal-quota'?429:503):200;
+    requests.push({kind,model,status,keys});
+    if(fail&&mode==='empty-response')return route.fulfill({contentType:'application/json',body:JSON.stringify({_proxy:{ok:true,status:200},data:{candidates:[{finishReason:'STOP',content:{parts:[{text:'{}'}]}}]}})});
+    if(fail)return route.fulfill({contentType:'application/json',body:JSON.stringify({_proxy:{ok:false,status,retryAfter:mode==='fatal-quota'?'60':'0',upstreamMs:1},data:{error:{status:status===429?'RESOURCE_EXHAUSTED':'UNAVAILABLE'}}})});
+    const values={placa:'ABC1234',propietario:'PEREZ LOPEZ ANA',cedulaRuc:'1722821509',marca:'CHEVROLET',modelo:'SPARK 1.2 LT',color:probe?'AZUL':'BLANCO',chasis:'ABC12345678901234',motor:'AB12345678',anio:'2020',apellidos:'PEREZ LOPEZ',nombres:'ANA',numeroCedula:'1722821509',codigoDactilar:'A1234B5678',fechaExpiracion:'01/01/2030',estadoCivil:ownerCase?'CASADO':'SOLTERO',nacionalidad:'ECUATORIANA',serialChasis:'ABC12345678901234',numeroMotor:'AB12345678',nombrePropietario:'PEREZ LOPEZ ANA',identificacionPropietario:'1722821509',_reviewKeys:[]};
     const data=Object.fromEntries(keys.map(key=>[key,values[key]??'']));
     return route.fulfill({contentType:'application/json',body:JSON.stringify({_proxy:{ok:true,status:200,upstreamMs:1},data:{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(data)}]}}]}})});
    }
@@ -35,12 +38,12 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
   },mode);
   await page.goto('https://autocor.test/contratos.html');
   await page.waitForFunction(()=>document.getElementById('aiStatusBanner').classList.contains('ok'));
-  await page.evaluate(()=>{
+  await page.evaluate(mode=>{
    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=500;const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,900,500);ctx.fillStyle='black';ctx.font='28px Arial';ctx.fillText('DOCUMENTO FICTICIO - SIN VALIDEZ',25,80);window.__image=canvas.toDataURL();
    const cuv={placa:'ABC1234',cedula:'1722821509',propietario:'PEREZ LOPEZ ANA',marca:'CHEVROLET',modelo:'SPARK 1.2 LT',color:'BLANCO',chasis:'ABC12345678901234',motor:'AB12345678',anio:'2020',_source:'cuv',_missing:[],_origins:{}};
-   AutoCorContractDraft.restore({flow:{operacion:'comision',tipoPersona:'natural',estadoCivil:'SOLTERO'},data:{cuv,matricula:{motor:'AB12345678',_origins:{motor:'manual'},_processingIncomplete:true},notaria:{valorContrato:'',_origins:{valorContrato:'manual'},_processingIncomplete:true}},images:{'cedula-prop':{frontal:__image,reverso:__image},matricula:{frontal:__image,reverso:__image},notaria:{frontal:__image}},files:{}});
+   AutoCorContractDraft.restore({flow:{operacion:'comision',tipoPersona:'natural',estadoCivil:['owner-failure','empty-response'].includes(mode)?'CASADO':'SOLTERO'},data:{cuv,matricula:{motor:'AB12345678',_origins:{motor:'manual'},_processingIncomplete:true},notaria:{valorContrato:'',_origins:{valorContrato:'manual'},_processingIncomplete:true}},images:{'cedula-prop':{frontal:__image,reverso:__image},...(['owner-failure','empty-response'].includes(mode)?{'cedula-cony':{frontal:__image,reverso:__image}}:{}),matricula:{frontal:__image,reverso:__image},notaria:{frontal:__image}},files:{}});
    window.__cuvBefore=JSON.stringify(_contratosData.cuv);
-  });
+  },mode);
   await page.locator('#btnValidateAll').click();
   if(mode==='cancel'){
    await page.waitForFunction(()=>__timings.some(t=>t.details?.some(d=>d.stage==='ai-response'&&d.httpStatus===503)));
@@ -55,8 +58,8 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
    await page.evaluate(()=>{document.getElementById('btnValidateAll').dispatchEvent(new Event('click'));});
    const title=mode==='recover'?'Validación completada':'Validación incompleta';
    await page.waitForFunction(title=>document.getElementById('validateToast').classList.contains('visible')&&document.getElementById('validateToastTitle').textContent===title,title);
-   assert.equal(matriculaRequests,3,JSON.stringify({mode,requests,stops:await page.evaluate(()=>__timings.flatMap(t=>(t.details||[]).filter(d=>d.code).map(d=>({action:t.action,stage:d.stage,code:d.code,httpStatus:d.httpStatus}))))}));
-   assert.deepEqual(requests.filter(r=>r.kind!=='probe').map(r=>r.kind),mode==='recover'?['cedula-prop','matricula','matricula','matricula','notaria']:['cedula-prop','matricula','matricula','matricula']);
+   const expected=ownerCase?['cedula-prop','cedula-prop','cedula-prop','cedula-cony','matricula','notaria']:mode==='fatal-quota'?['cedula-prop','matricula']:['cedula-prop','matricula','matricula','matricula','notaria'];
+   assert.deepEqual(requests.filter(r=>r.kind!=='probe').map(r=>r.kind),expected);
    assert.deepEqual(requests.filter(r=>r.kind==='probe').map(r=>r.model),[A]);
    assert.ok(requests.every(r=>r.model===A),'Todos los documentos y reintentos mantienen el modelo inicial');
    if(mode==='recover'){
@@ -64,15 +67,25 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
     assert.equal(await page.evaluate(()=>_contratosData.matricula._processingIncomplete),false);
     assert.equal(await page.evaluate(()=>_contratosData.notaria._processingIncomplete),false);
     console.log('OK lote: Cédula correcta → Matrícula 503, 503 → recuperación con el mismo modelo → Notaría, sin reiniciar el lote');
+   }else if(mode==='fatal-quota'){
+    assert.equal(requests.filter(r=>r.kind==='notaria').length,0);
+    assert.match(await page.locator('#validateToastSub').textContent(),/Sin intentar: Print Notaría/);
+    console.log('OK cuota global y espera del servicio: detención justificada, sin cambiar modelo ni insistir');
    }else{
-    const text=await page.locator('#validateToastSub').textContent();assert.match(text,/límite de recuperación/);assert.match(text,/No se completó: Matrícula/);assert.match(text,/Sin intentar: Print Notaría/);
+    const failed=ownerCase?'cedula-prop':'matricula';
+    const text=await page.locator('#validateToastSub').textContent();assert.match(text,/límite de recuperación/);assert.match(text,/lectura/i);assert.ok(!text.includes('Sin intentar:'));assert.ok(!text.includes('ausente o ilegible'));
     assert.equal(await page.evaluate(()=>_contratosValidacionCompletada),false);
-    const operations=await page.evaluate(()=>__timings.filter(t=>t.operationId).map(t=>t.action));
-    assert.ok(!operations.some(name=>name.includes('notaria')),'No se atribuye a Notaría una operación que no empezó');
-    console.log('OK lote: 503 persistentes alcanzan el límite; Matrícula falló y Notaría sigue sin intentar, sin solicitudes duplicadas');
+    assert.equal(await page.evaluate(tipo=>_contratosData[tipo]._readError.code,failed),mode==='empty-response'?'AI_INVALID_RESPONSE':'AI_UPSTREAM_ERROR');
+    assert.equal(await page.evaluate(()=>_contratosData.notaria._processingIncomplete),false);
+    const beforeRetry=requests.length,completed=await page.evaluate(failed=>JSON.stringify(Object.fromEntries(Object.entries(_contratosData).filter(([tipo])=>tipo!==failed))),failed);
+    forceGood=true;await page.locator('#btnValidateAll').click();await page.waitForFunction(()=>!document.getElementById('btnValidateAll').disabled&&_contratosValidacionCompletada===true);
+    assert.deepEqual(requests.slice(beforeRetry).map(r=>r.kind),[failed],'Sólo se reintenta el fallido');
+    assert.equal(await page.evaluate(failed=>JSON.stringify(Object.fromEntries(Object.entries(_contratosData).filter(([tipo])=>tipo!==failed))),failed),completed);
+    assert.equal(await page.evaluate(tipo=>!!_contratosData[tipo]._readError,failed),false);
+    console.log('OK '+failed+': fallo técnico acotado, continúa con los demás; el reintento sólo completa ese documento y limpia el error anterior');
    }
   }
-  assert.equal(requests.filter(r=>r.kind==='cedula-prop').length,1);
+  if(!ownerCase)assert.equal(requests.filter(r=>r.kind==='cedula-prop').length,1);
   assert.equal(await page.evaluate(()=>JSON.stringify(_contratosData.cuv)===__cuvBefore),true);
   assert.equal(await page.evaluate(()=>_contratosData.matricula.motor),'AB12345678');
   assert.equal(await page.evaluate(()=>_contratosData.matricula._origins.motor),'manual');

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T170606545650Z">
-<script src="js/auto-update.js?v=20261026T170606545650Z"></script>
+<meta name="autocor-version" content="20261026T175631976075Z">
+<script src="js/auto-update.js?v=20261026T175631976075Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Contratos</title>
@@ -914,19 +914,19 @@
   }
 
 </style>
-<script src="js/api-config.js?v=20261026T170606545650Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T170606545650Z"></script>
-<script src="js/api-client.js?v=20261026T170606545650Z"></script>
-<script src="js/gemini-client.js?v=20261026T170606545650Z"></script>
-<script src="js/document-extraction.js?v=20261026T170606545650Z"></script>
-<script src="js/document-processing.js?v=20261026T170606545650Z"></script>
-<script src="js/document-image.js?v=20261026T170606545650Z"></script>
-<script src="js/gemini-availability.js?v=20261026T170606545650Z"></script>
-<script src="js/document-analysis.js?v=20261026T170606545650Z"></script>
-<script src="js/expediente.js?v=20261026T170606545650Z"></script>
+<script src="js/api-config.js?v=20261026T175631976075Z"></script>
+<script src="js/apps-script-transport.js?v=20261026T175631976075Z"></script>
+<script src="js/api-client.js?v=20261026T175631976075Z"></script>
+<script src="js/gemini-client.js?v=20261026T175631976075Z"></script>
+<script src="js/document-extraction.js?v=20261026T175631976075Z"></script>
+<script src="js/document-processing.js?v=20261026T175631976075Z"></script>
+<script src="js/document-image.js?v=20261026T175631976075Z"></script>
+<script src="js/gemini-availability.js?v=20261026T175631976075Z"></script>
+<script src="js/document-analysis.js?v=20261026T175631976075Z"></script>
+<script src="js/expediente.js?v=20261026T175631976075Z"></script>
 <style>.vc-needs-review{background:#fff7ed!important;outline:2px solid #f59e0b;border-radius:6px;padding:6px}
 </style>
-<link rel="stylesheet" href="js/navigation.css?v=20261026T170606545650Z">
+<link rel="stylesheet" href="js/navigation.css?v=20261026T175631976075Z">
 </head>
 <body>
 
@@ -1525,9 +1525,9 @@
 <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/cuv-parser.js?v=20261026T170606545650Z"></script>
-<script src="js/contrato-templates.js?v=20261026T170606545650Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
-<script src="js/generador-contratos.js?v=20261026T170606545650Z"></script>
+<script src="js/cuv-parser.js?v=20261026T175631976075Z"></script>
+<script src="js/contrato-templates.js?v=20261026T175631976075Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/generador-contratos.js?v=20261026T175631976075Z"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
    CONTRATOS — lógica principal
@@ -1779,6 +1779,7 @@ function commitDocumentResult(op,result){
   if(documentOperationOwners.get(op.documentType)!==op)throw AutoCorDocumentProcessing.error('PROCESSING_STALE');
   const started=performance.now();
   const value=AutoCorDocumentProcessing.preserveManual(result,datos[op.documentType]);
+  delete value._readError;
   value._missing=getMissingFields(value,fieldsForDocument(op.documentType));
   op.record('validation-application',{elapsedMs:Math.round(performance.now()-started),...getDocumentPendingDetail(value,fieldsForDocument(op.documentType),op.documentType),outcome:'success'});
   return value;
@@ -1797,20 +1798,22 @@ function recoverDocumentOperation(op){
   if(documentOperationOwners.get(op.documentType)!==op)return;
   const reason=op.signal.reason?.code;
   if(reason==='PROCESSING_STALE'||reason==='PROCESSING_SESSION_CHANGED')return;
-  if(op.partial){
+  // Conservar resultados anteriores y distinguir un fallo técnico de un dato ausente.
+  {
     const base=op.previousData||{},partial={...base,_origins:{...base._origins}};
-    for(const key of Object.keys(op.partial)){
+    for(const key of Object.keys(op.partial||{})){
       if(key==='_origins')continue;
       if(!isFieldEmpty(op.partial[key])||isFieldEmpty(partial[key]))partial[key]=op.partial[key];
     }
     for(const field of fieldsForDocument(op.documentType))if(field.key){
       const key=field.key;
-      partial._origins[key]=op.partial._origins?.[key]==='review'||base._origins?.[key]==='review'?'review':!isFieldEmpty(op.partial[key])?op.partial._origins?.[key]||'review':!isFieldEmpty(base[key])?'review':'none';
+      partial._origins[key]=op.partial?._origins?.[key]==='review'||base._origins?.[key]==='review'?'review':!isFieldEmpty(op.partial?.[key])?op.partial._origins?.[key]||'ai':base._origins?.[key]||'none';
     }
     const manual=AutoCorDocumentProcessing.preserveManual(partial,datos[op.documentType]);
     Object.assign(partial,manual);
-    if(op.documentType==='matricula')for(const key of ['cedulaRuc','chasis','motor'])if(partial[key]&&partial._origins[key]!=='manual'&&!(op.partial._verifiedCritical||[]).includes(key))partial._origins[key]='review';
     partial._processingIncomplete=true;
+    partial._readError={code:op.stopCode||reason||'PROCESSING_INCOMPLETE',usableRead:op.usableRead===true,
+      reason:/CANCELLED/.test(op.stopCode||reason||'')?'Lectura cancelada; dato aún no evaluado':'Fallo técnico al completar la lectura; los datos pendientes aún no se han evaluado'};
     partial._missing=getMissingFields(partial,fieldsForDocument(op.documentType));
     datos[op.documentType]=partial;
   }
@@ -1853,9 +1856,9 @@ async function runDocumentProcessing(tipo,work,retry){
   let outcome='success';
   try{await op.wait(()=>work(op));op.check();if(op.needsRecovery){outcome="partial";recoverDocumentOperation(op);}return {ok:!!datos[tipo]&&!datos[tipo]._processingIncomplete&&!op.needsRecovery,started:true,attempted:!!op.requestAttempted};}
   catch(err){
-    op.stopCode=err.code;
+    op.stopCode=err.code||'PROCESSING_ERROR';
     outcome=op.signal.aborted?(err.code==='PROCESSING_TIMEOUT'?'timeout':'cancelled'):'failed';
-    op.record('processing-stop',{code:err.code||'PROCESSING_ERROR',elapsedMs:op.elapsed(),outcome});
+    op.record('processing-stop',{code:err.code||'PROCESSING_ERROR',failedStage:op.stage,elapsedMs:op.elapsed(),outcome});
     recoverDocumentOperation(op);
     return {ok:false,started:true,attempted:!!op.requestAttempted||err.requestAttempted===true,cancelled:op.signal.aborted&&err.code!=='PROCESSING_TIMEOUT',error:err};
   }finally{
@@ -2075,9 +2078,11 @@ function getMissingFields(data, fields, origins){
 
 function fieldPendingReason(data,field){
   const key=field.key,manual=data._origins?.[key]==='manual';
-  if(isFieldEmpty(data[key]))return manual?'Campo vaciado manualmente':'Dato ausente o ilegible';
+  if(!manual&&isFieldEmpty(data[key])&&data._readError&&!data._readError.usableRead)return data._readError.reason;
+  if(manual&&isFieldEmpty(data[key]))return 'Campo vaciado manualmente';
   if(!manual&&(data._conflicts?.[key]||[]).length>1)return 'Lecturas contradictorias dentro del documento';
   if(!manual&&(data._internalReview||[]).includes(key))return 'Lectura ambigua; requiere revisión del documento';
+  if(isFieldEmpty(data[key]))return 'Dato ausente o ilegible';
   if(isFieldDubious(data[key],field))return 'El formato del dato requiere corrección';
   if(data._origins?.[key]==='review')return 'Lectura pendiente de confirmación';
   return '';
@@ -3209,7 +3214,7 @@ async function procesarIaFirst(opts){
   const attachments=typeof window!=='undefined'&&window.AutoCorDocumentImage?await window.AutoCorDocumentImage.prepareAttachments(originals,op):originals;
   aiController.checkTicket(ticket);
   const aiData=await analizarConGeminiCampos(tipoIA,attachments,requested,null,op,ticket);
-  if(op){op.check();op.update('validation');}
+  if(op){op.check();op.usableRead=true;op.update('validation');}
   const started=performance.now();
   const applied=mergearDatosConIA(d,origins,aiData,requested,esArrayField);
   d._internalReview=Array.from(new Set([...(d._internalReview||[]).filter(k=>!requested.includes(k)),...(aiData._reviewKeys||[])]));
@@ -3675,7 +3680,7 @@ function reconciliarCoincidencias(rows){
   // La marca de un intento anterior no sobrevive a su última revisión resuelta.
   // Una lectura interrumpida sin esa confirmación conserva su bloqueo.
   for(const tipo of resolved)if(activeDocumentOperation?.documentType!==tipo&&
-    !getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length)datos[tipo]._processingIncomplete=false;
+    !getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length){datos[tipo]._processingIncomplete=false;delete datos[tipo]._readError;}
 }
 function _requiredDocumentTypes(){return flujoContrato.tipoPersona==='juridica'?['ruc','cedula-prop','matricula']:_flujoEsConyugal()?['cedula-prop','cedula-cony','matricula']:['cedula-prop','matricula'];}
 function _activeDocumentTypes(){return [..._requiredDocumentTypes(),'cuv','notaria'];}
@@ -3696,11 +3701,12 @@ function _validationSummary(rows){
   return {requiredMissing,incomplete,pending,differences,missingRows,complete:!requiredMissing.length&&!incomplete.length&&!pending.length&&!differences.length&&!missingRows.length};
 }
 function validationBlockers(state){
-  const issues=state.pending.map(p=>({...p}));
+  const issues=state.pending.filter(p=>!(datos[p.tipo]?._readError&&!datos[p.tipo]._readError.usableRead&&
+    datos[p.tipo]._origins?.[p.key]!=='manual'&&isFieldEmpty(datos[p.tipo][p.key]))).map(p=>({...p}));
   for(const tipo of state.requiredMissing)issues.push({tipo,key:'',label:'Documento',reason:_hayImagenPegadaPendiente(tipo)?'Documento obligatorio pendiente de lectura':'Documento obligatorio no cargado'});
   for(const tipo of state.incomplete)if(!state.requiredMissing.includes(tipo)){
     const field=validationFieldsForDocument(tipo).find(f=>f.key);
-    issues.push({tipo,key:datos[tipo]?field?.key:'',label:'Lectura del documento',reason:datos[tipo]?'Lectura no completada; revisa los datos conservados':'Documento aún no procesado'});
+    issues.push({tipo,key:datos[tipo]?field?.key:'',label:'Lectura del documento',reason:datos[tipo]?._readError?.reason||(datos[tipo]?'Lectura no completada; revisa los datos conservados':'Documento aún no procesado')});
   }
   for(const row of state.differences)for(const value of row.valores){
     const keys=vcFieldKeys(value.tipo,row.campo),key=keys.find(k=>state.pending.some(p=>p.tipo===value.tipo&&p.key===k))||keys[0];
@@ -3771,7 +3777,7 @@ function renderValidacionCruzada(){
         const index=evidenceLinks.push({tipo:source.tipo,key,label:row.label})-1;
         evidenceHtml='<button type="button" class="vc-evidence" data-vc-review="'+index+'">Ver documento de respaldo</button>';
       }
-      html+='<div class="vc-source-line '+cls+'"><span class="vc-source-doc">'+escHtml(TIPO_LABEL_VC[source.tipo]||source.tipo)+'</span><span class="vc-source-val">'+escHtml(value?value.raw:'Pendiente: no detectado')+evidenceHtml+'</span>'+(cls==='diff'?'<span class="vc-source-note">Valor diferente</span>':reason?'<span class="vc-source-note">'+escHtml(reason)+'</span>':'')+'</div>';
+      html+='<div class="vc-source-line '+cls+'"><span class="vc-source-doc">'+escHtml(TIPO_LABEL_VC[source.tipo]||source.tipo)+'</span><span class="vc-source-val">'+escHtml(value?value.raw:datos[source.tipo]._readError&&!datos[source.tipo]._readError.usableRead?'Pendiente de lectura; dato no evaluado':'Pendiente: no detectado')+evidenceHtml+'</span>'+(cls==='diff'?'<span class="vc-source-note">Valor diferente</span>':reason?'<span class="vc-source-note">'+escHtml(reason)+'</span>':'')+'</div>';
     }
     html+='</div><div class="vc-status '+rowState+'">'+escHtml(rowMessage)+'</div></div>';
   }
@@ -3801,7 +3807,9 @@ function actualizarEstadosCampos(){
       item.style.background=reason&&val?'#fff7ed':'';
       const indicator=item.querySelector('.f-indicator');if(indicator)indicator.className='f-indicator '+(val?state:'none');
       const origin=d._origins?.[field.key]||(val?'ocr':'none'),badge=item.querySelector('.f-origin');
-      if(badge)badge.outerHTML=renderOriginBadge(reason&&val&&origin!=='manual'?'review':origin);
+      const unread=!val&&origin!=='manual'&&d._readError&&!d._readError.usableRead;
+      input.placeholder=unread?'Lectura no completada':'No detectado';
+      if(badge)badge.outerHTML=unread?'<span class="f-origin none">NO EVALUADO</span>':renderOriginBadge(reason&&val&&origin!=='manual'?'review':origin);
       let note=item.querySelector('.f-pending-reason');
       if(reason&&requiredKeys.has(field.key)){
         if(!note){note=document.createElement('div');note.className='f-pending-reason';item.appendChild(note);}
@@ -3809,8 +3817,8 @@ function actualizarEstadosCampos(){
       }else if(note)note.remove();
     }
     const pending=getMissingFields(d,required),badge=block.querySelector('.rb-badge'),sub=block.querySelector('.rb-sub');
-    if(badge){badge.className='rb-badge '+(pending.length||d._processingIncomplete?'warn':'ok');badge.textContent=d._processingIncomplete?'Lectura incompleta':pending.length?pending.length+' campo(s) pendientes':countDetected(d,fields)+' / '+realFieldCount(fields)+' detectados';}
-    if(sub)sub.textContent=d._processingIncomplete?'Lectura pendiente de completar':pending.length?'Revisa los campos señalados':'Documento procesado';
+    if(badge){badge.className='rb-badge '+(pending.length||d._processingIncomplete?'warn':'ok');badge.textContent=d._readError?'Lectura no completada':d._processingIncomplete?'Lectura incompleta':pending.length?pending.length+' campo(s) pendientes':countDetected(d,fields)+' / '+realFieldCount(fields)+' detectados';}
+    if(sub)sub.textContent=d._readError?d._readError.reason:d._processingIncomplete?'Lectura pendiente de completar':pending.length?'Revisa los campos señalados':'Documento procesado';
   }
 }
 
@@ -4017,7 +4025,7 @@ window.onFieldEdit = function(input){
     if(datos[tipo]._conflicts)delete datos[tipo]._conflicts[key];
     datos[tipo]._internalReview=(datos[tipo]._internalReview||[]).filter(k=>k!==key);
     datos[tipo]._missing=getMissingFields(datos[tipo],fieldsForDocument(tipo));
-    if(!getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length)datos[tipo]._processingIncomplete=false;
+    if(!getMissingFields(datos[tipo],validationFieldsForDocument(tipo)).length){datos[tipo]._processingIncomplete=false;delete datos[tipo]._readError;}
   }
   // Actualizar el badge de origen en el label
   const item = input.closest('.f-item');
@@ -4377,11 +4385,11 @@ function cedulaNamesLookMixed(apellidos, nombres){
 }
 
 
-async function ejecutarSolicitudIA(body,serializedBody,keys,background,signal,ticket,op){
+async function ejecutarSolicitudIA(body,signal,ticket,op){
   const started=performance.now();
   try{
     const limits=AutoCorDocumentProcessing.budgets(window.AutoCorProcessingBudgets);
-    const result=await aiController.generate(body,{signal,ticket,timeoutMs:limits.aiMs,maxAttempts:limits.maxModelAttempts,
+    const result=await aiController.generate(body,{signal,ticket,timeoutMs:limits.aiMs,attemptMs:limits.aiAttemptMs,maxAttempts:limits.maxModelAttempts,
       onAttempt:meta=>{if(op){op.requestAttempted=true;op.record('ai-attempt',meta);}},
       onRetry:meta=>op?.record('ai-retry-wait',meta)});
     return {...result,elapsedMs:Math.round(performance.now()-started)};
@@ -4390,12 +4398,14 @@ async function ejecutarSolicitudIA(body,serializedBody,keys,background,signal,ti
 async function analizarConGeminiCampos(tipo,dataUrl,missingKeys,extraOpts,op,ticket){
   if(!missingKeys?.length)return {};
   ticket=ticket||requireDocumentAccess(tipo);
-  const body=AutoCorDocumentExtraction.buildRequest(tipo,dataUrl,missingKeys,extraOpts||{}),serialized=JSON.stringify(body);
-  if(op){op.check();op.update('ai',{model:ticket.model});op.record('ai-request',{model:ticket.model});}
+  const preparationStarted=performance.now();
+  const body=AutoCorDocumentExtraction.buildRequest(tipo,dataUrl,missingKeys,extraOpts||{});
+  if(op){op.check();op.update('ai',{model:ticket.model});}
   const started=performance.now();
   try{
-    const run=signal=>ejecutarSolicitudIA(body,serialized,missingKeys,false,signal||op?.signal,ticket,op);
-    const key=ticket.model+'|'+serialized;
+    const run=signal=>ejecutarSolicitudIA(body,signal||op?.signal,ticket,op);
+    const key=window.AutoCorDocumentAnalysis?.requestKey?window.AutoCorDocumentAnalysis.requestKey(ticket.model,body):ticket.model+'|'+JSON.stringify(body);
+    if(op)op.record('ai-request',{model:ticket.model,elapsedMs:Math.round(performance.now()-preparationStarted)});
     const promise=window.AutoCorDocumentAnalysis?window.AutoCorDocumentAnalysis.share(key,run,{signal:op?.signal}):run(op?.signal);
     const result=op?await op.wait(promise):await promise;
     if(op){op.check();op.record('ai-response',{model:result.model,elapsedMs:result.elapsedMs,outcome:'success'});}
@@ -4682,7 +4692,8 @@ function _actualizarAvisoValidacion(state,afterBatch){
   const failed=(context?.failures||[]).filter(t=>incomplete.has(t));
   const notAttempted=(context?.notAttempted||[]).filter(t=>incomplete.has(t));
   const unread=Array.from(new Set([...failed,...state.incomplete.filter(t=>!notAttempted.includes(t))]));
-  const prefix=(context?.recoveryExhausted&&(failed.length||notAttempted.length)?'Se alcanzó el límite de recuperación automática. ':'')+
+  const exhausted=(context?.recoveryExhaustedTypes||[]).filter(t=>incomplete.has(t));
+  const prefix=(exhausted.length?'Se alcanzó el límite de recuperación automática de: '+exhausted.map(tipoLabel).join(', ')+'. ':'')+
     (unread.length?'No se completó: '+unread.map(tipoLabel).join(', ')+'. ':'')+
     (notAttempted.length?'Sin intentar: '+notAttempted.map(tipoLabel).join(', ')+'. ':'');
   const signature=JSON.stringify({issues,prefix});
@@ -4731,8 +4742,7 @@ function validarTodoEnConjunto(){
 }
 async function ejecutarValidacionCompleta(){
   validationRequested=true;validationFailureContext=null;window._contratosValidacionCompletada=false;_actualizarAccionesPostValidacion();
-  const pendientes=_pendientesDeProcesar(),failures=[],notAttempted=[];
-  let recoveryExhausted=false;
+  const pendientes=_pendientesDeProcesar(),failures=[],notAttempted=[],recoveryExhaustedTypes=[];
   for(let index=0;index<pendientes.length;index++){
     const tipo=pendientes[index];
     if(validationBatchAbort?.signal.aborted)return;
@@ -4740,8 +4750,8 @@ async function ejecutarValidacionCompleta(){
     if(result.cancelled){_mostrarValidateToast('warn','Validación cancelada','Se conservan tus archivos y correcciones.');return;}
     if(!result.ok){
       (result.started===false?notAttempted:failures).push(tipo);
-      recoveryExhausted=recoveryExhausted||result.error?.recoveryExhausted===true;
-      if(result.error?.recoveryExhausted||result.error?.stopBatch||!aiController.snapshot().ready){
+      if(result.error?.recoveryExhausted)recoveryExhaustedTypes.push(tipo);
+      if(result.error?.stopBatch||!aiController.snapshot().ready){
         notAttempted.push(...pendientes.slice(index+1));
         for(const pending of notAttempted)setStatus(pending,'pending','Pendiente · aún no se ha procesado');
         break;
@@ -4756,7 +4766,7 @@ async function ejecutarValidacionCompleta(){
     _mostrarValidateToast('ok','Validación completada','Los documentos necesarios están procesados, los datos comparables coinciden y no hay pendientes.');
     window.dispatchEvent(new Event('contratos-validacion-completa'));
   }else{
-    validationFailureContext={failures,notAttempted:Array.from(new Set(notAttempted)),recoveryExhausted};
+    validationFailureContext={failures,notAttempted:Array.from(new Set(notAttempted)),recoveryExhaustedTypes};
     _actualizarAvisoValidacion(state,true);
   }
   _actualizarAccionesPostValidacion();
@@ -5699,9 +5709,9 @@ window.AutoCorContractDraft = {
 })();
 </script>
 
-<script src="js/auth-ui.js?v=20261026T170606545650Z"></script>
-<script src="js/session-sync.js?v=20261026T170606545650Z"></script>
-<script src="js/workflow.js?v=20261026T170606545650Z"></script>
-<script src="js/workflow-adapters.js?v=20261026T170606545650Z"></script>
+<script src="js/auth-ui.js?v=20261026T175631976075Z"></script>
+<script src="js/session-sync.js?v=20261026T175631976075Z"></script>
+<script src="js/workflow.js?v=20261026T175631976075Z"></script>
+<script src="js/workflow-adapters.js?v=20261026T175631976075Z"></script>
 </body>
 </html>

@@ -28,7 +28,7 @@ try {for(const file of ['contratos.html','liquidacion.html','pagos.html','ventas
    const events=[];window.generarContratos=(_,opts)=>{events.push('preparar');if(opts.download!==false)throw Error('descarga prematura');return {generados:[]};};window.descargarContratosGenerados=()=>events.push('descargar');window._autoGuardarConContrato=async()=>{events.push('guardar');return {ok:true,placa:'AAA1111'};};window._subirExpedienteADrive=async()=>{events.push('drive');return {ok:true};};
    await ejecutarGenerarContratos();const success=events.slice();events.length=0;window._autoGuardarConContrato=async()=>({ok:false,message:'sin confirmación'});await ejecutarGenerarContratos();return {success,failed:events,error:document.getElementById('genError').textContent};
   });assert.deepEqual(generation.success,['preparar','guardar','descargar','drive']);assert.deepEqual(generation.failed,['preparar']);assert.ok(generation.error.includes('No se descargaron'));
-  await page.evaluate(()=>verRespaldoContrato('matricula','propietario','Propietario'));assert.ok((await page.locator('#contractEvidence').innerText()).includes('MUÑOZ PEÑA'));await page.locator('#contractEvidence button').first().click();
+  await page.evaluate(()=>verRespaldoContrato('matricula','propietario','Propietario'));assert.equal(await page.locator('#evidence-propietario').inputValue(),'MUÑOZ PEÑA');await page.locator('#contractEvidence button').first().click();
   const drive=await page.evaluate(async()=>{const calls=[];AutoCorApi.postJson=async(_,b)=>{calls.push(b.archivos.map(f=>f.nombre));return {ok:true,archivos:b.archivos.map(f=>({nombre:f.nombre,ok:calls.length>1||f.nombre==='uno.pdf'}))};};await AutoCorWork.sendDrive('AAA1111',[{nombre:'uno.pdf',contenidoBase64:'AA=='},{nombre:'dos.pdf',contenidoBase64:'AA=='}]);const pending=AutoCorWork.captureDrive();await AutoCorWork.sendDrive('AAA1111',pending[0].files);return {calls,remaining:AutoCorWork.captureDrive().length};});assert.deepEqual(drive.calls,[['uno.pdf','dos.pdf'],['dos.pdf']]);assert.equal(drive.remaining,0);
  }
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'savePago',elapsedMs:9000,attempts:1,server:{serverMs:800},details:[{kind:'request',transport:'google.script.run',channelRecovery:'Canal retirado',error:{name:'AbortError',code:20,message:'signal is aborted without reason'}}]}})));
@@ -42,12 +42,20 @@ try {for(const file of ['contratos.html','liquidacion.html','pagos.html','ventas
  await page.setViewportSize({width:1360,height:850});
  await page.getByRole('button',{name:'Tiempos',exact:true}).click();
  await page.evaluate(()=>{const oldValue=localStorage.getItem('autocor_auth');const a=JSON.parse(oldValue);a.isAdmin=false;localStorage.setItem('autocor_auth',JSON.stringify(a));window.dispatchEvent(new StorageEvent('storage',{key:'autocor_auth',oldValue,newValue:JSON.stringify(a)}));});
- assert.equal(await page.getByRole('button',{name:'Tiempos',exact:true}).count(),0);
+ assert.ok(await page.getByRole('button',{name:'Tiempos',exact:true}).isVisible());
+ assert.ok(await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).isVisible());
+ assert.ok((await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).innerText()).includes('9.0 s'));
+ await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByRole('button',{name:'Cerrar'}).click();
  if(file==='contratos.html'){await page.getByRole('button',{name:'Pendientes Drive',exact:true}).click();assert.ok(await page.getByRole('dialog',{name:'Archivos pendientes de Drive'}).isVisible());await page.getByRole('dialog',{name:'Archivos pendientes de Drive'}).getByRole('button',{name:'Cerrar',exact:true}).click();}
  assert.equal(await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).count(),0);
  assert.ok(await page.getByRole('button',{name:'Borradores',exact:true}).isVisible());
  await page.locator('[data-work-admin]').evaluateAll(buttons=>buttons.forEach(b=>b.click()));
  assert.equal(await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).count(),0);
+ await page.getByRole('button',{name:'Tiempos',exact:true}).click();
+ await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByText('Ver etapas',{exact:true}).first().click();
+ assert.ok((await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).innerText()).includes('AbortError (código 20): signal is aborted without reason'));
+ assert.equal(await page.getByRole('button',{name:'Admin usuarios',exact:true}).count(),0,'El acceso a Tiempos no otorga administración de usuarios');
+ await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByRole('button',{name:'Cerrar'}).click();
  const aligned=await page.evaluate(()=>{const save=document.querySelector('.toolbar-wrap #btnGuardarImprimir,.toolbar-wrap button[onclick*=guardarYExportarTodo]');const drafts=document.querySelector('[data-work-drafts]');return !save || Math.abs(save.getBoundingClientRect().y-drafts.getBoundingClientRect().y)<6;});assert.ok(aligned,'Borradores en la misma fila que Guardar');
  await page.evaluate(()=>{const oldValue=localStorage.getItem('autocor_auth');const a=JSON.parse(oldValue);a.isAdmin=true;localStorage.setItem('autocor_auth',JSON.stringify(a));window.dispatchEvent(new StorageEvent('storage',{key:'autocor_auth',oldValue,newValue:JSON.stringify(a)}));});
  assert.ok(await page.getByRole('button',{name:'Tiempos',exact:true}).isVisible());

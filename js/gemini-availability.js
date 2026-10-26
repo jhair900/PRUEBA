@@ -152,14 +152,14 @@
           let sent=false;
           try{
             // Los reintentos comparten el plazo de lectura; no amplían su timeout.
-            const result=await call(ticket.model,body,controller.signal,remaining(),'ai-response',ticket,{budget,limit:maxRequests,attempt,onSend:meta=>{sent=true;documentRequests++;opts.onAttempt?.(meta);}});
+            const result=await call(ticket.model,body,controller.signal,Math.min(remaining(),opts.attemptMs||remaining()),'ai-response',ticket,{budget,limit:maxRequests,attempt,onSend:meta=>{sent=true;documentRequests++;opts.onAttempt?.(meta);}});
             checkTicket(ticket);if(controller.signal.aborted)throw controller.signal.reason;
             lastCode='';states.set(ticket.model,{status:'available'});emit();
             attempts.push({model:ticket.model,outcome:'success'});return {data:result,model:ticket.model,attempts,requests:budget.used};
           }catch(e){
             checkTicket(ticket);if(controller.signal.aborted){if(sent)attempts.push({model:ticket.model,outcome:'failed',code:controller.signal.reason.code});throw controller.signal.reason;}
             lastError=e;attempts.push({model:ticket.model,outcome:'failed',code:e.code,httpStatus:e.status});failed(ticket.model,e);
-            const retryable=['AI_UPSTREAM_ERROR','AI_QUOTA_EXHAUSTED'].includes(e.code);
+            const retryable=['AI_UPSTREAM_ERROR','AI_QUOTA_EXHAUSTED','AI_NETWORK_ERROR','AI_TIMEOUT','AI_INVALID_RESPONSE','AI_RESPONSE_INCOMPLETE'].includes(e.code);
             if(attempt>=maxAttempts||!retryable)throw e;
             const waitMs=Math.max(e.retryMs||0,Math.min(config.retryMaxMs,config.retryBaseMs*2**(attempt-1)));
             if(waitMs>=remaining()){e.recoveryReason='service-wait-exceeds-budget';throw e;}
@@ -174,9 +174,12 @@
         e.analysisAttempts=attempts;e.recoveryRequests=budget.used;
         e.requestAttempted=documentRequests>0;
         if(lastError&&e!==lastError)e.causeCode=lastError.code;
-        e.recoveryExhausted=['AI_UPSTREAM_ERROR','AI_RECOVERY_LIMIT','AI_TIMEOUT'].includes(e.code);
-        e.stopBatch=!['AI_CANCELLED','AI_CONTEXT_CHANGED'].includes(e.code);
-        if(e.stopBatch&&ticket?.model===active)failed(active,e);
+        e.recoveryExhausted=['AI_UPSTREAM_ERROR','AI_RECOVERY_LIMIT','AI_TIMEOUT','AI_NETWORK_ERROR','AI_INVALID_RESPONSE','AI_RESPONSE_INCOMPLETE'].includes(e.code);
+        // El presupuesto agotado pertenece a este documento. Sólo un impedimento
+        // común a los siguientes documentos detiene el lote completo.
+        e.stopBatch=['AI_AUTH_ERROR','AI_CONTEXT_CHANGED','AI_MODEL_UNAVAILABLE','AI_QUOTA_EXHAUSTED','AI_PRECHECK_REQUIRED'].includes(e.code)||
+          (e.recoveryReason==='service-wait-exceeds-budget'&&e.retryMs>0);
+        if(!['AI_CANCELLED','AI_CONTEXT_CHANGED'].includes(e.code)&&ticket?.model===active)failed(active,e);
         throw e;
       }finally{
         clearTimeout(timer);opts.signal?.removeEventListener('abort',cancel);controllers.delete(controller);

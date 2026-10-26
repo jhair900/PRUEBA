@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "realGeminiCalls": 0,
+  "iterations": 12,
+  "attachmentBytes": 3145728,
+  "beforeKeyCharacters": 4198870,
+  "afterKeyCharacters": 4620,
+  "firstCompactKeyMs": 0.244,
+  "beforeMedianMs": 3.728,
+  "afterMedianMs": 0.042,
+  "unchangedRequest": true,
+  "scope": "Sólo preparación local de la clave; no mide backend, Gemini ni el tiempo completo de validación."
+}

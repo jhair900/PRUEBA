@@ -47,6 +47,21 @@ function setup(request,config={}){
   assert.equal(t.controller.snapshot().model,A);assert.equal(t.controller.snapshot().code,'AI_TIMEOUT');
   console.log('OK el plazo acumulado incluye la recuperación y aborta un reintento atascado sin ampliarse');
 
+  let attempts=0,firstStopped=false;
+  t=setup((model,body,signal)=>body.probe?Promise.resolve(ok()):++attempts===1?new Promise(()=>signal.addEventListener('abort',()=>firstStopped=true,{once:true})):Promise.resolve(ok()));
+  await t.controller.ensure();
+  result=await t.controller.generate({document:true},{timeoutMs:100,attemptMs:10});
+  assert.equal(firstStopped,true);assert.equal(result.attempts.length,2);assert.equal(result.attempts[0].code,'AI_TIMEOUT');
+  assert.ok(t.calls.every(c=>c.model===A));assert.equal(t.calls.filter(c=>c.probe).length,1);
+  console.log('OK el plazo individual deja margen para recuperar una solicitud atascada sin aumentar el plazo acumulado');
+
+  t=setup(async(model,body)=>body.probe||body.document==='next'?ok():service());await t.controller.ensure();
+  await assert.rejects(t.controller.generate({document:'failing'},{timeoutMs:100}),e=>e.recoveryExhausted&&!e.stopBatch&&e.recoveryRequests===3);
+  result=await t.controller.generate({document:'next'},{timeoutMs:100});
+  assert.equal(result.requests,1);assert.equal(result.attempts.length,1);assert.equal(t.trace.at(-1).requestAttempt,1);assert.equal(t.controller.snapshot().code,'');
+  assert.ok(t.calls.every(c=>c.model===A));assert.equal(t.calls.filter(c=>c.probe).length,1);
+  console.log('OK los límites y el error son independientes por documento; el siguiente comienza en intento y solicitud 1');
+
   t=setup(async(model,body)=>body.probe?ok():service(),{maxRecoveryRequests:2});
   await t.controller.ensure();
   await assert.rejects(t.controller.generate({document:true},{timeoutMs:100}),e=>e.code==='AI_RECOVERY_LIMIT'&&e.recoveryRequests===2&&e.causeCode==='AI_UPSTREAM_ERROR');

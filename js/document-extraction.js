@@ -170,10 +170,12 @@
     try { result = JSON.parse(text.replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, '$1')); }
     catch (_) { throw new Error('La respuesta de IA no contiene datos JSON completos; revisa o reintenta.'); }
     if (!plainObject(result)) throw Object.assign(new Error('La respuesta de IA no tiene el formato de documento esperado.'),{code:'AI_INVALID_RESPONSE'});
+    if(!keys.some(key=>Object.prototype.hasOwnProperty.call(result,key)))throw Object.assign(new Error('La respuesta de IA no contiene los campos del documento solicitado.'),{code:'AI_INVALID_RESPONSE'});
     const review = new Set(Array.isArray(result._reviewKeys) ? result._reviewKeys.filter(key => keys.includes(key)) : []);
     const clean = {};
     keys.forEach(key => {
       const value = result[key];
+      if(!Object.prototype.hasOwnProperty.call(result,key))review.add(key);
       if (isPeople(key)) {
         const valid = Array.isArray(value) && value.every(person => plainObject(person) && personKeys.every(name => person[name] === undefined || typeof person[name] === 'string'));
         clean[key] = valid ? value.map(person => Object.fromEntries(personKeys.map(name => [name, (person[name] || '').trim()]))).filter(person => personKeys.some(name => person[name])) : [];

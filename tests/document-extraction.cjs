@@ -51,6 +51,13 @@ test('truncated, blocked or non-object AI output triggers fallback', () => {
   assert.throws(() => extraction.parseResponse(response(['ABC1234']), ['placa']), /formato/);
   assert.throws(() => extraction.parseResponse({ candidates: [{ content: { parts: [{ text: '{"placa":' }] } }] }, ['placa']), /JSON completos/);
 });
+
+test('unusable empty object is a technical failure; omitted fields require review, explicit empty readings remain absent', () => {
+  assert.throws(()=>extraction.parseResponse(response({}),['placa','color']),e=>e.code==='AI_INVALID_RESPONSE');
+  const partial=extraction.parseResponse(response({placa:'ABC1234'}),['placa','color']);
+  assert.equal(partial.placa,'ABC1234');assert.equal(partial.color,'');assert.deepEqual(partial._reviewKeys,['color']);
+  assert.deepEqual(extraction.parseResponse(response({placa:'',color:''}),['placa','color']),{placa:'',color:'',_reviewKeys:[]});
+});
 test('papeleta full compound name is not split by a two-word heuristic', () => {
   const parsed = extraction.parsePapeleta('CERTIFICADO DE VOTACIÓN\nAPELLIDOS Y NOMBRES:\nDE LA CRUZ DEL RÍO ANA MARÍA\nCC N° 0123456789\nELECCIONES GENERALES\n9 DE FEBRERO DE 2025\nFECHA DE EMISIÓN: 12/02/2025');
   assert.equal(parsed.nombreCompleto, 'DE LA CRUZ DEL RÍO ANA MARÍA');

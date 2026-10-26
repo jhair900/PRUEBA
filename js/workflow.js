@@ -150,9 +150,9 @@
     global[name]=function(){const args=arguments,self=this;return run(label,()=>original.apply(self,args));};
   }
   function timings(){
-    if(!isAdmin())return;
+    if(!owner())return;
     const host=showPanel('Tiempos de las operaciones');
-    host.dataset.adminOnly='true';
+    host.dataset.userOnly='true';
     const seconds=value=>Number.isFinite(value)?(value/1000).toFixed(2)+' s':'sin medición';
     const note=document.createElement('p');note.textContent='Mediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red.';host.appendChild(note);
     measurements.slice(-20).reverse().forEach(t=>{
@@ -231,7 +231,7 @@
     const host=document.querySelector('.toolbar-wrap');if(!host)return;
     const controls=document.createElement('span');controls.dataset.workflowUi='true';controls.className='autocor-work-controls';
     button('Borradores',showDrafts,controls).dataset.workDrafts='true';
-    button('Tiempos',timings,controls).dataset.workAdmin='true';
+    button('Tiempos',timings,controls).dataset.workUser='true';
     if(config.module==='contratos')button('Pendientes Drive',showDrive,controls).dataset.workUser='true';
     const saveButton=host.querySelector('#btnGuardarImprimir,button[onclick*="guardarYExportarTodo"]');
     host.insertBefore(controls,saveButton ? saveButton.nextSibling : host.firstElementChild?.nextSibling || null);

@@ -2,10 +2,26 @@
 (function(global){
   'use strict';
   const pending=new Map();
+  const inputIds=new Map();let keyScope='',inputSerial=0;
   let batch=null;
   function scope(){
     try{return JSON.stringify([JSON.parse(global.localStorage.getItem('autocor_auth')||'null')?.token||'',global.AutoCorConfig?.apiUrl||'']);}
     catch(_){return '';}
+  }
+  // La clave conserva todos los criterios y la identidad exacta de cada adjunto,
+  // sin volver a serializar sus megabytes de base64. Nunca se usa como diagnóstico.
+  function requestKey(model,body){
+    const session=scope();if(session!==keyScope){inputIds.clear();keyScope=session;}
+    return model+'|'+JSON.stringify(body,function(key,value){
+      if(key==='data'&&typeof this.mime_type==='string'&&typeof value==='string'){
+        if(!inputIds.has(value)){
+          if(inputIds.size>=64)inputIds.delete(inputIds.keys().next().value);
+          inputIds.set(value,++inputSerial);
+        }
+        return {attachmentId:inputIds.get(value)};
+      }
+      return value;
+    });
   }
   async function direct(serializedRequest,work,signal){
     if(signal&&signal.aborted)return consume(Promise.resolve(),signal);
@@ -18,7 +34,7 @@
       entry={controller,users:0,promise:null};
       entry.promise=Promise.resolve().then(()=>work(controller && controller.signal));
       requests.set(serializedRequest,entry);
-      const clear=()=>{if(requests.get(serializedRequest)===entry)requests.delete(serializedRequest);if(!requests.size&&pending.get(session)===requests)pending.delete(session);};
+      const clear=()=>{if(requests.get(serializedRequest)===entry)requests.delete(serializedRequest);if(!requests.size&&pending.get(session)===requests)pending.delete(session);if(!pending.size&&!batch)inputIds.clear();};
       entry.promise.then(clear,clear);
     }
     entry.users++;
@@ -62,6 +78,7 @@
     context.requests.clear();
     if(context.controller)context.controller.abort();
     if(batch===context)batch=null;
+    if(!pending.size)inputIds.clear();
   }
-  global.AutoCorDocumentAnalysis={share:share,beginBatch:beginBatch,prefetch:prefetch,endBatch:endBatch,cancelBatch:function(){endBatch(batch);}};
+  global.AutoCorDocumentAnalysis={requestKey,share:share,beginBatch:beginBatch,prefetch:prefetch,endBatch:endBatch,cancelBatch:function(){endBatch(batch);inputIds.clear();}};
 })(window);
