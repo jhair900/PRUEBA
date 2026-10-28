@@ -3,6 +3,7 @@
   'use strict';
 async function fetchProxy(url, init, timeoutMs, trace){
   trace=trace||{};
+  trace.remoteState='not_sent';
   const session=global.AutoCorSession;
   const ticket=session?await session.ensure():null;
   var auth;
@@ -37,6 +38,8 @@ async function fetchProxy(url, init, timeoutMs, trace){
   try {
     if(controller.signal.aborted)throw new Error('AI_CANCELLED');
     const endpoint = global.AutoCorTransport ? new URL(url) : null;
+    // Al entregar al puente ya puede haberse enviado por google.script.run.
+    if(global.AutoCorTransport)trace.remoteState='dispatched';
     const rpc = global.AutoCorTransport ? await global.AutoCorTransport.request(url, {action:'geminiProxy', op:endpoint.searchParams.get('op'), model:endpoint.searchParams.get('model'), sessionToken:auth.token, request:request}, init.signal,trace) : null;
     if(controller.signal.aborted)throw new Error('AI_CANCELLED');
     if(rpc !== null){ resp = {ok:true, status:200, json:async function(){return rpc;}}; }
@@ -46,12 +49,14 @@ async function fetchProxy(url, init, timeoutMs, trace){
       init.body=JSON.stringify({sessionToken:auth.token,request});
       if(typeof TextEncoder==='function')trace.requestBytes=new TextEncoder().encode(init.body).byteLength;
       trace.requestBuildMs+=Date.now()-encodingStarted;
-      trace.failedStage='connection';httpStarted=Date.now();resp = await fetch(url, init);
+      trace.failedStage='connection';trace.remoteState='dispatched';httpStarted=Date.now();resp = await fetch(url, init);
     }
     trace.headersMs=Date.now()-started;
     trace.httpStatus=resp.status;
     if(httpStarted!=null)trace.transportHttpStatus=resp.status;
     if(!resp.ok){
+      // Una respuesta de la pasarela no confirma el resultado de una generación remota.
+      trace.remoteState='unknown';
       trace.statusOrigin='apps-script-http';delete trace.failedStage;
       if(httpStarted!=null)trace.httpResponseMs=Date.now()-httpStarted;
       const retryAfter=resp.headers?.get?.('Retry-After')||'';
@@ -62,12 +67,15 @@ async function fetchProxy(url, init, timeoutMs, trace){
     bodyStarted=Date.now();
     // El plazo incluye recibir el cuerpo; una respuesta incompleta no es exito.
     env = await resp.json();
+    if(env?._proxy&&typeof env._proxy.ok==='boolean'&&Number(env._proxy.status)>0)trace.remoteState='complete';
+    else trace.remoteState='unknown';
     if(ticket)session.assert(ticket);
     trace.bodyMs=Date.now()-bodyStarted;
     if(httpStarted!=null)trace.httpResponseMs=Date.now()-httpStarted;
     if(controller.signal.aborted)throw new Error('AI_CANCELLED');
   } catch(cause) {
     if(bodyStarted!=null)trace.bodyMs=Date.now()-bodyStarted;
+    if(trace.remoteState==='dispatched')trace.remoteState='unknown';
     if(cause.isSessionError)throw cause;
     const callerTimedOut=callerSignal?.aborted&&callerSignal.reason?.code==='AI_TIMEOUT';
     const cancelled = callerSignal && callerSignal.aborted&&!callerTimedOut;
@@ -100,6 +108,10 @@ async function fetchProxy(url, init, timeoutMs, trace){
   trace.httpStatus=status;
   trace.proxyHttpStatus=Number(env._proxy.status);
   trace.statusOrigin='proxy';
+  trace.proxyOrigin=['provider','session'].includes(env._proxy.origin)?env._proxy.origin:'unreported';
+  if(trace.diagnosticProbe&&env.data?.error?.message&&global.AutoCorGeminiAvailability?.safeDiagnostic){
+    trace.serviceMessage=global.AutoCorGeminiAvailability.safeDiagnostic(env.data.error.message,[auth.token,auth.user,auth.displayName]);
+  }
   const serviceStatus=data?.error?.status;
   if(['UNAVAILABLE','INTERNAL','RESOURCE_EXHAUSTED','INVALID_ARGUMENT','PERMISSION_DENIED','UNAUTHENTICATED','NOT_FOUND','DEADLINE_EXCEEDED','CONFIG_ERROR','BAD_REQUEST','FETCH_ERROR'].includes(serviceStatus))trace.serviceStatus=serviceStatus;
   if(Number.isFinite(env._proxy.upstreamMs)){

@@ -1,0 +1,37 @@
+{
+  "synthetic": true,
+  "realGoogleRequests": 0,
+  "before": {
+    "sent": 4,
+    "active": 0,
+    "maxActive": 3,
+    "closedBeforeCompletion": 4,
+    "completed": 4,
+    "code": "AI_TIMEOUT"
+  },
+  "after": {
+    "sent": 1,
+    "active": 0,
+    "maxActive": 1,
+    "closedBeforeCompletion": 0,
+    "completed": 1,
+    "code": "success"
+  },
+  "unknownResult": {
+    "sent": 1,
+    "active": 0,
+    "maxActive": 1,
+    "closedBeforeCompletion": 1,
+    "completed": 1,
+    "code": "AI_INITIAL_RESULT_UNKNOWN",
+    "remoteUnconfirmed": true
+  },
+  "probe": {
+    "beforeBytes": 1055,
+    "afterBytes": 618,
+    "beforeMaxOutputTokens": 2048,
+    "afterMaxOutputTokens": 256,
+    "imageUnchanged": true
+  },
+  "limitation": "Loopback reproduce el riesgo y el control local; no acredita que las solicitudes de producción concretas se solaparan."
+}

@@ -189,6 +189,13 @@
           if(d.proxyHttpStatus!=null)technical.push('Estado devuelto por el proxy: '+d.proxyHttpStatus);
           if(d.statusOrigin)technical.push('Origen del estado: '+d.statusOrigin);
           if(d.serviceStatus)technical.push('Estado del servicio: '+d.serviceStatus);
+          if(d.proxyOrigin)technical.push('Origen informado por el backend: '+d.proxyOrigin);
+          if(d.serviceCode!=null)technical.push('Código original del servicio: '+d.serviceCode);
+          if(d.serviceMessage)technical.push('Mensaje del inicio de IA (datos sensibles retirados): '+d.serviceMessage);
+          if(d.attemptBudgetMs!=null)technical.push('Límite del intento inicial: '+seconds(d.attemptBudgetMs));
+          if(d.remoteState==='unknown')technical.push('Resultado remoto: desconocido. Cancelar la espera local no confirma la terminación en Apps Script/Gemini.');
+          if(d.remoteState==='complete')technical.push('Respuesta del backend: recibida completamente.');
+          if(d.recoveryReason==='service-wait-exceeds-budget')technical.push('La espera indicada no cabe en el plazo inicial; no se reenvió a ese modelo.');
           if(d.requestAttempt!=null)technical.push('Solicitud acumulada en esta lectura: '+d.requestAttempt);
           if(d.waitMs!=null)technical.push('Espera antes del reintento: '+seconds(d.waitMs));
           if(d.failedStage)technical.push('Etapa del fallo: '+d.failedStage);

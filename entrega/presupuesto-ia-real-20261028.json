@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-28",
+  "timezone": "America/Guayaquil",
+  "frontendVersion": "20261028T153157569058Z",
+  "environment": "Versión local en navegador integrado, contra el Apps Script y Gemini reales",
+  "authentication": {"performedByUser": true, "loginOutcome": "success", "approxElapsedMs": 2850, "approxServerMs": 990},
+  "initialRound": {
+    "roundCount": 1,
+    "requestCount": 1,
+    "outcome": "success",
+    "model": "gemini-3.5-flash-lite",
+    "schemaAndSyntheticFieldsValidated": true,
+    "approxElapsedMs": 22370,
+    "approxUpstreamMs": 20590,
+    "approxRemainingTransportMs": 1780,
+    "totalBudgetMs": 45000,
+    "transport": "google.script.run",
+    "proxyHttpStatus": 200,
+    "proxyOrigin": "provider",
+    "remoteState": "complete",
+    "secondModelAttempted": false
+  },
+  "measurementPrecision": "Tiempos leídos del panel con dos decimales; valores en milisegundos aproximados.",
+  "personalDocumentsProcessed": 0,
+  "syntheticImageOnly": true,
+  "workPreserved": true,
+  "published": false,
+  "deployed": false,
+  "comparisonLimit": "La prueba anterior usó otro canal y ocurrió con distinta carga del servicio. No mide por separado el efecto de cada ajuste ni garantiza latencia futura."
+}

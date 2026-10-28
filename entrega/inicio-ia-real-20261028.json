@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-28",
+  "timezone": "America/Guayaquil",
+  "frontendVersionObserved": "20261027T162110818336Z",
+  "source": "Tiempos de la pestaña real y una salida de diagnóstico sintético ejecutado por el usuario",
+  "session": {"action":"validateSession","outcome":"success","elapsedMs":3240,"serverMs":420,"beforeGemini":true},
+  "initialProbes": [
+    {"model":"gemini-3.5-flash-lite","outcome":"failed","code":"AI_TIMEOUT","elapsedMs":10000,"providerResponseReceived":false},
+    {"model":"gemini-3.1-flash-lite","outcome":"failed","code":"AI_UPSTREAM_ERROR","serviceStatus":"UNAVAILABLE","appsScriptHttpStatus":200,"proxyStatus":503,"elapsedMs":5600,"upstreamMs":3920,"originalProviderMessage":"No conservado en los diagnósticos de esa versión"}
+  ],
+  "additionalUserSyntheticProbe": {
+    "model":"gemini-3.1-flash-lite",
+    "timeoutMs":15000,
+    "outcome":"failed",
+    "code":"AI_TIMEOUT",
+    "message":"La IA no respondio dentro del tiempo de espera. Puedes reintentar o revisar manualmente.",
+    "logTimestampUtc":"2026-10-28T14:56:29.946Z",
+    "providerResponseReceived":false
+  },
+  "backendCompatibility": {
+    "sessionContractAcceptedByLoadedFrontend":true,
+    "upstreamProxyDiagnosticsObserved":true,
+    "exactDeployedBackendVersion":null,
+    "limitation":"La API activa no informa la versión completa de su código; no se presupone que coincide con el archivo local."
+  },
+  "personalDocumentsProcessedForThisInvestigation":0,
+  "updatedFrontendPublished":false,
+  "realRecoveryConfirmed":false
+}

@@ -233,3 +233,15 @@ Las páginas abren el formulario de acceso existente en la misma pantalla. La re
 La selección fija de Gemini se conserva: únicamente los dos modelos autorizados, una selección inicial y ningún cambio de modelo al reautenticar. La comprobación inicial interrumpida por autenticación puede terminar después de ingresar; una selección ya completada no se repite. CUV permanece local y no se ejecuta Tesseract.
 
 Resultados y límites de las comprobaciones locales en `entrega/sesion-autocor-20261027.md`. Son simulaciones de red/backend y pruebas de navegador; no se enviaron documentos ni credenciales reales y no acreditan el estado del despliegue de producción.
+
+## Presupuesto único del inicio de Gemini — 28 de octubre de 2026
+
+Esta entrega sustituye la recuperación inicial de cuatro envíos y cortes individuales de 10 segundos. Conserva una única ronda posterior a la autenticación, con 45 segundos acumulados. No lanza una alternativa tras un timeout, un fallo de red o un cambio de sesión que deje un envío sin resultado remoto confirmado. Tiempos distingue el corte local de una respuesta completa del backend. La alternativa permitida se intenta solamente tras una respuesta que permita decidir, como 429 o 503, respetando Retry-After y el tiempo restante; hay como máximo un envío por modelo y dos por ronda. Un modelo elegido sigue fijo durante la página, sin comprobaciones periódicas ni selección por documento.
+
+El arranque comparte también la espera de sesión y elimina el temporizador adicional de 50 ms. Un rechazo explícito de sesión anterior al procesamiento permite completar el inicio después de autenticarse; un envío cuyo resultado se desconoce no se repite al cambiar sesión. No se equipara cancelar la espera del navegador con terminar la generación en Apps Script/Gemini.
+
+La comprobación mantiene la misma imagen ficticia legible y el mismo criterio de placa/color con JSON estructurado. Usa un esquema y un texto específicos más breves y 256 tokens máximos de salida en lugar de 2048; los documentos reales conservan sus criterios y presupuestos de salida. No se introducen parámetros de razonamiento cuya compatibilidad no esté comprobada.
+
+El riesgo de solapamiento se reprodujo en loopback con trabajo remoto independiente de la cancelación local; eso no prueba que las ejecuciones concretas de producción se solaparan. No se atribuyen los 503 con mensaje de alta demanda a autenticación ni cuota. No se modifica Apps Script ni se publica esta entrega. La comprobación real se realiza una sola vez en el navegador integrado con el usuario autenticándose, sin documentos personales. Los resultados y sus límites se documentan en `entrega/presupuesto-inicio-ia-20261028.md`.
+
+La única ronda real de la versión `20261028T153157569058Z` seleccionó Gemini 3.5 Flash Lite en un envío y 22,37 s; 20,59 s correspondieron al trayecto backend–Gemini y respuesta. No se intentó el segundo modelo ni se procesaron documentos personales. Es el resultado de esa ronda, no una garantía de latencia futura.
