@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T175631976075Z">
-<script src="js/auto-update.js?v=20261026T175631976075Z"></script>
+<meta name="autocor-version" content="20261027T162110818336Z">
+<script src="js/auto-update.js?v=20261027T162110818336Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Inicio</title>
@@ -686,10 +686,11 @@
   .exp-pill.pipe-active .exp-pill-state{background:#fef3c7;color:#92400e}
   .exp-pill.pipe-future{opacity:.6}
 </style>
-<script src="js/api-config.js?v=20261026T175631976075Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T175631976075Z"></script>
-<script src="js/api-client.js?v=20261026T175631976075Z"></script>
-<script src="js/expediente.js?v=20261026T175631976075Z"></script>
+<script src="js/api-config.js?v=20261027T162110818336Z"></script>
+<script src="js/apps-script-transport.js?v=20261027T162110818336Z"></script>
+<script src="js/session.js?v=20261027T162110818336Z"></script>
+<script src="js/api-client.js?v=20261027T162110818336Z"></script>
+<script src="js/expediente.js?v=20261027T162110818336Z"></script>
 </head>
 <body>
   <main class="page">
@@ -1008,14 +1009,15 @@
       el.type = el.type === 'password' ? 'text' : 'password';
     }
 
-    function abrirLogin(modulo, opts){
+    async function abrirLogin(modulo, opts){
       moduloActivo = modulo;
       loginSoloBusqueda = !!(opts && opts.soloBusqueda);
       const cfg = MODULOS[modulo];
 
       // Si ya hay sesión activa, acceder directo (pero no si es solo búsqueda)
       try{
-        const auth = JSON.parse(localStorage.getItem('autocor_auth') || 'null');
+        await AutoCorSession.ensure();
+        const auth = AutoCorSession.snapshot().auth;
         if(auth && auth.token){
           if(loginSoloBusqueda){
             loginSoloBusqueda = false;
@@ -1067,29 +1069,28 @@
         return;
       }
       const btn = document.getElementById('mlBtnIngresar');
+      if(btn.disabled)return;
       btn.disabled = true;
       btn.textContent = 'VERIFICANDO...';
       document.getElementById('mlError').textContent = '';
       try{
+        const loginRevision=AutoCorSession.loginRevision();
         const resp = await apiCall('login', { username: u, password: p });
-        // Guardar sesión en sessionStorage — los módulos la leen al cargar
-        localStorage.setItem('autocor_auth', JSON.stringify({
-          user:        (resp.user && resp.user.username)    || u,
-          displayName: (resp.user && resp.user.displayName) || u,
-          isAdmin:     !!(resp.user && resp.user.isAdmin),
-          token:       resp.sessionToken || ''
-        }));
+        AutoCorSession.login(resp,loginRevision);
+        document.getElementById('mlPassword').value='';
+        if(AutoCorSession.snapshot().phase==='mismatch')return;
         if(loginSoloBusqueda){
           loginSoloBusqueda = false;
           cerrarLogin();
           buscarExpediente();
         } else {
-          accederModulo(MODULOS[moduloActivo]);
+          if(moduloActivo)accederModulo(MODULOS[moduloActivo]);else cerrarLogin();
         }
       }catch(err){
         document.getElementById('mlError').textContent = err.message || 'Usuario o clave incorrectos.';
         document.getElementById('mlPassword').value = '';
         document.getElementById('mlPassword').focus();
+      }finally{
         btn.disabled = false;
         btn.textContent = 'INGRESAR';
       }
@@ -1321,23 +1322,14 @@
       }
     });
   </script>
+
 <script>
-/* ── Sincronización de sesión entre pestañas ──────────────────────
-   Si en otra pestaña se inicia o cierra sesión (cambia autocor_auth
-   en localStorage), esta pestaña se sincroniza recargando. Solo actúa
-   en transiciones login↔logout, no en renovaciones de token. */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){
-      // login o logout en otra pestaña → reflejar el cambio aquí
-      location.reload();
-    }
-  });
-})();
+window.AutoCorAuthUI={openLogin:function(message){
+  const modal=document.getElementById('modalLogin');modal.classList.add('open');
+  document.getElementById('mlError').textContent=message||AutoCorSession.message();
+}};
+window.addEventListener('autocor-session-state',function(){const state=AutoCorSession.snapshot();document.documentElement.dataset.sessionLocked=state.phase==='mismatch'?'true':'false';if(!state.authenticated&&state.phase!=='checking'&&document.getElementById('expSearch').style.display!=='none')AutoCorAuthUI.openLogin();});
 </script>
+<style>html[data-session-locked="true"] body> :not(#modalLogin){visibility:hidden!important}</style>
 </body>
 </html>

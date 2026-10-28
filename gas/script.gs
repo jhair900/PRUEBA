@@ -20,6 +20,8 @@ const PAYMENTS_SHEET = 'Pagos';
 const VENTAS_SHEET = 'Ventas';
 const CONTRATOS_SHEET = 'Contratos';
 const FIRMAS_SP_SHEET = 'FirmasSP';   // Datos sincronizados desde Office Script
+// Metadatos de la sesión validada en esta ejecución; nunca se devuelve el token ni la fila.
+let sessionForResponse_ = null;
 const SESSION_TTL_MINUTES = 60 * 24 * 30; // 30 días (expiración deslizante: se renueva en cada uso)
 
 function doGet(e) {
@@ -61,8 +63,9 @@ function geminiProxy_(params, rawBody) {
   let envelope;
   try { envelope = JSON.parse(rawBody || '{}'); }
   catch (_) { return outputJson({ _proxy: { ok: false, status: 400 }, data: { error: { message: 'JSON invalido.' } } }); }
+  sessionForResponse_ = null;
   const session = validateSession_(envelope.sessionToken);
-  if (!session.ok) return outputJson({ _proxy: { ok: false, status: 401 }, data: { error: { message: session.message } } });
+  if (!session.ok) return outputJson({ _proxy: { ok: false, status: session.code === 'SESSION_SERVICE_ERROR' ? 503 : 401, origin:'session', authCode:session.code }, data: { error: { message: session.message } } });
   rawBody = JSON.stringify(envelope.request || {});
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) {
@@ -114,7 +117,8 @@ function geminiProxy_(params, rawBody) {
       return outputJson({_proxy:{ok:false,status:502},data:{error:{status:'INCOMPLETE_MODEL_LIST'}}});
     }
     return outputJson({
-      _proxy: { ok: status >= 200 && status < 300, status: status, retryAfter: retryKey ? String(headers[retryKey]) : '', upstreamMs: Date.now()-started },
+      session: sessionForResponse_,
+      _proxy: { origin:'provider', ok: status >= 200 && status < 300, status: status, retryAfter: retryKey ? String(headers[retryKey]) : '', upstreamMs: Date.now()-started },
       data: parsed
     });
   } catch (err) {
@@ -155,10 +159,11 @@ const RECORD_ACTIONS = {
 };
 function handleAction_(action, payload) {
   payload = payload || {};
+  sessionForResponse_ = null;
   const startedAt = Date.now();
   let response;
   let processingAt = startedAt;
-  const writes = /^(save|delete|reset|login$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$)/.test(action);
+  const writes = /^(save|delete|reset|login$|logout$|changePassword$|adminResetPassword$|setEstadoProceso$|recibirFirmasSP$)/.test(action);
   const lock = writes ? LockService.getScriptLock() : null;
   if (lock && !lock.tryLock(10000)) return { ok: false, code: 'BUSY', message: 'Otro usuario esta guardando. Intenta de nuevo.' };
   processingAt = Date.now();
@@ -170,6 +175,7 @@ function handleAction_(action, payload) {
       payload.data = Object.assign({}, payload.data, { _requestId: payload.requestId || Utilities.getUuid() });
     }
     response = dispatchAction_(action, payload);
+    if(response && sessionForResponse_)response.session=sessionForResponse_;
     return response;
   } catch (err) {
     return { ok: false, message: 'Error al procesar la solicitud: ' + err.message };
@@ -188,7 +194,23 @@ function dispatchAction_(action, payload) {
   if (action === 'ping') return { ok: true, message: 'API funcionando' };
   if (action === 'setupUsers') return { ok: false, message: 'Inicializacion disponible solo desde el editor de Apps Script.' };
   if (action === 'login') return login_(payload.username, payload.password);
-  if (action === 'changePassword') return changePassword_(payload.username, payload.currentPassword, payload.newPassword);
+  if (action === 'validateSession') {
+    const session=validateSession_(payload.sessionToken);
+    return session.ok ? {ok:true,session:sessionForResponse_} : session;
+  }
+  if (action === 'logout') {
+    const session=validateSession_(payload.sessionToken);
+    if(!session.ok)return session;
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(USERS_SHEET).getRange(session.rowIndex,7,1,2).setValues([['','']]);
+    sessionForResponse_=null;
+    return {ok:true};
+  }
+  if (action === 'changePassword') {
+    const session=validateSession_(payload.sessionToken);
+    if(!session.ok)return session;
+    if(normalizeUser_(payload.username)!==session.user)return {ok:false,code:'FORBIDDEN',message:'No autorizado para cambiar la clave de otra cuenta.'};
+    return changePassword_(session.user, payload.currentPassword, payload.newPassword);
+  }
   if (action === 'adminResetPassword') return adminResetPassword_(payload.sessionToken, payload.targetUsername, payload.newPassword);
   if (action === 'listUsers') return listUsers_(payload.sessionToken);
 
@@ -661,6 +683,7 @@ function login_(username, password) {
     return {
       ok: true,
       sessionToken: token,
+      expiresAt: expires.getTime(),
       user: {
         username: values[0],
         displayName: values[1],
@@ -678,7 +701,7 @@ function validateSession_(token) {
     if (!token) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
 
     const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(USERS_SHEET);
-    if (!sh) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
+    if (!sh) return { ok: false, code: 'SESSION_SERVICE_ERROR', message: 'No se pudo consultar el servicio de sesiones.' };
     const found = readUserRecord_(sh, 'token', token);
     if (!found) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
     const rowIndex = found.row;
@@ -687,19 +710,24 @@ function validateSession_(token) {
     const isActive = row[4] === true || String(row[4]).toUpperCase() === 'TRUE';
     if (!isActive) return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión no válida.' };
     if (!expiresAt || !Number.isFinite(new Date(expiresAt).getTime()) || new Date(expiresAt).getTime() <= Date.now()) {
-      return { ok: false, code: 'AUTH_REQUIRED', message: 'Sesión expirada.' };
+      return { ok: false, code: 'AUTH_EXPIRED', message: 'Sesión expirada.' };
     }
 
+    let effectiveExpiry = new Date(expiresAt).getTime();
     // Mantener la expiración deslizante sin escribir en cada consulta.
     try {
       const ms = SESSION_TTL_MINUTES * 60 * 1000;
       const restante = new Date(expiresAt).getTime() - Date.now();
       if (restante < ms / 2) {
-        sh.getRange(rowIndex, 8).setValue(new Date(Date.now() + ms));
+        const renewed=Date.now()+ms;
+        sh.getRange(rowIndex, 8).setValue(new Date(renewed));
+        effectiveExpiry=renewed;
       }
     } catch (eRenew) { /* no bloquear la sesión por fallo de renovación */ }
+    sessionForResponse_={user:normalizeUser_(row[0]),displayName:row[1]||normalizeUser_(row[0]),isAdmin:row[3]===true||String(row[3]).toUpperCase()==='TRUE',expiresAt:effectiveExpiry};
     return {
       ok: true,
+      expiresAt:effectiveExpiry,
       user: normalizeUser_(row[0]),
       displayName: row[1] || normalizeUser_(row[0]),
       isAdmin: row[3] === true || String(row[3]).toUpperCase() === 'TRUE',
@@ -707,7 +735,7 @@ function validateSession_(token) {
     };
 
   } catch (err) {
-    return { ok: false, code: 'AUTH_REQUIRED', message: 'Error validando sesión: ' + err.message };
+    return { ok: false, code: 'SESSION_SERVICE_ERROR', message: 'No se pudo comprobar la sesión. Intenta nuevamente.' };
   }
 }
 
@@ -746,7 +774,7 @@ function adminResetPassword_(sessionToken, targetUsername, newPassword) {
     const sh = ensureUsersSheet_();
     const session = validateSession_(sessionToken);
     if (!session.ok) return session;
-    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!session.isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
     const adminRow = session.rowIndex;
     const targetRow = findUserRow_(sh, targetUsername);
 
@@ -758,7 +786,7 @@ function adminResetPassword_(sessionToken, targetUsername, newPassword) {
 
     const adminValues = sh.getRange(adminRow, 1, 1, 8).getValues()[0];
     const isAdmin = adminValues[3] === true || String(adminValues[3]).toUpperCase() === 'TRUE';
-    if (!isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
 
     sh.getRange(targetRow, 3, 1, 5).setValues([[
       hashPassword_(newPassword),
@@ -780,13 +808,13 @@ function listUsers_(sessionToken) {
     const sh = ensureUsersSheet_();
     const session = validateSession_(sessionToken);
     if (!session.ok) return session;
-    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!session.isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
     const adminRow = session.rowIndex;
     if (!adminRow) return { ok: false, message: 'Administrador no encontrado.' };
 
     const adminValues = sh.getRange(adminRow, 1, 1, 8).getValues()[0];
     const isAdmin = adminValues[3] === true || String(adminValues[3]).toUpperCase() === 'TRUE';
-    if (!isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
 
     const lastRow = sh.getLastRow();
     if (lastRow < 2) return { ok: true, rows: [] };
@@ -829,7 +857,7 @@ function listGlossary_() {
 
 function saveGlossaryTerm_(term, description, session) {
   try {
-    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!session.isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
 
     const key = normalizeTerm_(term);
     const desc = String(description || '').trim();
@@ -851,7 +879,7 @@ function saveGlossaryTerm_(term, description, session) {
 
 function deleteGlossaryTerm_(term, session) {
   try {
-    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!session.isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
     const key = normalizeTerm_(term);
     if (!key) return { ok: false, message: 'El término es obligatorio.' };
 
@@ -868,7 +896,7 @@ function deleteGlossaryTerm_(term, session) {
 
 function resetGlossary_(session) {
   try {
-    if (!session.isAdmin) return { ok: false, message: 'No autorizado.' };
+    if (!session.isAdmin) return { ok: false, code:'FORBIDDEN', message: 'No autorizado.' };
     const sh = ensureGlossarySheet_();
     const lastRow = sh.getLastRow();
     if (lastRow >= 2) sh.getRange(2, 1, lastRow - 1, 4).clearContent();
@@ -1025,7 +1053,7 @@ function deleteByPlaca_(placa, session) {
 
     const history = buildHistory_(data, {}, null);
     if (!session.isAdmin && uniqueUsers_(history).indexOf(normalizeUser_(session.user)) === -1) {
-      return { ok: false, message: 'No autorizado para eliminar este registro.' };
+      return { ok: false, code:'FORBIDDEN', message: 'No autorizado para eliminar este registro.' };
     }
 
     sheet.deleteRow(row);
@@ -1146,7 +1174,7 @@ function deletePagoByPlaca_(placa, session) {
 
     const responsable = normalizeUser_(sheet.getRange(row, 2).getValue());
     if (!session.isAdmin && responsable !== normalizeUser_(session.user)) {
-      return { ok: false, message: 'No autorizado para eliminar este pago.' };
+      return { ok: false, code:'FORBIDDEN', message: 'No autorizado para eliminar este pago.' };
     }
 
     sheet.deleteRow(row);
@@ -1301,7 +1329,7 @@ function deleteVentaByPlaca_(placa, session) {
 
     const history = buildHistory_(data, {}, null);
     if (!session.isAdmin && uniqueUsers_(history).indexOf(normalizeUser_(session.user)) === -1) {
-      return { ok: false, message: 'No autorizado para eliminar este registro de venta.' };
+      return { ok: false, code:'FORBIDDEN', message: 'No autorizado para eliminar este registro de venta.' };
     }
 
     sheet.deleteRow(row);
@@ -1705,7 +1733,7 @@ function deleteContratoByPlaca_(placa, session) {
 
     const history = buildHistory_(data, {}, null);
     if (!session.isAdmin && uniqueUsers_(history).indexOf(normalizeUser_(session.user)) === -1) {
-      return { ok: false, message: 'No autorizado para eliminar este registro.' };
+      return { ok: false, code:'FORBIDDEN', message: 'No autorizado para eliminar este registro.' };
     }
 
     sheet.deleteRow(row);

@@ -138,6 +138,12 @@
   let writeGeneration = 0;
   async function postJson(url, body, options){
     body = Object.assign({}, body);
+    options=options||{};
+    if(global.AutoCorSession && !options.sessionBypass && !['login','ping','listGlossary'].includes(body.action)){
+      const ticket=await global.AutoCorSession.ensure();
+      body.sessionToken=ticket.token;
+      options=Object.assign({},options,{sessionTicket:ticket});
+    }
     if(!body.sessionToken && body.action !== 'login'){
       try { body.sessionToken = (JSON.parse(global.localStorage.getItem('autocor_auth') || '{}') || {}).token || ''; } catch (_) {}
     }
@@ -208,6 +214,7 @@
     }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      if(options.sessionTicket)global.AutoCorSession.assert(options.sessionTicket);
       if(remainingMs() <= 0) break;
       progress(attempt ? 'Reintentando el guardado…' : 'Guardando los datos…');
       const availableMs = remainingMs();
@@ -225,7 +232,9 @@
           credentials: 'omit',
           redirect: 'follow'
         }, attemptTimeout, trace);
-        const json = await parseJsonResponse(resp, options.context, options);
+        const json = await parseJsonResponse(resp, options.context, Object.assign({},options,{throwOnApiError:false}));
+        if(options.sessionTicket)global.AutoCorSession.consume(json,options.sessionTicket);
+        if(options.throwOnApiError!==false && json?.ok===false){const error=Object.assign(new Error((options.context?options.context+': ':'')+(json.message||'Error en API')),{code:json.code,isApiError:true,response:json});throw error;}
         trace.server = json && json.timing || null;
         if(json && json.ok===false)trace.error=errorDetails({name:'ApiError',code:json.code,message:json.message},body);
         recordTiming(json && json.ok === false ? 'api_error' : 'success', json);
@@ -238,7 +247,7 @@
         if(err.response && err.response.timing)trace.server=err.response.timing;
         trace.failedStage=trace.failedStage || 'response';
         trace.serviceUnavailable = !!err.isServiceUnavailable;
-        const isKnown = err && (err.isApiError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
+        const isKnown = err && (err.isApiError || err.isSessionError || err.isNonRetryable || err.isNetworkError || err.isServiceUnavailable);
         lastError = isKnown ? err : wrapNetworkError(err, options.context, url, saving);
 
         // Una respuesta perdida no implica que Sheets no haya guardado.
@@ -250,7 +259,7 @@
           traces.push(verification);
           const verificationStarted = Date.now();
           try {
-            const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:Math.min(30000, remainingMs()), totalTimeoutMs:remainingMs(), throwOnApiError:false});
+            const check = await sendJson(url, {action: readAction, sessionToken: body.sessionToken, placa: body.data.placaValue || body.data.placa}, {retries:0, timeoutMs:Math.min(30000, remainingMs()), totalTimeoutMs:remainingMs(), throwOnApiError:false,sessionBypass:true,sessionTicket:options.sessionTicket});
             verification.elapsedMs = Date.now()-verificationStarted;
             verification.server = check && check.timing || null;
             verification.details = global.AutoCorApi.lastTiming && global.AutoCorApi.lastTiming.details || [];
@@ -264,6 +273,7 @@
             verification.error=errorDetails(verifyError,body);
             verification.errorType = verification.error.name;
             verification.details=verifyError.timing && verifyError.timing.details || [];
+            if(verifyError.isSessionError){lastError=verifyError;break;}
           }
         }
         if (err && (err.isApiError || err.isNonRetryable)) break;
@@ -282,9 +292,10 @@
 
     const failedTiming=recordTiming('failed', lastError && lastError.response);
     if(lastError)lastError.timing=failedTiming;
+    if(saving&&lastError?.code==='AUTH_CONTEXT_CHANGED')lastError.message='La sesión cambió durante el guardado. No se pudo confirmar su resultado. Conserva el formulario y verifica la placa con tu cuenta antes de repetirlo.';
     if(saving && lastError && !lastError.isApiError && !lastError.isNonRetryable){
       lastError.message = (options.context ? options.context + ': ' : '') + 'No se pudo confirmar el guardado. El servidor podría haberlo completado. Conserva el formulario y verifica la placa antes de volver a guardar.';
-    }else if(lastError && !lastError.isApiError){
+    }else if(lastError && !lastError.isApiError && !lastError.isSessionError){
       lastError.message='No se pudo completar la consulta. Revisa tu conexión e intenta de nuevo. Si persiste, informa al administrador.';
     }
     throw lastError;

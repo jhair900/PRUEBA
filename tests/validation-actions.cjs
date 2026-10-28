@@ -19,7 +19,7 @@ const root=path.resolve(__dirname,'..');
    }
    if(url.hostname!=='autocor.test')return route.fulfill({contentType:'application/javascript',body:'window.pdfjsLib={GlobalWorkerOptions:{}};'});
    if(url.pathname==='/liquidacion.html')return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Destino ficticio</title>'});
-   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true})};'});
+   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true,session:{...JSON.parse(localStorage.getItem("autocor_auth")),expiresAt:Date.now()+3600000}})};'});
    if(url.pathname==='/js/apps-script-transport.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorTransport={request:async()=>null,connect:async()=>null};'});
    if(url.pathname==='/js/workflow.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorWork={register(){},refreshControls(){},captureDrive(){return{}},restoreDrive(){}};'});
    const file=path.join(root,decodeURIComponent(url.pathname));

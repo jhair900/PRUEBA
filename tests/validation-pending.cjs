@@ -15,7 +15,7 @@ const root=path.resolve(__dirname,'..');
     return route.fulfill({contentType:'application/json',body:JSON.stringify({_proxy:{ok:true,status:200},data:{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({placa:'ABC1234',color:'AZUL',_reviewKeys:[]})}]}}]}})});
    }
    if(url.hostname!=='autocor.test')return route.fulfill({contentType:'application/javascript',body:'window.pdfjsLib={GlobalWorkerOptions:{}};'});
-   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true})};'});
+   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true,session:{...JSON.parse(localStorage.getItem("autocor_auth")),expiresAt:Date.now()+3600000}})};'});
    if(url.pathname==='/js/apps-script-transport.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorTransport={request:async()=>null,connect:async()=>null};'});
    if(url.pathname==='/js/workflow.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorWork={register(){},refreshControls(){},captureDrive(){return{}},restoreDrive(){}};'});
    const file=path.join(root,decodeURIComponent(url.pathname));

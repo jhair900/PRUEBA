@@ -40,7 +40,7 @@
     }
     return fallback??60000;
   }
-  function classify(status){return status===401||status===403?'AI_AUTH_ERROR':status===429?'AI_QUOTA_EXHAUSTED':status===404||status===410?'AI_MODEL_UNAVAILABLE':status>=500?'AI_UPSTREAM_ERROR':status===0?'AI_NETWORK_ERROR':'AI_REQUEST_REJECTED';}
+  function classify(status){return status===401||status===403?'AI_PROVIDER_AUTH_ERROR':status===429?'AI_QUOTA_EXHAUSTED':status===404||status===410?'AI_MODEL_UNAVAILABLE':status>=500?'AI_UPSTREAM_ERROR':status===0?'AI_NETWORK_ERROR':'AI_REQUEST_REJECTED';}
   function create(options){
     const now=options.now||Date.now,config={checkMs:45000,attemptMs:10000,maxGenerateAttempts:3,maxRecoveryRequests:5,retryBaseMs:1000,retryMaxMs:5000,...options.config};
     let context='',epoch=0,active='',checkPromise=null,lastCode='',checkRuns=0;
@@ -120,6 +120,7 @@
           }
           throw error(lastCode||'AI_MODEL_UNAVAILABLE');
         }catch(e){
+          if(['AUTH_REQUIRED','AUTH_EXPIRED','AUTH_CONTEXT_CHANGED','AI_CONTEXT_CHANGED'].includes(e.code)&&!active)checkRuns=0;
           checkTicket(ticket);lastCode=e.code||'AI_INVALID_RESPONSE';
           emit();throw e;
         }
@@ -177,7 +178,7 @@
         e.recoveryExhausted=['AI_UPSTREAM_ERROR','AI_RECOVERY_LIMIT','AI_TIMEOUT','AI_NETWORK_ERROR','AI_INVALID_RESPONSE','AI_RESPONSE_INCOMPLETE'].includes(e.code);
         // El presupuesto agotado pertenece a este documento. Sólo un impedimento
         // común a los siguientes documentos detiene el lote completo.
-        e.stopBatch=['AI_AUTH_ERROR','AI_CONTEXT_CHANGED','AI_MODEL_UNAVAILABLE','AI_QUOTA_EXHAUSTED','AI_PRECHECK_REQUIRED'].includes(e.code)||
+        e.stopBatch=['AUTH_REQUIRED','AUTH_EXPIRED','AUTH_CONTEXT_CHANGED','SESSION_SERVICE_ERROR','AI_AUTH_ERROR','AI_PROVIDER_AUTH_ERROR','AI_CONTEXT_CHANGED','AI_MODEL_UNAVAILABLE','AI_QUOTA_EXHAUSTED','AI_PRECHECK_REQUIRED'].includes(e.code)||
           (e.recoveryReason==='service-wait-exceeds-budget'&&e.retryMs>0);
         if(!['AI_CANCELLED','AI_CONTEXT_CHANGED'].includes(e.code)&&ticket?.model===active)failed(active,e);
         throw e;

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T175631976075Z">
-<script src="js/auto-update.js?v=20261026T175631976075Z"></script>
+<meta name="autocor-version" content="20261027T162110818336Z">
+<script src="js/auto-update.js?v=20261027T162110818336Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cartilla de Descuentos AUTOCOR</title>
@@ -631,11 +631,12 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 .empty-support{border:1px dashed #cbd5e1;border-radius:12px;padding:24px;color:var(--muted);font-size:13px;text-align:center;}
 
 </style>
-<script src="js/api-config.js?v=20261026T175631976075Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T175631976075Z"></script>
-<script src="js/api-client.js?v=20261026T175631976075Z"></script>
-<script src="js/expediente.js?v=20261026T175631976075Z"></script>
-<link rel="stylesheet" href="js/navigation.css?v=20261026T175631976075Z">
+<script src="js/api-config.js?v=20261027T162110818336Z"></script>
+<script src="js/apps-script-transport.js?v=20261027T162110818336Z"></script>
+<script src="js/session.js?v=20261027T162110818336Z"></script>
+<script src="js/api-client.js?v=20261027T162110818336Z"></script>
+<script src="js/expediente.js?v=20261027T162110818336Z"></script>
+<link rel="stylesheet" href="js/navigation.css?v=20261027T162110818336Z">
 </head>
 <body>
 
@@ -1478,7 +1479,7 @@ function refreshAuthorizationText(force=false){
 
 /* Usuario con clave */
 let authState = null;
-try{ authState = JSON.parse(localStorage.getItem("autocor_auth") || "null"); }catch(e){ authState = null; }
+try{ authState = (window.AutoCorSession?AutoCorSession.snapshot().auth:JSON.parse(localStorage.getItem("autocor_auth") || "null")); }catch(e){ authState = null; }
 let currentUser = authState?.user || "";
 let currentDisplayName = authState?.displayName || "";
 let currentIsAdmin = !!authState?.isAdmin;
@@ -3731,7 +3732,7 @@ async function _subirPdfsLiquidacionADrive(placa){
 
   // Mostrar la UI de login o cartilla de inmediato sin esperar al servidor
   if(currentUser && authToken){
-    setStatus('SESIÓN RECUPERADA — CARGANDO...', false, false);
+    setStatus('COMPROBANDO SESIÓN…', false, false);
     requireUser();
     // Lanzar llamadas al servidor EN PARALELO, sin bloquear la pantalla
     Promise.all([
@@ -4839,8 +4840,9 @@ document.addEventListener('paste', function(e){
 </script>
 
 
-<script src="js/session-sync.js?v=20261026T175631976075Z"></script>
-<script src="js/workflow.js?v=20261026T175631976075Z"></script>
-<script src="js/workflow-adapters.js?v=20261026T175631976075Z"></script>
+<script src="js/auth-ui.js?v=20261027T162110818336Z"></script>
+<script src="js/session-sync.js?v=20261027T162110818336Z"></script>
+<script src="js/workflow.js?v=20261027T162110818336Z"></script>
+<script src="js/workflow-adapters.js?v=20261027T162110818336Z"></script>
 </body>
 </html>

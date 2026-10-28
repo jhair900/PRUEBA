@@ -221,3 +221,15 @@ Esta corrección no modifica `gas/script.gs` ni necesita un nuevo despliegue de 
 Comprobaciones locales afectadas: `tests/gemini-availability.cjs`, `tests/processing-browser.cjs`, `tests/contract-pipeline.cjs`, `tests/ocr-contradictions.cjs`, `tests/processing-control.cjs` y `tests/document-reading-quality.cjs`. Son simulaciones locales; no miden disponibilidad ni latencia actuales de la cuenta real. Las pruebas con documentos reales siguen detenidas por indicación del usuario. Los nombres heredados de algunos parsers incluyen OCR, pero no ejecutan reconocimiento.
 
 Preparar una versión revisable con `python tools/prepare-release.py`. El ZIP no publica ni despliega por sí solo. Los HTML, `version.json` y recursos JS deben corresponder a la misma versión.
+
+## Sesión y recuperación en la misma página — 27 de octubre de 2026
+
+Esta entrega sí modifica `gas/script.gs`. Para probarla con el servicio real es necesaria una Nueva versión del backend completo: añade `validateSession`, `logout`, fecha efectiva de vencimiento y origen/código explícitos para los rechazos de sesión del proxy Gemini. No cambia la URL ni la clave de Gemini. Se entrega sin publicar ni desplegar.
+
+`js/session.js` comparte una única comprobación inicial de sesión por página, reutiliza su resultado y recibe la renovación deslizante en las respuestas existentes. No hay sondeos periódicos ni una petición adicional de autenticación antes de cada documento. El límite conocido se controla localmente; una revocación externa al navegador se reconoce en la siguiente solicitud autenticada. Un fallo de conexión deja la sesión sin comprobar; un rechazo de credenciales del proveedor no cierra la sesión AUTOCOR.
+
+Las páginas abren el formulario de acceso existente en la misma pantalla. La reautenticación conserva archivos, imágenes, datos, correcciones y vacíos manuales, borradores y archivos pendientes de Drive. No repite automáticamente lecturas, guardados ni contratos. Tras ingresar con la cuenta original se puede continuar con las acciones existentes; sólo se reintentan documentos incompletos. Si se ingresa con otra cuenta, el trabajo anterior queda bloqueado y oculto hasta volver a su cuenta original, para impedir mezclar datos. Las respuestas de otra generación de sesión se descartan, también durante un guardado. Un guardado ya enviado cuya respuesta se perdió requiere verificar la placa antes de repetirlo.
+
+La selección fija de Gemini se conserva: únicamente los dos modelos autorizados, una selección inicial y ningún cambio de modelo al reautenticar. La comprobación inicial interrumpida por autenticación puede terminar después de ingresar; una selección ya completada no se repite. CUV permanece local y no se ejecuta Tesseract.
+
+Resultados y límites de las comprobaciones locales en `entrega/sesion-autocor-20261027.md`. Son simulaciones de red/backend y pruebas de navegador; no se enviaron documentos ni credenciales reales y no acreditan el estado del despliegue de producción.

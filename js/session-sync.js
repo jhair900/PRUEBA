@@ -1,24 +1,17 @@
 (function(global){
   'use strict';
-  // Actualizar la cuenta sin recargar ni borrar los formularios abiertos.
-  var deferred = false;
-  function sync(){
-    if(global.AutoCorWork && global.AutoCorWork.busy){deferred=true;return;}
-    deferred=false;
-    var auth = null;
-    try { auth = JSON.parse(global.localStorage.getItem('autocor_auth') || 'null'); } catch(_) {}
-    if(typeof global.saveAuthState === 'function') global.saveAuthState(auth, false);
-    if(global.AutoCorAuthUI) global.AutoCorAuthUI.render();
-    // Ignorar respuestas de búsquedas iniciadas con la sesión anterior.
-    ['pagos','ventas','liquidacion'].forEach(function(module){
-      var key = '__' + module + 'PlateSearchId';
-      global[key] = (global[key] || 0) + 1;
-    });
-  }
-  global.addEventListener('storage', function(event){
-    if(event.key === 'autocor_auth' || event.key === null) sync();
+  // La sincronización de autenticación es inmediata; nunca se difiere por un guardado.
+  var previousGeneration=global.AutoCorSession?.snapshot().generation;
+  global.addEventListener('autocor-session-state',function(){
+    var generation=global.AutoCorSession?.snapshot().generation;
+    if(generation!==previousGeneration){
+      previousGeneration=generation;
+      ['pagos','ventas','liquidacion'].forEach(function(module){
+        var key='__'+module+'PlateSearchId';global[key]=(global[key]||0)+1;
+      });
+    }
+    global.AutoCorAuthUI?.render?.();
   });
-  global.addEventListener('autocor-operation-end',function(){if(deferred)sync();});
 
   var notice;
   global.addEventListener('autocor-save-progress', function(event){

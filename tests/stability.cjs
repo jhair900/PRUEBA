@@ -26,17 +26,19 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
     console.log('OK',file,'descarta respuestas y errores antiguos');
   }
   {
-    const listeners={}, calls=[];
-    let auth={user:'OTRO',token:'nuevo'};
-    vm.runInNewContext(read('js/session-sync.js'),{window:{
+    const listeners={}, calls=[];let generation=0,renders=0;
+    const testWindow={
       addEventListener:(n,f)=>listeners[n]=f,
-      localStorage:{getItem:()=>JSON.stringify(auth)},
-      saveAuthState:(a,p)=>calls.push([a,p]), AutoCorAuthUI:{render(){}},
+      AutoCorSession:{snapshot:()=>({generation})},
+      saveAuthState:(a,p)=>calls.push([a,p]), AutoCorAuthUI:{render(){renders++;}},
       location:{reload(){throw Error('No debe recargar');}}
-    }});
-    listeners.storage({key:'autocor_auth'});
-    assert.equal(calls[0][0].user,'OTRO');assert.equal(calls[0][1],false);
-    auth=null;listeners.storage({key:'autocor_auth'});assert.equal(calls[1][0],null);
+    };
+    vm.runInNewContext(read('js/session-sync.js'),{window:testWindow});
+    generation++;listeners['autocor-session-state']();
+    assert.equal(testWindow.__pagosPlateSearchId,1);
+    // Actualizar metadatos/permisos no invalida la búsqueda en curso.
+    listeners['autocor-session-state']();
+    assert.equal(testWindow.__pagosPlateSearchId,1);assert.equal(renders,2);assert.deepEqual(calls,[]);
     console.log('OK cambio y cierre de sesión sin recargar ni reescribir almacenamiento');
   }
   {

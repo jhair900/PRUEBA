@@ -42,6 +42,7 @@
     try {
       return await _post('getContratoByPlaca', { placa: p });
     } catch(err){
+      if(err.isSessionError)throw err;
       return { ok:false, message:'error de red: '+err.message };
     }
   }
@@ -65,10 +66,10 @@
     }
 
     const [c, l, pa, v] = await Promise.all([
-      _post('getContratoByPlaca', { placa: p }).catch(function(){ return vacio; }),
-      _post('getByPlaca',         { placa: p }).catch(function(){ return vacio; }),
-      _post('getPagoByPlaca',     { placa: p }).catch(function(){ return vacio; }),
-      _post('getVentaByPlaca',    { placa: p }).catch(function(){ return vacio; })
+      _post('getContratoByPlaca', { placa: p }).catch(function(err){if(err.isSessionError)throw err;return vacio;}),
+      _post('getByPlaca',         { placa: p }).catch(function(err){if(err.isSessionError)throw err;return vacio;}),
+      _post('getPagoByPlaca',     { placa: p }).catch(function(err){if(err.isSessionError)throw err;return vacio;}),
+      _post('getVentaByPlaca',    { placa: p }).catch(function(err){if(err.isSessionError)throw err;return vacio;})
     ]);
     return {
       placa:        p,
@@ -173,6 +174,7 @@
     try {
       return await _post('getFirmaSPByPlaca', { placa: p });
     } catch(err){
+      if(err.isSessionError)throw err;
       return { ok:false, message:'error de red: '+err.message };
     }
   }
@@ -191,6 +193,7 @@
         observacion: observacion || ''
       });
     } catch(err){
+      if(err.isSessionError)throw err;
       return { ok:false, message:'error de red: '+err.message };
     }
   }

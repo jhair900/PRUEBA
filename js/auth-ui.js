@@ -6,13 +6,13 @@
   function $(id){ return document.getElementById(id); }
 
   function getAuth(){
+    if(global.AutoCorSession)return global.AutoCorSession.snapshot().auth;
     try { return JSON.parse(localStorage.getItem('autocor_auth') || 'null') || null; }
     catch(_){ return null; }
   }
 
   function setAuth(auth){
     var previous = getAuth();
-    if(global.AutoCorWork && previous && (!auth || previous.user !== auth.user)) global.AutoCorWork.forget();
     if(typeof global.saveAuthState === 'function'){
       global.saveAuthState(auth || null);
     } else if(auth){
@@ -132,7 +132,7 @@
     $('authUiLogin').addEventListener('click', function(){ openModal('authUiLoginModal'); });
     $('authUiLogout').addEventListener('click', logout);
     $('authUiSwitch').addEventListener('click', function(){
-      setAuth(null);
+      if(global.AutoCorSession)global.AutoCorSession.logout();else setAuth(null);
       $('authUiUsername').value = '';
       $('authUiPassword').value = '';
       openModal('authUiLoginModal');
@@ -145,13 +145,14 @@
   function mountModals(){
     if($('authUiLoginModal')) return;
     var wrap = document.createElement('div');
+    wrap.id='authUiModals';
     wrap.innerHTML =
       '<div class="auth-ui-modal-backdrop" id="authUiLoginModal">' +
         '<div class="auth-ui-modal">' +
           '<form id="authUiLoginForm" onsubmit="return false;">' +
             '<div class="auth-ui-head"><h3>Iniciar sesion</h3><button type="button" class="auth-ui-close" data-close="authUiLoginModal">Cerrar</button></div>' +
             '<div class="auth-ui-body">' +
-              '<div class="auth-ui-notice">Ingresa tu usuario y clave para guardar, buscar y administrar segun tus permisos.</div>' +
+              '<div class="auth-ui-notice" id="authUiLoginNotice" role="status">Ingresa tu usuario y clave para guardar, buscar y administrar segun tus permisos.</div>' +
               '<div class="auth-ui-field"><label>Usuario</label><input id="authUiUsername" name="username" autocomplete="username" placeholder="Ej: YROMERO"></div>' +
               '<div class="auth-ui-field"><label>Clave</label><input id="authUiPassword" name="password" type="password" autocomplete="current-password" placeholder="Tu contrasena"></div>' +
               '<div class="auth-ui-actions"><button type="submit" class="auth-ui-primary" id="authUiDoLogin">Ingresar</button></div>' +
@@ -203,21 +204,27 @@
     if(global.AutoCorWork)global.AutoCorWork.refreshControls();
     var auth = getAuth();
     var logged = !!(auth && auth.token);
+    var session=global.AutoCorSession?.snapshot();
+    document.documentElement.dataset.sessionLocked=session?.phase==='mismatch'?'true':'false';
     hideLegacyButtons();
     scrubUserAutofill();
     if($('authUiLogin')) $('authUiLogin').style.display = logged ? 'none' : 'inline-block';
     if($('authUiSwitch')) $('authUiSwitch').style.display = logged ? 'inline-block' : 'none';
-    if($('authUiCurrentUser')) $('authUiCurrentUser').textContent = logged ? (auth.displayName || auth.user || 'Usuario') : 'Sin sesión';
+    if($('authUiCurrentUser')) $('authUiCurrentUser').textContent = logged ? (auth.displayName || auth.user || 'Usuario') : session?.phase==='checking'?'Comprobando sesión…':session?.phase==='unknown'?'Sesión sin comprobar':'Sin sesión';
     if($('authUiLogout')) $('authUiLogout').style.display = logged ? 'inline-block' : 'none';
     if($('authUiChange')) $('authUiChange').style.display = logged ? 'inline-block' : 'none';
     if($('authUiAdmin')) $('authUiAdmin').style.display = logged && auth.isAdmin ? 'inline-block' : 'none';
   }
 
+  var loginPending=false;
   async function login(){
+    if(loginPending)return;
     var u = ($('authUiUsername').value || '').trim().toUpperCase();
     var p = ($('authUiPassword').value || '').trim();
     if(!u || !p){ alert('Ingresa usuario y clave.'); return; }
+    loginPending=true;$('authUiDoLogin').disabled=true;
     try{
+      var loginRevision=global.AutoCorSession?.loginRevision();
       var resp = await api('login', { username: u, password: p });
       var auth = {
         user: (resp.user && resp.user.username) || u,
@@ -225,9 +232,10 @@
         isAdmin: !!(resp.user && resp.user.isAdmin),
         token: resp.sessionToken || ''
       };
-      setAuth(auth);
+      if(global.AutoCorSession)global.AutoCorSession.login(resp,loginRevision);else setAuth(auth);
       $('authUiUsername').value = '';
       $('authUiPassword').value = '';
+      if(global.AutoCorSession?.snapshot().phase==='mismatch')return;
       closeModal('authUiLoginModal');
       if(typeof global.saveAuthState === 'function' && typeof global.setStatus === 'function') global.setStatus('SESIÓN INICIADA', false, true);
       if(resp.user && resp.user.mustChangePassword){
@@ -235,16 +243,19 @@
         openChangePassword();
       }
     }catch(err){
-      console.error(err);
-      alert(err.message || 'No se pudo iniciar sesion.');
+      $('authUiLoginNotice').textContent=err.message || 'No se pudo iniciar sesión.';
+      $('authUiPassword').value='';
+    }finally{
+      loginPending=false;$('authUiDoLogin').disabled=false;
     }
   }
 
   function logout(){
+    if(global.AutoCorSession){global.AutoCorSession.logout();return;}
     if(typeof global.cerrarSesion === 'function' && global.cerrarSesion !== logout){
       try { global.cerrarSesion(); } catch(_) { setAuth(null); }
     } else {
-      setAuth(null);
+      if(global.AutoCorSession)global.AutoCorSession.logout();else setAuth(null);
     }
     render();
   }
@@ -271,7 +282,7 @@
       await api('changePassword', { username: auth.user, currentPassword: current, newPassword: next });
       alert('Clave actualizada correctamente.');
       closeModal('authUiChangeModal');
-      setAuth(null);
+      if(global.AutoCorSession)global.AutoCorSession.logout();else setAuth(null);
       openModal('authUiLoginModal');
     }catch(err){
       console.error(err);
@@ -344,15 +355,29 @@
       global.saveAuthState._authUiWrapped = true;
     }
     mountStyles();
-    mountBar();
+    if(!global.AutoCorAuthModalOnly)mountBar();
     mountModals();
+    var guardStyle=document.createElement('style');guardStyle.textContent='html[data-session-locked="true"] body> :not(#authUiModals){visibility:hidden!important}#authUiModals{visibility:visible!important}.auth-ui-modal-backdrop{z-index:24000}';document.head.appendChild(guardStyle);
+    // Las páginas antiguas conservan sus formularios, pero abren el acceso compartido.
+    ['modalUsuario','modalLogin'].forEach(function(id){var el=$(id);if(el)el.style.display='none';});
+    if(typeof global.abrirModal==='function'){
+      var oldOpen=global.abrirModal;
+      global.abrirModal=function(id){if(id==='modalUsuario'){global.AutoCorAuthUI.openLogin();return;}return oldOpen.apply(this,arguments);};
+    }
     render();
+    if(global.AutoCorSession&&!global.AutoCorSession.snapshot().authenticated&&global.AutoCorSession.snapshot().phase!=='checking')global.AutoCorAuthUI.openLogin();
     [100, 500, 1200, 2500].forEach(function(ms){
       setTimeout(scrubUserAutofill, ms);
     });
   }
 
-  global.AutoCorAuthUI = { init: init, render: render, openLogin: function(){ openModal('authUiLoginModal'); } };
+  global.AutoCorAuthUI = { init: init, render: render, openLogin: function(message){
+    if(!$('authUiLoginModal'))return;
+    $('authUiLoginNotice').textContent=message || global.AutoCorSession?.message() || 'Ingresa tu usuario y clave.';
+    // Un único formulario, incluso si varias solicitudes rechazan la sesión.
+    openModal('authUiLoginModal');$('authUiModals').inert=false;
+  } };
+  global.addEventListener('autocor-session-state',function(){render();var state=global.AutoCorSession.snapshot();if(state.authenticated){closeModal('authUiLoginModal');if(typeof global.setStatus==='function')global.setStatus('SESIÓN INICIADA',false,true);}else if(state.phase!=='checking')global.AutoCorAuthUI.openLogin();});
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

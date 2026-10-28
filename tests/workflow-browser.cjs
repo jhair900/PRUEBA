@@ -3,7 +3,7 @@ const root=path.join(__dirname,'..');
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});
 try {for(const file of ['contratos.html','liquidacion.html','pagos.html','ventas.html']){
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
- await page.route('**/*',async r=>{const u=new URL(r.request().url());if(u.hostname!=='autocor.test')return r.abort();const rel=decodeURIComponent(u.pathname).slice(1)||'index.html';if(rel==='js/api-client.js')return r.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true,rows:[]})};'});const f=path.resolve(root,rel);if(!f.startsWith(root+path.sep)||!fs.existsSync(f))return r.fulfill({status:404,body:''});return r.fulfill({contentType:rel.endsWith('.html')?'text/html':rel.endsWith('.js')?'application/javascript':rel.endsWith('.css')?'text/css':'image/png',body:fs.readFileSync(f)});});
+ await page.route('**/*',async r=>{const u=new URL(r.request().url());if(u.hostname!=='autocor.test')return r.abort();const rel=decodeURIComponent(u.pathname).slice(1)||'index.html';if(rel==='js/api-client.js')return r.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async()=>({ok:true,rows:[],session:{...JSON.parse(localStorage.getItem("autocor_auth")),expiresAt:Date.now()+3600000}})};'});const f=path.resolve(root,rel);if(!f.startsWith(root+path.sep)||!fs.existsSync(f))return r.fulfill({status:404,body:''});return r.fulfill({contentType:rel.endsWith('.html')?'text/html':rel.endsWith('.js')?'application/javascript':rel.endsWith('.css')?'text/css':'image/png',body:fs.readFileSync(f)});});
  await page.addInitScript(()=>{try{localStorage.setItem('autocor_auth',JSON.stringify({user:'PRUEBA',token:'simulado',isAdmin:true}));}catch(_){}});
  await page.goto('https://autocor.test/'+file);await page.waitForTimeout(200);assert.deepEqual(errors,[],file);
  await page.evaluate(async file=>{
@@ -34,14 +34,15 @@ try {for(const file of ['contratos.html','liquidacion.html','pagos.html','ventas
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('autocor-timing',{detail:{action:'savePago',elapsedMs:9000,attempts:1,server:{serverMs:800},details:[{kind:'request',transport:'google.script.run',channelRecovery:'Canal retirado',error:{name:'AbortError',code:20,message:'signal is aborted without reason'}}]}})));
  await page.getByRole('button',{name:'Tiempos',exact:true}).click();assert.ok((await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).innerText()).includes('9.0 s'));await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByText('Ver etapas',{exact:true}).first().click();assert.ok((await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).innerText()).includes('AbortError (código 20): signal is aborted without reason'));await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByRole('button',{name:'Cerrar'}).click();
  if(file==='pagos.html'){
-  await page.evaluate(()=>localStorage.setItem('autocor_auth',JSON.stringify({user:'OTRO',token:'otro'})));
-  await page.getByRole('button',{name:'Borradores',exact:true}).click();await page.getByRole('dialog',{name:'Borradores recuperables'}).getByText(/No hay borradores/).waitFor();await page.getByRole('dialog',{name:'Borradores recuperables'}).getByRole('button',{name:'Cerrar'}).click();
-  await page.evaluate(async()=>{localStorage.setItem('autocor_auth',JSON.stringify({user:'PRUEBA',token:'simulado',isAdmin:true}));await new Promise((resolve,reject)=>{const req=indexedDB.open('autocor-work',1);req.onsuccess=()=>{const tx=req.result.transaction('drafts','readwrite'),store=tx.objectStore('drafts');store.getAll().onsuccess=e=>e.target.result.forEach(r=>store.put({...r,expiresAt:Date.now()-1}));tx.oncomplete=resolve;tx.onerror=reject;};});});
+  await page.evaluate(()=>AutoCorSession.login({sessionToken:'otro',expiresAt:Date.now()+3600000,user:{username:'OTRO'}}));
+  assert.equal(await page.evaluate(()=>AutoCorSession.snapshot().phase),'mismatch');
+  assert.equal(await page.getByRole('button',{name:'Borradores',exact:true}).isVisible(),false);
+  await page.evaluate(async()=>{AutoCorSession.login({sessionToken:'simulado',expiresAt:Date.now()+3600000,user:{username:'PRUEBA',isAdmin:true}});await new Promise((resolve,reject)=>{const req=indexedDB.open('autocor-work',1);req.onsuccess=()=>{const tx=req.result.transaction('drafts','readwrite'),store=tx.objectStore('drafts');store.getAll().onsuccess=e=>e.target.result.forEach(r=>store.put({...r,expiresAt:Date.now()-1}));tx.oncomplete=resolve;tx.onerror=reject;};});});
   await page.getByRole('button',{name:'Borradores',exact:true}).click();await page.getByRole('dialog',{name:'Borradores recuperables'}).getByText(/No hay borradores/).waitFor();await page.getByRole('dialog',{name:'Borradores recuperables'}).getByRole('button',{name:'Cerrar'}).click();
  }
  await page.setViewportSize({width:1360,height:850});
  await page.getByRole('button',{name:'Tiempos',exact:true}).click();
- await page.evaluate(()=>{const oldValue=localStorage.getItem('autocor_auth');const a=JSON.parse(oldValue);a.isAdmin=false;localStorage.setItem('autocor_auth',JSON.stringify(a));window.dispatchEvent(new StorageEvent('storage',{key:'autocor_auth',oldValue,newValue:JSON.stringify(a)}));});
+ await page.evaluate(()=>{const a=AutoCorSession.snapshot().auth;AutoCorSession.consume({ok:true,session:{user:a.user,displayName:a.displayName,isAdmin:false,expiresAt:Date.now()+3600000}},AutoCorSession.capture());});
  assert.ok(await page.getByRole('button',{name:'Tiempos',exact:true}).isVisible());
  assert.ok(await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).isVisible());
  assert.ok((await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).innerText()).includes('9.0 s'));
@@ -57,7 +58,7 @@ try {for(const file of ['contratos.html','liquidacion.html','pagos.html','ventas
  assert.equal(await page.getByRole('button',{name:'Admin usuarios',exact:true}).count(),0,'El acceso a Tiempos no otorga administración de usuarios');
  await page.getByRole('dialog',{name:'Tiempos de las operaciones'}).getByRole('button',{name:'Cerrar'}).click();
  const aligned=await page.evaluate(()=>{const save=document.querySelector('.toolbar-wrap #btnGuardarImprimir,.toolbar-wrap button[onclick*=guardarYExportarTodo]');const drafts=document.querySelector('[data-work-drafts]');return !save || Math.abs(save.getBoundingClientRect().y-drafts.getBoundingClientRect().y)<6;});assert.ok(aligned,'Borradores en la misma fila que Guardar');
- await page.evaluate(()=>{const oldValue=localStorage.getItem('autocor_auth');const a=JSON.parse(oldValue);a.isAdmin=true;localStorage.setItem('autocor_auth',JSON.stringify(a));window.dispatchEvent(new StorageEvent('storage',{key:'autocor_auth',oldValue,newValue:JSON.stringify(a)}));});
+ await page.evaluate(()=>{const a=AutoCorSession.snapshot().auth;AutoCorSession.consume({ok:true,session:{user:a.user,displayName:a.displayName,isAdmin:true,expiresAt:Date.now()+3600000}},AutoCorSession.capture());});
  assert.ok(await page.getByRole('button',{name:'Tiempos',exact:true}).isVisible());
  if(file==='contratos.html')assert.ok(await page.getByRole('button',{name:'Pendientes Drive',exact:true}).isVisible());
  await page.setViewportSize({width:390,height:850});

@@ -1,18 +1,19 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T175631976075Z">
-<script src="js/auto-update.js?v=20261026T175631976075Z"></script>
+<meta name="autocor-version" content="20261027T162110818336Z">
+<script src="js/auto-update.js?v=20261027T162110818336Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Firmas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
-<script src="js/api-config.js?v=20261026T175631976075Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T175631976075Z"></script>
-<script src="js/api-client.js?v=20261026T175631976075Z"></script>
-<script src="js/expediente.js?v=20261026T175631976075Z"></script>
+<script src="js/api-config.js?v=20261027T162110818336Z"></script>
+<script src="js/apps-script-transport.js?v=20261027T162110818336Z"></script>
+<script src="js/session.js?v=20261027T162110818336Z"></script>
+<script src="js/api-client.js?v=20261027T162110818336Z"></script>
+<script src="js/expediente.js?v=20261027T162110818336Z"></script>
 <style>
   :root{
     --brand:#E53F2E;
@@ -365,9 +366,10 @@ async function buscar(){
   let auth = {};
   try{ auth = JSON.parse(localStorage.getItem('autocor_auth')||'{}'); }catch(_){}
   if(!auth.token){
-    errEl.textContent = 'No hay sesión activa. Entra desde el inicio.';
+    window.AutoCorAuthUI?.openLogin();
+    errEl.textContent = 'Inicia sesión aquí para consultar; se conserva la placa.';
     errEl.style.display = 'block';
-    setTimeout(function(){ window.location.href = 'index.html'; }, 1400);
+
     return;
   }
 
@@ -550,23 +552,9 @@ window.addEventListener('DOMContentLoaded', function(){
   }catch(_){}
 });
 </script>
-<script>
-/* ── Sincronización de sesión entre pestañas ──────────────────────
-   Si en otra pestaña se inicia o cierra sesión (cambia autocor_auth
-   en localStorage), esta pestaña se sincroniza recargando. Solo actúa
-   en transiciones login↔logout, no en renovaciones de token. */
-(function(){
-  function _tieneSesion(v){ try{ var o=JSON.parse(v||"null"); return !!(o&&o.token); }catch(_){ return false; } }
-  window.addEventListener("storage", function(e){
-    if(e.key !== "autocor_auth") return;
-    var antes = _tieneSesion(e.oldValue);
-    var ahora = _tieneSesion(e.newValue);
-    if(antes !== ahora){
-      // login o logout en otra pestaña → reflejar el cambio aquí
-      location.reload();
-    }
-  });
-})();
-</script>
+
+<script>window.AutoCorAuthModalOnly=true;</script>
+<script src="js/auth-ui.js?v=20261027T162110818336Z"></script>
+<script src="js/session-sync.js?v=20261027T162110818336Z"></script>
 </body>
 </html>

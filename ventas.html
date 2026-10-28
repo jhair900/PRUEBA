@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="autocor-version" content="20261026T175631976075Z">
-<script src="js/auto-update.js?v=20261026T175631976075Z"></script>
+<meta name="autocor-version" content="20261027T162110818336Z">
+<script src="js/auto-update.js?v=20261027T162110818336Z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AUTOCOR | Ventas</title>
@@ -387,11 +387,12 @@
   #riskTitle{font-size:12px;font-weight:800}
   #riskVal .cbtn{padding:0;min-width:14px;min-height:14px}
 </style>
-<script src="js/api-config.js?v=20261026T175631976075Z"></script>
-<script src="js/apps-script-transport.js?v=20261026T175631976075Z"></script>
-<script src="js/api-client.js?v=20261026T175631976075Z"></script>
-<script src="js/expediente.js?v=20261026T175631976075Z"></script>
-<link rel="stylesheet" href="js/navigation.css?v=20261026T175631976075Z">
+<script src="js/api-config.js?v=20261027T162110818336Z"></script>
+<script src="js/apps-script-transport.js?v=20261027T162110818336Z"></script>
+<script src="js/session.js?v=20261027T162110818336Z"></script>
+<script src="js/api-client.js?v=20261027T162110818336Z"></script>
+<script src="js/expediente.js?v=20261027T162110818336Z"></script>
+<link rel="stylesheet" href="js/navigation.css?v=20261027T162110818336Z">
 </head>
 <body>
 
@@ -611,7 +612,7 @@ let ventasCreador = '';
 let ventasHistorial = [];
 let ventasIsExisting = false;
 let authState = null;
-try{ authState = JSON.parse(localStorage.getItem("autocor_auth") || "null"); }catch(e){ authState = null; }
+try{ authState = (window.AutoCorSession?AutoCorSession.snapshot().auth:JSON.parse(localStorage.getItem("autocor_auth") || "null")); }catch(e){ authState = null; }
 let currentUser = authState?.user || "";
 let authToken  = authState?.token || "";
 
@@ -1434,9 +1435,9 @@ try{
 }catch(_){}
 </script>
 
-<script src="js/auth-ui.js?v=20261026T175631976075Z"></script>
-<script src="js/session-sync.js?v=20261026T175631976075Z"></script>
-<script src="js/workflow.js?v=20261026T175631976075Z"></script>
-<script src="js/workflow-adapters.js?v=20261026T175631976075Z"></script>
+<script src="js/auth-ui.js?v=20261027T162110818336Z"></script>
+<script src="js/session-sync.js?v=20261027T162110818336Z"></script>
+<script src="js/workflow.js?v=20261027T162110818336Z"></script>
+<script src="js/workflow-adapters.js?v=20261027T162110818336Z"></script>
 </body>
 </html>

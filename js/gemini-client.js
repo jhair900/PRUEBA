@@ -3,6 +3,8 @@
   'use strict';
 async function fetchProxy(url, init, timeoutMs, trace){
   trace=trace||{};
+  const session=global.AutoCorSession;
+  const ticket=session?await session.ensure():null;
   var auth;
   try { auth = JSON.parse(localStorage.getItem('autocor_auth') || 'null'); } catch (_) {}
   if (!auth || !auth.token){const e=new Error('Inicia sesion para utilizar la extraccion con IA.');e.code='AI_AUTH_ERROR';throw e;}
@@ -60,11 +62,13 @@ async function fetchProxy(url, init, timeoutMs, trace){
     bodyStarted=Date.now();
     // El plazo incluye recibir el cuerpo; una respuesta incompleta no es exito.
     env = await resp.json();
+    if(ticket)session.assert(ticket);
     trace.bodyMs=Date.now()-bodyStarted;
     if(httpStarted!=null)trace.httpResponseMs=Date.now()-httpStarted;
     if(controller.signal.aborted)throw new Error('AI_CANCELLED');
   } catch(cause) {
     if(bodyStarted!=null)trace.bodyMs=Date.now()-bodyStarted;
+    if(cause.isSessionError)throw cause;
     const callerTimedOut=callerSignal?.aborted&&callerSignal.reason?.code==='AI_TIMEOUT';
     const cancelled = callerSignal && callerSignal.aborted&&!callerTimedOut;
     const err = new Error(cancelled ? 'La consulta a la IA fue cancelada.' : timedOut||callerTimedOut
@@ -84,6 +88,12 @@ async function fetchProxy(url, init, timeoutMs, trace){
     err.code = 'AI_SERVICE_ERROR';
     throw err;
   }
+  if(ticket && env._proxy.origin==='session'){
+    trace.statusOrigin='session';trace.httpStatus=Number(env._proxy.status);trace.serviceStatus=env._proxy.authCode;delete trace.failedStage;
+    session.consume({ok:false,code:env._proxy.authCode,message:env.data?.error?.message},ticket);
+    const e=new Error(env.data?.error?.message||'No se pudo comprobar la sesión.');e.code='SESSION_SERVICE_ERROR';e.isSessionError=true;throw e;
+  }
+  if(ticket)session.consume({ok:true,session:env.session},ticket);
   const ok = resp.ok && env._proxy.ok;
   const status = resp.ok ? Number(env._proxy.status) : resp.status;
   const data = env.data;

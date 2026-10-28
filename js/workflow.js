@@ -3,10 +3,10 @@
   const TTL = 24 * 60 * 60 * 1000;
   const EPOCH = 'autocor_draft_epoch';
   let adapter, database, panel, status, dirty = false, timer, locked = false;
-  let lastFingerprint = '', generation = 0, operationSnapshot = '', operationConfirmed = false;
+  let lastFingerprint = '', generation = 0, operationSnapshot = '', operationConfirmed = false,operationSession=null;
   const pendingDrive = new Map();
   const measurements = [];
-  function auth(){ try { return JSON.parse(localStorage.getItem('autocor_auth') || 'null'); } catch(_) { return null; } }
+  function auth(){ if(global.AutoCorSession)return global.AutoCorSession.snapshot().auth;try { return JSON.parse(localStorage.getItem('autocor_auth') || 'null'); } catch(_) { return null; } }
   function owner(){ const a=auth(); return a && a.token ? String(a.user || '').toUpperCase() : ''; }
   function isAdmin(){const a=auth();return !!(a && a.token && a.isAdmin === true);}
   function refreshControls(){
@@ -27,6 +27,7 @@
     });
   }
   function assertSnapshot(){
+    if(operationSession)global.AutoCorSession.assert(operationSession);
     if(locked && operationSnapshot && formFingerprint()!==operationSnapshot){
       throw new Error('Los datos cambiaron durante el guardado. No se exportó un documento diferente. Revisa la placa y vuelve a generar con los datos actuales.');
     }
@@ -102,7 +103,7 @@
   }
   async function showDrafts(){
     const host=showPanel('Borradores recuperables');
-    const note=document.createElement('p');note.textContent='Solo en este navegador. Caducan a las 24 horas y se eliminan al cerrar sesión. Recuperar no guarda ni reemplaza registros en el servidor.';host.appendChild(note);
+    const note=document.createElement('p');note.textContent='Solo en este navegador. Caducan a las 24 horas y permanecen asociados a la cuenta que los creó. Recuperar no guarda ni reemplaza registros en el servidor.';host.appendChild(note);
     try{
       const list=await drafts();
       if(!list.length){note.textContent+=' No hay borradores disponibles.';return;}
@@ -121,6 +122,9 @@
   }
   async function run(label, operation){
     if(locked) return;
+    if(global.AutoCorSession)try{await global.AutoCorSession.ensure();}catch(e){tell(e.message);return {ok:false,message:e.message,code:e.code};}
+    if(locked)return;
+    operationSession=global.AutoCorSession?.capture();
     if(document.querySelector('#spinnerOverlay.open')){alert('Espera a que termine la lectura de documentos antes de guardar.');return;}
     locked=true;
     ['pagos','ventas','liquidacion'].forEach(m=>{const key='__'+m+'PlateSearchId';global[key]=(global[key]||0)+1;});
@@ -141,7 +145,7 @@
       if(measurements.length>50)measurements.shift();
       try{if(operationConfirmed && formFingerprint()===operationSnapshot)dirty=false;}catch(_){}
       nodes.forEach(([el,inert])=>el.inert=inert);overlay.remove();locked=false;
-      operationSnapshot='';
+      operationSnapshot='';operationSession=null;
       global.dispatchEvent(new Event('autocor-operation-end'));
     }
   }
@@ -213,7 +217,7 @@
       if(!entry.files.length)pendingDrive.delete(plate);
       else result=Object.assign({},result,{pendingCount:entry.files.length});
     }catch(e){result={ok:false,message:e.message,pendingCount:entry.files.length};}
-    if(owner()!==user)pendingDrive.delete(plate);
+    // Una sesión vencida suspende el envío; conserva los archivos de la cuenta original.
     if(adapter && owner()===user)await persist().catch(()=>tell('Archivos pendientes solo en memoria: conserva esta pestaña.'));
     return result;
   }
@@ -242,11 +246,11 @@
     global.addEventListener('autocor-draft-changed',()=>schedule());
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)persist().catch(()=>{});});
     global.addEventListener('beforeunload',e=>{if(locked || dirty){e.preventDefault();e.returnValue='';}});
-    global.addEventListener('storage',e=>{if(e.key==='autocor_auth' || e.key===null){let before;try{before=JSON.parse(e.oldValue||'null');}catch(_){}if(!owner() || (before&&before.user!==owner()))forget();refreshControls();}});
+    global.addEventListener('autocor-session-state',refreshControls);
     const originalSave=global.saveAuthState;
-    if(originalSave)global.saveAuthState=function(a,p){const before=owner();if(!a || (before && before!==String(a.user||'').toUpperCase()))forget();const result=originalSave(a,p);refreshControls();return result;};
+    if(originalSave)global.saveAuthState=function(a,p){const result=originalSave(a,p);refreshControls();return result;};
     const logout=global.cerrarSesion;
-    if(logout)global.cerrarSesion=function(){forget();return logout.apply(this,arguments);};
+    if(logout)global.cerrarSesion=function(){if(global.AutoCorSession)return global.AutoCorSession.logout();return logout.apply(this,arguments);};
     config.saves.forEach(pair=>wrap(pair[0],pair[1]));
     drafts().then(list=>{if(list.length)tell(list.length+' borrador(es) disponibles.');}).catch(()=>tell('Borradores locales no disponibles.'));
   }

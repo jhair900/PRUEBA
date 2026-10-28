@@ -13,7 +13,7 @@ const root=path.resolve(__dirname,'..');
    const url=new URL(route.request().url());
    if(url.hostname!=='autocor.test')return route.fulfill({contentType:'application/javascript',body:'window.pdfjsLib={GlobalWorkerOptions:{}};'});
    const file=path.join(root,decodeURIComponent(url.pathname));
-   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async(url,body)=>{window.__saved=body;return {ok:true};}};'});
+   if(url.pathname==='/js/api-client.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorApi={postJson:async(url,body)=>{if(body.action==="validateSession")return {ok:true,session:{...JSON.parse(localStorage.getItem("autocor_auth")),expiresAt:Date.now()+3600000}};window.__saved=body;return {ok:true};}};'});
    if(url.pathname==='/js/workflow.js')return route.fulfill({contentType:'application/javascript',body:'window.AutoCorWork={register(){},refreshControls(){},captureDrive(){return{}},restoreDrive(){}};'});
    if(url.pathname==='/js/gemini-client.js')return route.fulfill({contentType:'application/javascript',body:`
     window.__calls=[];window.__failNext=false;
