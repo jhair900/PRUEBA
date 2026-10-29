@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-29",
+  "frontendVersion": "20261028T161839136537Z",
+  "model": "gemini-3.6-flash",
+  "transportRequired": "fetch",
+  "diagnosticAttempts": 1,
+  "personalDocuments": 0,
+  "authentication": [
+    {
+      "action": "validateSession",
+      "elapsedMs": 1639,
+      "outcome": "success",
+      "server": {
+        "lockWaitMs": 0,
+        "processingMs": 293,
+        "flushMs": 0,
+        "serverMs": 293
+      }
+    }
+  ],
+  "referencePreparationMs": 7,
+  "requestElapsedMs": 4458.899999976158,
+  "finishReason": null,
+  "outcome": "failed",
+  "error": {
+    "code": "AI_UPSTREAM_ERROR",
+    "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "httpStatus": 503
+  },
+  "totalMs": 4466.200000017881,
+  "trace": {
+    "diagnosticProbe": true,
+    "remoteState": "complete",
+    "sessionWaitMs": 0,
+    "requestBuildMs": 0,
+    "transport": "fetch",
+    "requestBytes": 15650,
+    "headersMs": 4457,
+    "httpStatus": 503,
+    "transportHttpStatus": 200,
+    "responseCompleteMs": 4458,
+    "bodyMs": 1,
+    "httpResponseMs": 4458,
+    "backendTiming": {
+      "version": 1,
+      "inputDecodeMs": 0,
+      "sessionMs": 475,
+      "requestBuildMs": 81,
+      "providerFetchMs": 2517,
+      "providerDecodeMs": 1,
+      "otherMs": 0,
+      "serverMs": 3074
+    },
+    "outsideBackendMs": 1384,
+    "sessionApplyMs": 0,
+    "proxyHttpStatus": 503,
+    "statusOrigin": "proxy",
+    "proxyOrigin": "provider",
+    "serviceMessage": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "serviceStatus": "UNAVAILABLE",
+    "upstreamMs": 2518,
+    "transportMs": 1940
+  },
+  "backendTimingReceived": true
+}

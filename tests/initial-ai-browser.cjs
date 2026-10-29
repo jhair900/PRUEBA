@@ -19,7 +19,7 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
      if(mode==='auth'&&probes===1)return send({_proxy:{ok:false,status:401,origin:'session',authCode:'AUTH_EXPIRED'},data:{error:{message:'Sesión expirada.'}}});
      if(mode==='config')return send({_proxy:{ok:false,status:500},data:{error:{code:500,status:'CONFIG_ERROR',message:'GEMINI_API_KEY no configurada en Script Properties'}}});
      if((mode==='recover'&&probes===1)||mode==='persistent')return send({_proxy:{ok:false,status:503,origin:'provider',retryAfter:'0',upstreamMs:1},data:{error:{code:503,status:'UNAVAILABLE',message:'The model is overloaded. Please try again later.'}}});
-     return send({_proxy:{ok:true,status:200,origin:'provider',upstreamMs:1},data:{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({placa:'ABC1234',color:'AZUL',_reviewKeys:[]})}]}}]}});
+     return send({_proxy:{ok:true,status:200,origin:'provider',upstreamMs:1,...(mode==='recover'?{timing:{version:1,inputDecodeMs:0,sessionMs:0,requestBuildMs:0,providerFetchMs:1,providerDecodeMs:0,otherMs:0,serverMs:1}}:{})},data:{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify({placa:'ABC1234',color:'AZUL',_reviewKeys:[]})}]}}],usageMetadata:{promptTokenCount:32,candidatesTokenCount:12,thoughtsTokenCount:0,totalTokenCount:44}}});
     }
     return send({ok:true});
    }
@@ -52,7 +52,9 @@ const root=path.resolve(__dirname,'..'),A='gemini-3.5-flash-lite',B='gemini-3.1-
   await page.getByRole('button',{name:'Tiempos',exact:true}).click();const panel=page.getByRole('dialog',{name:'Tiempos de las operaciones'});
   for(const summary of await panel.getByText('Ver etapas',{exact:true}).all())await summary.click();
   const text=await panel.innerText();assert.ok(!text.includes('fixture-initial'));assert.ok(!text.includes('fixture-renewed'));
-  if(mode==='recover'){assert.ok(text.includes('Código original del servicio: 503'));assert.ok(text.includes('The model is overloaded. Please try again later.'));assert.ok(text.includes('Origen informado por el backend: provider'));}
+  if(mode==='recover'){assert.ok(text.includes('Código original del servicio: 503'));assert.ok(text.includes('The model is overloaded. Please try again later.'));assert.ok(text.includes('Origen informado por el backend: provider'));
+   assert.ok(text.includes('UrlFetchApp.fetch (red, cola y generación remotas juntas)'));assert.ok(text.includes('Tokens informados por Gemini: entrada 32; respuesta 12; pensamiento 0; total 44'));
+   assert.ok(text.includes('Los totales contienen sus subetapas'));assert.ok(text.includes('Interpretar y validar campos devueltos'));}
   if(mode==='config'){assert.ok(text.includes('AI_BACKEND_CONFIG_ERROR'));assert.ok(text.includes('GEMINI_API_KEY no configurada en Script Properties'));}
   assert.deepEqual(errors,[]);console.log('OK inicio '+mode+': sesión antes de IA, recuperación/código precisos, Tiempos, manuales y ninguna selección posterior');await page.close();
  }}finally{await browser.close();}

@@ -5,7 +5,9 @@ async function fetchProxy(url, init, timeoutMs, trace){
   trace=trace||{};
   trace.remoteState='not_sent';
   const session=global.AutoCorSession;
+  const authStarted=Date.now();
   const ticket=session?await session.ensure():null;
+  trace.sessionWaitMs=Date.now()-authStarted;
   var auth;
   try { auth = JSON.parse(localStorage.getItem('autocor_auth') || 'null'); } catch (_) {}
   if (!auth || !auth.token){const e=new Error('Inicia sesion para utilizar la extraccion con IA.');e.code='AI_AUTH_ERROR';throw e;}
@@ -67,6 +69,7 @@ async function fetchProxy(url, init, timeoutMs, trace){
     bodyStarted=Date.now();
     // El plazo incluye recibir el cuerpo; una respuesta incompleta no es exito.
     env = await resp.json();
+    trace.responseCompleteMs=Date.now()-started;
     if(env?._proxy&&typeof env._proxy.ok==='boolean'&&Number(env._proxy.status)>0)trace.remoteState='complete';
     else trace.remoteState='unknown';
     if(ticket)session.assert(ticket);
@@ -96,12 +99,24 @@ async function fetchProxy(url, init, timeoutMs, trace){
     err.code = 'AI_SERVICE_ERROR';
     throw err;
   }
+  // Sólo números agregados. También medir un rechazo de sesión confirmado.
+  const backendTiming=env._proxy.timing;
+  if(backendTiming?.version===1){
+    trace.backendTiming={version:1};
+    for(const key of ['inputDecodeMs','sessionMs','requestBuildMs','providerFetchMs','providerDecodeMs','otherMs','serverMs']){
+      const value=backendTiming[key];
+      if(Number.isFinite(value)&&value>=0)trace.backendTiming[key]=value;
+    }
+    if(trace.backendTiming.serverMs!=null)trace.outsideBackendMs=Math.max(0,trace.responseCompleteMs-trace.backendTiming.serverMs);
+  }
   if(ticket && env._proxy.origin==='session'){
     trace.statusOrigin='session';trace.httpStatus=Number(env._proxy.status);trace.serviceStatus=env._proxy.authCode;delete trace.failedStage;
     session.consume({ok:false,code:env._proxy.authCode,message:env.data?.error?.message},ticket);
     const e=new Error(env.data?.error?.message||'No se pudo comprobar la sesión.');e.code='SESSION_SERVICE_ERROR';e.isSessionError=true;throw e;
   }
+  const sessionApplyStarted=Date.now();
   if(ticket)session.consume({ok:true,session:env.session},ticket);
+  trace.sessionApplyMs=Date.now()-sessionApplyStarted;
   const ok = resp.ok && env._proxy.ok;
   const status = resp.ok ? Number(env._proxy.status) : resp.status;
   const data = env.data;
@@ -116,7 +131,14 @@ async function fetchProxy(url, init, timeoutMs, trace){
   if(['UNAVAILABLE','INTERNAL','RESOURCE_EXHAUSTED','INVALID_ARGUMENT','PERMISSION_DENIED','UNAUTHENTICATED','NOT_FOUND','DEADLINE_EXCEEDED','CONFIG_ERROR','BAD_REQUEST','FETCH_ERROR'].includes(serviceStatus))trace.serviceStatus=serviceStatus;
   if(Number.isFinite(env._proxy.upstreamMs)){
     trace.upstreamMs=env._proxy.upstreamMs;
-    trace.transportMs=Math.max(0,Date.now()-started-env._proxy.upstreamMs);
+    trace.transportMs=Math.max(0,trace.responseCompleteMs-env._proxy.upstreamMs);
+  }
+  const usage=data?.usageMetadata;
+  if(usage){
+    trace.usage={};
+    for(const key of ['promptTokenCount','candidatesTokenCount','thoughtsTokenCount','totalTokenCount','cachedContentTokenCount']){
+      if(Number.isSafeInteger(usage[key])&&usage[key]>=0)trace.usage[key]=usage[key];
+    }
   }
   delete trace.failedStage;
   return {

@@ -1,0 +1,150 @@
+{
+  "applicationVersion": "20261028T161839136537Z",
+  "productCodeChangedThisReview": false,
+  "backend": {
+    "file": "gas/script.gs",
+    "bytes": 78049,
+    "sha256": "150ca576d09b12e1286f7ff81954fe10798347886c29224bcc3cd4dc01d4a324"
+  },
+  "frontend": [
+    {
+      "file": "contratos.html",
+      "bytes": 309084,
+      "sha256": "97c63c3e09e251e62dcd827d94086bd9d88e2958eef713630de4abb126a190f8"
+    },
+    {
+      "file": "firmas.html",
+      "bytes": 24181,
+      "sha256": "62306b710fdb9d8ce17ee95500bd1e7201f12607daed49323755f64ef6dad7c5"
+    },
+    {
+      "file": "index.html",
+      "bytes": 50756,
+      "sha256": "7b79320eeec4213ec58693a7858e57eacaf27d8e66e245cf44e891e8b5400c71"
+    },
+    {
+      "file": "js/api-client.js",
+      "bytes": 16933,
+      "sha256": "b489bf01441037a90a61c65780740c0515368a527caec9476b5c25f99e46ffcb"
+    },
+    {
+      "file": "js/api-config.js",
+      "bytes": 222,
+      "sha256": "cf5e269a86f354d04975d03b06a59250ad11dccba9990edc0ed4b45b1dadea83"
+    },
+    {
+      "file": "js/apps-script-transport.js",
+      "bytes": 6779,
+      "sha256": "d70cda1c8394da69bda640e61b5508a6d9f75e0beb41d0297fdeb8dd67dec381"
+    },
+    {
+      "file": "js/auth-ui.js",
+      "bytes": 20605,
+      "sha256": "6ff91f089364ab949ff1373633aade158efabc9f630c81e3ce775487d1984cdc"
+    },
+    {
+      "file": "js/auto-update.js",
+      "bytes": 2401,
+      "sha256": "94b85d6ec67861c155a92441c5eafd7139274b172b94966b47566b68dbec35f1"
+    },
+    {
+      "file": "js/contrato-templates.js",
+      "bytes": 1459636,
+      "sha256": "228f712332f8c990ce8f7c401673d86a5b73bde369df3700437a0eee4078561e"
+    },
+    {
+      "file": "js/cuv-parser.js",
+      "bytes": 31639,
+      "sha256": "0db347181482a84f7de006e1f3987c8f053cb5d9a59fa117d154a4da2251a5ba"
+    },
+    {
+      "file": "js/document-analysis.js",
+      "bytes": 4314,
+      "sha256": "7e63e1841172cb816f1e6f2edf375fe5b3154e560ba095c44d43e6a167d8767b"
+    },
+    {
+      "file": "js/document-extraction.js",
+      "bytes": 26164,
+      "sha256": "dea704415c05214e70bde9aa80ade32282451fe5025a4f730895d9cbea815f9d"
+    },
+    {
+      "file": "js/document-image.js",
+      "bytes": 5233,
+      "sha256": "b901a719e0452fa67136415dbe830b678f552dd9799f32118058eecc772e13f5"
+    },
+    {
+      "file": "js/document-processing.js",
+      "bytes": 4673,
+      "sha256": "493a24138c5afabe92e5d6991b0610e1ae9f0af61edc280c421d5dbd5d67fab4"
+    },
+    {
+      "file": "js/expediente.js",
+      "bytes": 10385,
+      "sha256": "48db295f3d8d89d4c8211412c7caaf1e46375f6ee13587bd275773d20aa2cfe5"
+    },
+    {
+      "file": "js/gemini-availability.js",
+      "bytes": 19407,
+      "sha256": "f3c4a5c0b1fefbbbd3d74ee42db326157b33b5462137192c6c366d43855b589e"
+    },
+    {
+      "file": "js/gemini-client.js",
+      "bytes": 8646,
+      "sha256": "b60c453ea7e269fe7baf4cb3ef2ab05f39759dc10ecd12c424a714c54ebfbf84"
+    },
+    {
+      "file": "js/generador-contratos.js",
+      "bytes": 17241,
+      "sha256": "4e5eff16e3cb332c7b2fdfb3c40eb16ea27db8dc2b1cd5d8dff0143611f54111"
+    },
+    {
+      "file": "js/navigation.css",
+      "bytes": 2623,
+      "sha256": "569830657b7e0ad258fab5ce41d9aa38edb3e52d79324349cb45fe9a0ad3165d"
+    },
+    {
+      "file": "js/session-sync.js",
+      "bytes": 1252,
+      "sha256": "7bdca9d0cf5fe7979a50de6cd1a17b3cfbce69f588413f4145c8ee86221b5c0d"
+    },
+    {
+      "file": "js/session.js",
+      "bytes": 7745,
+      "sha256": "6390f5b735b3eb2a0b3e474e985a41ccd91e57a613bafcb2ca9cdde529786107"
+    },
+    {
+      "file": "js/workflow-adapters.js",
+      "bytes": 9925,
+      "sha256": "3cfae90dabab39a7b5bd553017e78baf9a5e43e60a00e247d049f9bac447600e"
+    },
+    {
+      "file": "js/workflow.js",
+      "bytes": 23439,
+      "sha256": "aa9c60dd3165a2db2d5134941a77bb6348cb55cc9b8994d3af62107072b476ba"
+    },
+    {
+      "file": "liquidacion.html",
+      "bytes": 240300,
+      "sha256": "455f6e787a2efe896446c090425d00f613733447c46fc7b7d2e0e5c3f567dfd8"
+    },
+    {
+      "file": "pagos.html",
+      "bytes": 66573,
+      "sha256": "84106084e16c6ca6f4ccada83d1c08ead4287e1784d0b73ee1e5b8d9b27d62b6"
+    },
+    {
+      "file": "ventas.html",
+      "bytes": 61697,
+      "sha256": "1424fb83ad5dc07d227346ad085bb9de4d7be0eea562a6209077ef73452b6d6f"
+    },
+    {
+      "file": "version.json",
+      "bytes": 39,
+      "sha256": "3b3ac16c6905c4983e701341d96f8e037fff80ef11f9056eda2522277ae03f31"
+    }
+  ],
+  "realTestStatus": "pending-backend-update",
+  "realRequestsSentThisReview": 0,
+  "published": false,
+  "deployed": false
+}

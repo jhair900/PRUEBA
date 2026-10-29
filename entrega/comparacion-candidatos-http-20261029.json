@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-29",
+  "frontendVersion": "20261028T161839136537Z",
+  "productionCodeUnchanged": true,
+  "productionModels": [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite"
+  ],
+  "candidateModelsNotAdded": true,
+  "transport": "fetch",
+  "reference": {
+    "model": "gemini-3.5-flash-lite",
+    "totalMs": 35726.70000001788,
+    "externalCallMs": 33991,
+    "outcome": "success",
+    "exactness": "synthetic-reference-correct"
+  },
+  "candidates": [
+    {
+      "model": "gemini-3.8-flash",
+      "totalMs": 5676.299999982119,
+      "externalCallMs": 3328,
+      "backendTotalMs": 3706,
+      "appsScriptHttp": 200,
+      "providerHttp": 503,
+      "providerStatus": "UNAVAILABLE",
+      "exactness": "not-evaluable-no-generation",
+      "remoteState": "complete",
+      "generationAttempts": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "totalMs": 4466.200000017881,
+      "externalCallMs": 2517,
+      "backendTotalMs": 3074,
+      "appsScriptHttp": 200,
+      "providerHttp": 503,
+      "providerStatus": "UNAVAILABLE",
+      "exactness": "not-evaluable-no-generation",
+      "remoteState": "complete",
+      "generationAttempts": 1
+    }
+  ],
+  "newGenerationAttempts": 2,
+  "retries": 0,
+  "timeouts": 0,
+  "personalDocuments": 0,
+  "conclusion": "Ambos candidatos devolvieron alta demanda 503, con resultado remoto confirmado. No se puede comparar velocidad de extracción ni evaluar exactitud. Una muestra no demuestra disponibilidad o latencia permanente."
+}

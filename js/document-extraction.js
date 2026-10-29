@@ -138,8 +138,9 @@
       (tipo === 'notaria' ? 'Distingue tres roles: propietario registrado, compradores y vendedores del último contrato. No son intercambiables.\n' : '') +
       (options.cedulaSide === 'front' ? 'Esta imagen corresponde al frente; extrae solo lo que realmente muestra.\n' : options.cedulaSide === 'back' ? 'Esta imagen corresponde al reverso; extrae solo lo que realmente muestra.\n' : '') +
       'Método de lectura: identifica secciones y etiquetas; asocia cada valor con su fila/columna; revisa cada campo contra la imagen antes de responder. No mezcles valores de columnas vecinas ni encabezados repetidos.\n' +
-      readingRules[tipo] + '\n' +
-      keys.map(key => key + ': ' + fields[tipo][key]).join('\n') + '\nDevuelve únicamente el JSON del esquema, sin explicaciones.';
+      // Los criterios íntegros de cada campo ya están en properties[key].description.
+      // No enviarlos dos veces: se conservan esquema, reglas y adjuntos completos.
+      readingRules[tipo] + '\nAplica las descripciones de cada campo del esquema. Devuelve únicamente el JSON del esquema, sin explicaciones.';
     const parts = [{ text: prompt }];
     const inputs = Array.isArray(attachments) ? attachments : [attachments];
     if (!inputs.length) throw new Error('No se adjuntó el documento.');

@@ -158,7 +158,7 @@
     const host=showPanel('Tiempos de las operaciones');
     host.dataset.userOnly='true';
     const seconds=value=>Number.isFinite(value)?(value/1000).toFixed(2)+' s':'sin medición';
-    const note=document.createElement('p');note.textContent='Mediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red.';host.appendChild(note);
+    const note=document.createElement('p');note.textContent='Mediciones de esta pestaña. El tiempo fuera del servidor incluye conexión, cola y transferencia; no permite atribuir todo el retraso a Google o a tu red. Los totales contienen sus subetapas: no se deben sumar entre sí.';host.appendChild(note);
     measurements.slice(-20).reverse().forEach(t=>{
       const row=document.createElement('p');
       const server=t.server && t.server.serverMs;
@@ -176,14 +176,27 @@
             Object.keys(labels).forEach(key=>{if(d[key]!=null)technical.push(labels[key]+': '+d[key]);});
           }
           if(d.transport)technical.push('Canal: '+d.transport);
+          if(d.sessionWaitMs!=null)technical.push('Espera de sesión en el cliente (sin nueva consulta si ya está confirmada): '+seconds(d.sessionWaitMs));
           if(d.requestBuildMs!=null)technical.push('Preparación local del envío: '+seconds(d.requestBuildMs));
           if(d.requestBytes!=null)technical.push('Bytes del cuerpo HTTP: '+d.requestBytes);
           if(d.bridgeWaitMs!=null)technical.push('Espera para elegir canal: '+seconds(d.bridgeWaitMs));
           if(d.httpResponseMs!=null)technical.push('HTTP: envío, backend y respuesta: '+seconds(d.httpResponseMs));
           if(d.upstreamMs!=null)technical.push('Trayecto backend–Gemini y respuesta: '+seconds(d.upstreamMs));
           else if(d.stage==='ai-response'||d.stage==='ai-precheck')technical.push('Trayecto backend–IA: sin medición en esta respuesta.');
-          if(d.transportMs!=null)technical.push('Resto del trayecto (incluye preparación y cola del backend): '+seconds(d.transportMs));
-          if(d.headersMs!=null&&d.stage)technical.push('Solicitud y respuesta completas: '+seconds(d.headersMs));
+          if(d.backendTiming){
+            const b=d.backendTiming;
+            technical.push('Apps Script: total antes de serializar/devolver: '+seconds(b.serverMs));
+            technical.push('↳ Entrada JSON: '+seconds(b.inputDecodeMs)+'; sesión: '+seconds(b.sessionMs)+'; preparar petición Gemini: '+seconds(b.requestBuildMs));
+            technical.push('↳ UrlFetchApp.fetch (red, cola y generación remotas juntas): '+seconds(b.providerFetchMs));
+            technical.push('↳ Leer/interpretar respuesta del proveedor: '+seconds(b.providerDecodeMs)+'; otras tareas del proxy: '+seconds(b.otherMs));
+            if(d.outsideBackendMs!=null)technical.push('Fuera del total medido en Apps Script (incluye cola, transferencia y serialización de salida): '+seconds(d.outsideBackendMs));
+          }else if(d.transportMs!=null)technical.push('Resto del trayecto (incluye preparación y cola del backend): '+seconds(d.transportMs));
+          if(d.headersMs!=null&&d.stage)technical.push('Hasta cabeceras HTTP o respuesta RPC: '+seconds(d.headersMs));
+          if(d.responseCompleteMs!=null)technical.push('Envío y recepción completa del sobre: '+seconds(d.responseCompleteMs));
+          if(d.bodyMs!=null&&d.stage)technical.push('Lectura del sobre en el cliente (incluida en recepción completa): '+seconds(d.bodyMs));
+          if(d.sessionApplyMs!=null)technical.push('Aplicar metadatos de sesión: '+seconds(d.sessionApplyMs));
+          if(d.resultValidationMs!=null)technical.push('Interpretar y validar campos devueltos: '+seconds(d.resultValidationMs));
+          if(d.usage){const u=d.usage;technical.push('Tokens informados por Gemini: entrada '+(u.promptTokenCount??'sin medición')+'; respuesta '+(u.candidatesTokenCount??'sin medición')+'; pensamiento '+(u.thoughtsTokenCount??'sin medición')+'; total '+(u.totalTokenCount??'sin medición')+'. Son cantidades, no duraciones.');}
           if(d.httpStatus!=null)technical.push('HTTP: '+d.httpStatus);
           if(d.transportHttpStatus!=null)technical.push('HTTP de Apps Script: '+d.transportHttpStatus);
           if(d.proxyHttpStatus!=null)technical.push('Estado devuelto por el proxy: '+d.proxyHttpStatus);

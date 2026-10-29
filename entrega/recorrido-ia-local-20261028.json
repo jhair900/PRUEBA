@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-28",
+  "kind": "synthetic-local-no-network",
+  "inputBase64Chars": 2400000,
+  "requestCountBefore": 1,
+  "requestCountAfter": 1,
+  "jsonBefore": {
+    "serializes": 4,
+    "parses": 4,
+    "inputChars": 4810533,
+    "outputChars": 2406049,
+    "textReads": 1,
+    "fetches": 1
+  },
+  "jsonAfter": {
+    "serializes": 1,
+    "parses": 1,
+    "inputChars": 2404769,
+    "outputChars": 285,
+    "textReads": 1,
+    "fetches": 1
+  },
+  "requestSizes": [
+    {
+      "tipo": "cedula",
+      "promptBytesBefore": 3751,
+      "promptBytesAfter": 2304,
+      "removedBytes": 1447
+    },
+    {
+      "tipo": "matricula",
+      "promptBytesBefore": 3672,
+      "promptBytesAfter": 2156,
+      "removedBytes": 1516
+    },
+    {
+      "tipo": "notaria",
+      "promptBytesBefore": 4623,
+      "promptBytesAfter": 2280,
+      "removedBytes": 2343
+    },
+    {
+      "tipo": "ruc",
+      "promptBytesBefore": 3386,
+      "promptBytesAfter": 2165,
+      "removedBytes": 1221
+    }
+  ],
+  "localNodeMedianMsByRun": {
+    "before": [
+      9.349,
+      11.909,
+      7.98
+    ],
+    "after": [
+      4.052,
+      2.743,
+      2.839
+    ]
+  },
+  "limits": "CPU Node con entrada ficticia, servidor simulado y respuesta fija. No mide mejora en Apps Script/Gemini ni exactitud en documentos reales."
+}

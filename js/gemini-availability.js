@@ -126,7 +126,9 @@
           if(stage==='ai-precheck'&&data?.error?.message&&!trace.serviceMessage)trace.serviceMessage=safeDiagnostic(data.error.message);
           const e=error(classify(status,data,trace));e.retryMs=retryDelay(response,data,now(),status>=500?0:60000);e.status=status;throw e;
         }
-        return options.validate(data,body,stage);
+        const validationStarted=now();
+        try{return options.validate(data,body,stage);}
+        finally{trace.resultValidationMs=now()-validationStarted;}
       }catch(e){
         const causeMessage=e.message;
         if(controller.signal.aborted)e=controller.signal.reason||e;

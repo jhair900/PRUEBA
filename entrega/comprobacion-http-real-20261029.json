@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-29",
+  "frontendVersion": "20261028T161839136537Z",
+  "model": "gemini-3.5-flash-lite",
+  "transportRequired": "fetch",
+  "diagnosticAttempts": 1,
+  "personalDocuments": 0,
+  "authentication": [
+    {
+      "action": "validateSession",
+      "elapsedMs": 1871,
+      "outcome": "failed",
+      "server": {
+        "lockWaitMs": 1,
+        "processingMs": 385,
+        "flushMs": 0,
+        "serverMs": 386
+      }
+    },
+    {
+      "action": "login",
+      "elapsedMs": 2192,
+      "outcome": "success",
+      "server": {
+        "lockWaitMs": 71,
+        "processingMs": 422,
+        "flushMs": 210,
+        "serverMs": 703
+      }
+    }
+  ],
+  "referencePreparationMs": 39.400000005960464,
+  "requestElapsedMs": 35686.70000001788,
+  "referenceValid": true,
+  "resultValidationMs": 0.5,
+  "outcome": "success",
+  "totalMs": 35726.70000001788,
+  "trace": {
+    "diagnosticProbe": true,
+    "remoteState": "complete",
+    "sessionWaitMs": 0,
+    "requestBuildMs": 0,
+    "transport": "fetch",
+    "requestBytes": 15650,
+    "headersMs": 35688,
+    "httpStatus": 200,
+    "transportHttpStatus": 200,
+    "responseCompleteMs": 35688,
+    "bodyMs": 0,
+    "httpResponseMs": 35688,
+    "backendTiming": {
+      "version": 1,
+      "inputDecodeMs": 0,
+      "sessionMs": 514,
+      "requestBuildMs": 54,
+      "providerFetchMs": 33991,
+      "providerDecodeMs": 4,
+      "otherMs": 1,
+      "serverMs": 34564
+    },
+    "outsideBackendMs": 1124,
+    "sessionApplyMs": 0,
+    "proxyHttpStatus": 200,
+    "statusOrigin": "proxy",
+    "proxyOrigin": "provider",
+    "upstreamMs": 33995,
+    "transportMs": 1693,
+    "usage": {
+      "promptTokenCount": 1101,
+      "candidatesTokenCount": 32,
+      "totalTokenCount": 1133
+    }
+  },
+  "backendTimingReceived": true
+}

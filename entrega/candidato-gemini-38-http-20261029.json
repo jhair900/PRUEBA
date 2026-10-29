@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-29",
+  "frontendVersion": "20261028T161839136537Z",
+  "model": "gemini-3.8-flash",
+  "transportRequired": "fetch",
+  "diagnosticAttempts": 1,
+  "personalDocuments": 0,
+  "authentication": [
+    {
+      "action": "validateSession",
+      "elapsedMs": 2691,
+      "outcome": "failed",
+      "server": {
+        "lockWaitMs": 0,
+        "processingMs": 787,
+        "flushMs": 0,
+        "serverMs": 787
+      }
+    },
+    {
+      "action": "login",
+      "elapsedMs": 1837,
+      "outcome": "success",
+      "server": {
+        "lockWaitMs": 75,
+        "processingMs": 342,
+        "flushMs": 180,
+        "serverMs": 597
+      }
+    }
+  ],
+  "referencePreparationMs": 10.599999994039536,
+  "requestElapsedMs": 5665.5,
+  "finishReason": null,
+  "outcome": "failed",
+  "error": {
+    "code": "AI_UPSTREAM_ERROR",
+    "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "httpStatus": 503
+  },
+  "totalMs": 5676.299999982119,
+  "trace": {
+    "diagnosticProbe": true,
+    "remoteState": "complete",
+    "sessionWaitMs": 1,
+    "requestBuildMs": 0,
+    "transport": "fetch",
+    "requestBytes": 15650,
+    "headersMs": 5663,
+    "httpStatus": 503,
+    "transportHttpStatus": 200,
+    "responseCompleteMs": 5664,
+    "bodyMs": 1,
+    "httpResponseMs": 5664,
+    "backendTiming": {
+      "version": 1,
+      "inputDecodeMs": 0,
+      "sessionMs": 344,
+      "requestBuildMs": 32,
+      "providerFetchMs": 3328,
+      "providerDecodeMs": 1,
+      "otherMs": 1,
+      "serverMs": 3706
+    },
+    "outsideBackendMs": 1958,
+    "sessionApplyMs": 0,
+    "proxyHttpStatus": 503,
+    "statusOrigin": "proxy",
+    "proxyOrigin": "provider",
+    "serviceMessage": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "serviceStatus": "UNAVAILABLE",
+    "upstreamMs": 3329,
+    "transportMs": 2335
+  },
+  "backendTimingReceived": true
+}

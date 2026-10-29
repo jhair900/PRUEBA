@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-28",
+  "frontendVersion": "20261028T161839136537Z",
+  "kind": "local-http-simulation-no-network",
+  "model": "gemini-3.5-flash-lite",
+  "reference": "Generador canvas 520x180, PLACA ABC1234 / COLOR AZUL y buildProbe sin cambios. En esta prueba local sólo se compara el cuerpo; no se valida una imagen real.",
+  "http": {
+    "before": {
+      "stringify": 2,
+      "parse": 2,
+      "fetch": 1,
+      "getContentText": 1
+    },
+    "after": {
+      "stringify": 2,
+      "parse": 2,
+      "fetch": 1,
+      "getContentText": 1
+    },
+    "sameUpstreamRequest": true,
+    "sameResult": true,
+    "normalPathReductionMeasured": false,
+    "malformedTextReadsBefore": 2,
+    "malformedTextReadsAfter": 1
+  },
+  "backendTimingFields": [
+    "version",
+    "inputDecodeMs",
+    "sessionMs",
+    "requestBuildMs",
+    "providerFetchMs",
+    "providerDecodeMs",
+    "serverMs",
+    "otherMs"
+  ],
+  "externalLatencyMeasured": false,
+  "realRound": {
+    "status": "pending-backend-update",
+    "requestsSent": 0,
+    "requiredModel": "gemini-3.5-flash-lite",
+    "requiredTransport": "fetch",
+    "personalDocuments": 0
+  },
+  "limits": "La reducción RPC 4/4 a 1/1 no se aplica a HTTP. La lectura doble eliminada sólo se ejercía con respuesta no JSON. El prompt de documentos es más corto, pero el inicio ficticio no cambia. No se ha medido un ahorro de segundos HTTP ni del proveedor."
+}
