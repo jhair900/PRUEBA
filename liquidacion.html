@@ -648,7 +648,7 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
     <div class="topbar-module">Liquidaciones</div>
   </div>
   <div class="topbar-right">
-<nav id="autocorAccountControls" aria-label="Cuenta de usuario"><div class="auth-ui-bar"><button type="button" class="outline" id="btnIniciarSesion" onclick="abrirModal('modalUsuario')">Iniciar sesión</button><button type="button" class="outline" id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;">Cerrar sesión</button><button type="button" class="outline" id="btnCambiarUsuario" onclick="cambiarUsuario()" style="display:none;">Cambiar usuario</button><button type="button" class="outline" id="btnCambiarClave" onclick="abrirModalCambioClave()" style="display:none;">Cambiar clave</button><button type="button" class="outline" id="btnAdminUsuarios" onclick="abrirModalAdminUsuarios()" style="display:none;">Admin usuarios</button></div></nav>
+<nav id="autocorAccountControls" aria-label="Cuenta de usuario"><!-- Controles únicos montados por auth-ui.js --></nav>
   <a href="index.html" class="autocor-home" aria-label="Inicio" title="Inicio">
     <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
     <span>Inicio</span>
@@ -662,7 +662,6 @@ tr.has-value td:first-child{border-left:3px solid #E53F2E;}
 
 <!-- TOOLBAR -->
 <div class="toolbar-wrap">
-<span id="topbarUser" class="auth-ui-user" style="display:none;"><b id="topbarUserName">—</b></span>
 
     <label class="toggle" style="gap:8px;">
   <span style="font-weight:700;color:rgba(255,255,255,.7);">Tipo:</span>
@@ -1523,6 +1522,27 @@ function togglePass(inputId, btn){
 }
 
 function renderAuthUI(){
+  const session = window.AutoCorSession?.snapshot();
+  if(session){
+    // La etiqueta, los permisos y el asesor provienen de la misma sesión verificada.
+    authState = session.auth;
+    currentUser = authState?.user || "";
+    currentDisplayName = authState?.displayName || "";
+    currentIsAdmin = !!authState?.isAdmin;
+    authToken = authState?.token || "";
+  }
+  const logged = !!(currentUser && authToken);
+  if($("asesor")) $("asesor").value = logged ? currentUser : "";
+  if($("pv_asesor")) $("pv_asesor").textContent = logged ? currentUser : "—";
+  if($("asesorHeader")) $("asesorHeader").textContent = logged ? currentUser : "—";
+  if($("responsablesHeader")) $("responsablesHeader").textContent = getResponsablesTexto();
+  if($("pv_responsables")) $("pv_responsables").textContent = getResponsablesTexto();
+  const banner = $("userBanner");
+  if(banner){
+    banner.style.display = logged ? "none" : "block";
+    if(!logged) banner.textContent = session ? AutoCorSession.message() : "Inicia sesión aquí para guardar y buscar. Tu trabajo se conserva.";
+  }
+  if(!logged && session) setStatus(AutoCorSession.message(), session.phase !== 'checking', false);
   const btnPwd = document.getElementById("btnCambiarClave");
   const btnAdmin = document.getElementById("btnAdminUsuarios");
   const btnGloss = document.getElementById("btnAdminGlosario");
@@ -1602,6 +1622,11 @@ function applyResponsablesToUI(data){
 }
 
 function requireUser(){
+  if(window.AutoCorSession){
+    try{ AutoCorSession.requireCurrent(); }
+    catch(_){ renderAuthUI(); return false; }
+    renderAuthUI();
+  }
   if(!currentUser || !authToken){
     abrirModal("modalUsuario");
     return false;
@@ -2156,6 +2181,7 @@ function cargarFormularioDesdeData(data, placaFallback = "") {
 
   $("cedula").value = data.cedula || "";
   $("fecha").value = data.fecha || "";
+  delete $("fecha").dataset.edicionManual;
   const _riesgoVal = (data.riesgo || "").toString().trim().toUpperCase();
   $("riesgo").value = (_riesgoVal === "MEDIO" || _riesgoVal === "ALTO") ? _riesgoVal : "BAJO";
   if(typeof window.actualizarColorRiesgo === "function") window.actualizarColorRiesgo();
@@ -2314,6 +2340,7 @@ function limpiar(){
   if($("color")) $("color").value="";
   if($("motor")) $("motor").value="";
   $("cedula").value=""; $("fecha").value="";
+  delete $("fecha").dataset.edicionManual;
   $("riesgo").value="BAJO"; $("obs").value="";
   if(typeof window.actualizarColorRiesgo === "function") window.actualizarColorRiesgo();
   if($("valorToma")) $("valorToma").value = "";
@@ -2375,6 +2402,14 @@ async function _autollenarDesdeExpediente(placa, searchId){
   } catch(e){ console.warn('[Expediente] sin datos para placa:', e.message); return 0; }
 }
 
+function fechaActualEcuador(){
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone:'America/Guayaquil', year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts(new Date());
+  const part = type => parts.find(p => p.type === type).value;
+  return part('year') + '-' + part('month') + '-' + part('day');
+}
+
 function _aplicarDatosDeContratos(data){
   if(typeof Expediente === 'undefined' || !data) return 0;
   const map = {
@@ -2389,7 +2424,12 @@ function _aplicarDatosDeContratos(data){
     chasis:       'chasis',
     valorToma:    'valorToma'
   };
-  const n = Expediente.autollenar(map, data, { sobrescribir:false });
+  let n = Expediente.autollenar(map, data, { sobrescribir:false });
+  const fecha = $("fecha");
+  if(fecha && !fecha.value && fecha.dataset.edicionManual !== 'true'){
+    fecha.value = fechaActualEcuador();
+    n++;
+  }
   if(n > 0){
     actualizarTituloPorPlaca();
     calcular();
@@ -3713,7 +3753,11 @@ async function _subirPdfsLiquidacionADrive(placa){
         const inp = document.getElementById('placa');
         if(inp){ inp.value = pre; }
         if(contratoPre && upperTrim(contratoPre.placa) === upperTrim(pre)){
+          // La precarga diferida no debe borrar una fecha ya corregida en esta página.
+          const fechaManual = $("fecha")?.dataset.edicionManual === 'true';
+          const fechaPrevia = $("fecha")?.value || "";
           cargarFormularioDesdeData({ placa:pre, items:[] }, pre);
+          if(fechaManual){ $("fecha").value = fechaPrevia; $("fecha").dataset.edicionManual = 'true'; }
           cargarBase();
           _aplicarDatosDeContratos(contratoPre);
           setStatus('NUEVA LIQUIDACIÓN CON DATOS PRECARGADOS — ' + pre, false, true);
@@ -3730,7 +3774,12 @@ async function _subirPdfsLiquidacionADrive(placa){
     }
   }catch(_){}
 
-  // Mostrar la UI de login o cartilla de inmediato sin esperar al servidor
+  // Compartir la comprobación inicial existente antes de decidir si hay usuario.
+  // Los datos y la vista local ya están preparados; no se repite la consulta.
+  if(window.AutoCorSession){
+    try{ await AutoCorSession.ensure(); }catch(_){}
+    renderAuthUI();
+  }
   if(currentUser && authToken){
     setStatus('COMPROBANDO SESIÓN…', false, false);
     requireUser();
@@ -3752,10 +3801,12 @@ async function _subirPdfsLiquidacionADrive(placa){
 })();
 
 document.addEventListener("input", function(e){
+  if(e.target.id === "fecha") e.target.dataset.edicionManual = 'true';
   if(e.target.classList && e.target.classList.contains("money-input")){
     e.target.value = moneySanitizeTyping(e.target.value);
   }
 });
+$("fecha").addEventListener("change", function(){ this.dataset.edicionManual = 'true'; });
 
 document.addEventListener("focus", function(e){
   if(e.target.classList && e.target.classList.contains("money-input")){

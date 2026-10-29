@@ -639,34 +639,30 @@
   .btn-validate-all:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
   .btn-validate-all svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
-  /* Toast flotante con resultado de validación */
+  /* Resultado compacto dentro del flujo de validación; nunca cubre los campos. */
   .validate-toast{
-    position:fixed;top:80px;left:50%;transform:translate(-50%,-20px);
-    background:#fff;border-radius:14px;padding:14px 22px;
-    box-shadow:0 12px 40px rgba(0,0,0,.22);
-    border:2px solid var(--gray-border);
-    display:flex;align-items:center;gap:14px;
-    z-index:10001;font-size:14px;font-weight:700;
-    opacity:0;pointer-events:none;
-    transition:opacity .25s ease,transform .25s ease;
-    max-width:520px;
+    position:static;margin:10px 0 0;
+    background:#fff;border-radius:10px;padding:10px 12px;
+    border:1px solid var(--gray-border);
+    display:none;align-items:flex-start;gap:10px;
+    font-size:13px;font-weight:700;
   }
-  .validate-toast.visible{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .validate-toast.visible{display:flex}
   .validate-toast.ok   {border-color:var(--green);color:var(--green-txt);background:linear-gradient(135deg,#fff,#f0fdf4)}
   .validate-toast.warn {border-color:var(--yellow);color:var(--yellow-txt);background:linear-gradient(135deg,#fff,#fffbeb)}
   .validate-toast.err  {border-color:#ef4444;color:var(--red-txt);background:linear-gradient(135deg,#fff,#fef2f2)}
   .validate-toast-icon{
-    width:34px;height:34px;border-radius:50%;flex-shrink:0;
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;
-    font-size:18px;font-weight:900;color:#fff;
+    font-size:15px;font-weight:900;color:#fff;
   }
   .validate-toast.ok   .validate-toast-icon{background:var(--green)}
   .validate-toast.warn .validate-toast-icon{background:var(--yellow)}
   .validate-toast.err  .validate-toast-icon{background:#ef4444}
   .validate-toast-body{flex:1;min-width:0}
-  .validate-toast-title{font-size:14px;font-weight:800;letter-spacing:.3px;line-height:1.2}
-  .validate-toast-sub{font-size:12px;font-weight:500;margin-top:2px;opacity:.85;line-height:1.35;max-height:45vh;overflow-y:auto}
-  .validation-pending-item{margin-top:8px}
+  .validate-toast-title{font-size:13px;font-weight:800;line-height:1.2}
+  .validate-toast-sub{font-size:12px;font-weight:500;margin-top:3px;line-height:1.4;max-height:112px;overflow-y:auto;overflow-wrap:anywhere}
+  .validation-pending-item{margin-top:5px}
   .f-pending-reason{font-size:11px;color:#92400e;margin-top:4px}
   .validate-toast-close{
     background:transparent;border:none;cursor:pointer;font-family:inherit;
@@ -909,8 +905,6 @@
     .btn-validate-all{justify-content:center}
     .generar-contratos-bar,.guardar-proceso-bar{flex-direction:column;align-items:stretch;text-align:center;padding:14px 16px}
     .btn-generar-contratos,.btn-guardar-proceso{justify-content:center;width:100%}
-    .validate-toast{left:12px;right:12px;transform:translate(0,-20px);max-width:none}
-    .validate-toast.visible{transform:translate(0,0)}
   }
 
 </style>
@@ -1231,9 +1225,7 @@
       <span>Procesar y validar</span>
     </button>
   </div>
-  </div><!-- /validationWorkspace -->
-
-  <!-- Toast flotante con resultado -->
+  <!-- Resultado y detalles de validación, dentro de su sección -->
   <div id="validateToast" class="validate-toast" role="alert">
     <div class="validate-toast-icon" id="validateToastIcon">✓</div>
     <div class="validate-toast-body">
@@ -1242,6 +1234,7 @@
     </div>
     <button type="button" class="validate-toast-close" id="validateToastClose" aria-label="Cerrar">&times;</button>
   </div>
+  </div><!-- /validationWorkspace -->
 
   <!-- ── Results section ──────────────────────────────────────── -->
   <section id="resultsSection" class="results-section" style="display:none">
@@ -1527,7 +1520,7 @@
 <script src="https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cuv-parser.js?v=20261028T161839136537Z"></script>
-<script src="js/contrato-templates.js?v=20261028T161839136537Z" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
+<script src="js/contrato-templates.js?v=20261029-firmas-casado-1" onerror="console.warn('[Contratos] contrato-templates.js no encontrado — generación de contratos no disponible')"></script>
 <script src="js/generador-contratos.js?v=20261028T161839136537Z"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
